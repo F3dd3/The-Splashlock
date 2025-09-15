@@ -1659,6 +1659,7 @@ MonoBehaviour:
   moveSpeed: 5
   gravity: -25
   jumpHeight: 2
+  jumpCooldown: 0.2
   cameraTransform: {fileID: 1428724733}
   shiftLockEnabled: 0
   shiftLockSymbol: {fileID: 1270716606}
@@ -1979,6 +1980,7 @@ SceneRoots:
   - {fileID: 1428724733}
   - {fileID: 1124471599}
   - {fileID: 1190380057}
+  - {fileID: 1631552309}
   - {fileID: 80284936}
   - {fileID: 924286162}
   - {fileID: 460319243}
@@ -1989,6 +1991,5 @@ SceneRoots:
   - {fileID: 1988545725}
   - {fileID: 895131206}
   - {fileID: 1425451725}
-  - {fileID: 1631552309}
   - {fileID: 631933836}
   - {fileID: 691164475}
