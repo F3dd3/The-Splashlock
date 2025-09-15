@@ -6,15 +6,25 @@ public class CameraMovement : MonoBehaviour
     public Transform player;
 
     [Header("Camera Settings")]
-    public float distance = 5f;
+    public float distance = 5f;         // startafstand
     public float height = 2f;
     public float sensitivity = 2f;
     public float rotationSmoothTime = 0.1f;
+
+    [Header("Zoom Settings")]
+    public float minDistance = 2f;      // minimale zoom
+    public float maxDistance = 10f;     // maximale zoom
+    public float zoomSpeed = 5f;        // snelheid van scrollen
+    public float zoomSmoothTime = 0.1f; // snelheid van smooth zoom
 
     private float yaw;
     private float pitch;
     private Vector3 currentRotation;
     private Vector3 smoothVelocity;
+
+    private float targetDistance;
+    private float currentDistance;
+    private float distanceVelocity; // voor SmoothDamp
 
     private CharacterMovement characterMovement;
 
@@ -31,6 +41,9 @@ public class CameraMovement : MonoBehaviour
         Vector3 angles = transform.eulerAngles;
         yaw = angles.y;
         pitch = angles.x;
+
+        currentDistance = distance;
+        targetDistance = distance;
     }
 
     void LateUpdate()
@@ -39,7 +52,7 @@ public class CameraMovement : MonoBehaviour
 
         bool rotateCamera = false;
 
-        // Camera bewegen hangt af van shift lock of rechtermuisknop
+        // Camera draaien hangt af van shift lock of rechtermuisknop
         if (characterMovement.shiftLockEnabled)
         {
             rotateCamera = true; // altijd draaien
@@ -56,11 +69,23 @@ public class CameraMovement : MonoBehaviour
             pitch = Mathf.Clamp(pitch, -30f, 60f);
         }
 
+        // Zoom via muiswiel
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        if (scroll != 0)
+        {
+            targetDistance -= scroll * zoomSpeed;
+            targetDistance = Mathf.Clamp(targetDistance, minDistance, maxDistance);
+        }
+
+        // Smooth zoom
+        currentDistance = Mathf.SmoothDamp(currentDistance, targetDistance, ref distanceVelocity, zoomSmoothTime);
+
+        // Bereken rotatie en positie
         Vector3 targetRotation = new Vector3(pitch, yaw);
         currentRotation = Vector3.SmoothDamp(currentRotation, targetRotation, ref smoothVelocity, rotationSmoothTime);
         Quaternion rotation = Quaternion.Euler(currentRotation.x, currentRotation.y, 0);
 
-        Vector3 offset = rotation * new Vector3(0, height, -distance);
+        Vector3 offset = rotation * new Vector3(0, height, -currentDistance);
         transform.position = player.position + offset;
 
         transform.LookAt(player.position + Vector3.up * 1.5f);

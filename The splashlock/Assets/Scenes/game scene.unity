@@ -671,7 +671,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 50, y: 50}
+  m_AnchoredPosition: {x: 0, y: 50}
   m_SizeDelta: {x: 65, y: 65}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1270716606
@@ -864,6 +864,10 @@ MonoBehaviour:
   height: 2
   sensitivity: 5
   rotationSmoothTime: 0
+  minDistance: 3.5
+  maxDistance: 7.5
+  zoomSpeed: 3
+  zoomSmoothTime: 0.2
 --- !u!1 &1631552302
 GameObject:
   m_ObjectHideFlags: 0
@@ -897,7 +901,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveSpeed: 5
-  gravity: -9.81
+  gravity: -25
   jumpHeight: 2
   cameraTransform: {fileID: 1428724733}
   shiftLockEnabled: 0
