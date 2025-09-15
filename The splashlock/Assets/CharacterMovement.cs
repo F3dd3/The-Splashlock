@@ -2,26 +2,30 @@
 
 public class CharacterMovement : MonoBehaviour
 {
+    [Header("Movement")]
     public float moveSpeed = 5f;
     public float gravity = -9.81f;
+    public float jumpHeight = 2f;
+
     private CharacterController controller;
     private Vector3 velocity;
-    public static bool canMove = true;
 
     [Header("Camera")]
     public Transform cameraTransform;
 
     [Header("Shift Lock")]
-    public bool shiftLockEnabled = false; // toggle met Shift
+    public bool shiftLockEnabled = false;
+
+    [Header("Ground Check")]
+    public float groundCheckDistance = 0.2f; // afstand onder collider om te checken
+    private bool grounded;
 
     void Start()
     {
         controller = GetComponent<CharacterController>();
 
         if (cameraTransform == null && Camera.main != null)
-        {
             cameraTransform = Camera.main.transform;
-        }
 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -29,25 +33,23 @@ public class CharacterMovement : MonoBehaviour
 
     void Update()
     {
-        if (!canMove) return;
+        HandleShiftLock();
+        HandleMovement();
+        HandleGravityAndJump();
+    }
 
-        // Toggle shift lock
+    void HandleShiftLock()
+    {
         if (Input.GetKeyDown(KeyCode.LeftShift))
         {
             shiftLockEnabled = !shiftLockEnabled;
-
-            if (shiftLockEnabled)
-            {
-                Cursor.lockState = CursorLockMode.Locked; // vastzetten in midden
-                Cursor.visible = true; // zichtbaar houden zoals in Roblox
-            }
-            else
-            {
-                Cursor.lockState = CursorLockMode.None;
-                Cursor.visible = true;
-            }
+            Cursor.lockState = shiftLockEnabled ? CursorLockMode.Locked : CursorLockMode.None;
+            Cursor.visible = !shiftLockEnabled;
         }
+    }
 
+    void HandleMovement()
+    {
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
 
@@ -59,25 +61,46 @@ public class CharacterMovement : MonoBehaviour
         right.Normalize();
 
         Vector3 move = forward * moveZ + right * moveX;
-
         controller.Move(move * moveSpeed * Time.deltaTime);
 
-        // In shift lock -> speler kijkt waar camera kijkt
         if (shiftLockEnabled && move.magnitude > 0.05f)
         {
             Quaternion targetRotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
         }
+    }
 
-        // Zwaartekracht
-        if (!controller.isGrounded)
+    void HandleGravityAndJump()
+    {
+        CheckGrounded();
+
+        if (grounded)
         {
-            velocity.y += gravity * Time.deltaTime;
-            controller.Move(velocity * Time.deltaTime);
+            if (velocity.y < 0)
+                velocity.y = -2f; // houd speler op de grond
+
+            if (Input.GetButtonDown("Jump"))
+            {
+                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            }
         }
         else
         {
-            velocity.y = 0f;
+            velocity.y += gravity * Time.deltaTime;
         }
+
+        controller.Move(velocity * Time.deltaTime);
+    }
+
+    void CheckGrounded()
+    {
+        // Raycast startpunt: net boven de onderkant van de collider (rekening houdend met skinWidth)
+        Vector3 rayOrigin = transform.position + Vector3.up * controller.center.y - Vector3.up * (controller.height / 2 - controller.skinWidth);
+
+        // Raycast naar beneden
+        grounded = Physics.Raycast(rayOrigin, Vector3.down, groundCheckDistance);
+
+        // Debug ray (groen als grounded, rood als niet)
+        Debug.DrawRay(rayOrigin, Vector3.down * groundCheckDistance, grounded ? Color.green : Color.red);
     }
 }
