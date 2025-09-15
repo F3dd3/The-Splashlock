@@ -7,9 +7,11 @@ public class CharacterMovement : MonoBehaviour
     public float moveSpeed = 5f;
     public float gravity = -9.81f;
     public float jumpHeight = 2f;
+    public float jumpCooldown = 0.2f; // tijd tussen sprongen als space ingedrukt blijft
 
     private CharacterController controller;
     private Vector3 velocity;
+    private float lastJumpTime;
 
     [Header("Camera")]
     public Transform cameraTransform;
@@ -85,9 +87,7 @@ public class CharacterMovement : MonoBehaviour
         {
             // Shift Lock uit: speler draait direct naar bewegingsrichting (geen smooth)
             if (move.magnitude > 0.05f)
-            {
                 transform.rotation = Quaternion.LookRotation(move, Vector3.up);
-            }
         }
     }
 
@@ -100,8 +100,12 @@ public class CharacterMovement : MonoBehaviour
             if (velocity.y < 0)
                 velocity.y = -2f;
 
-            if (Input.GetButtonDown("Jump"))
+            // Check voor continu springen
+            if (Input.GetButton("Jump") && Time.time - lastJumpTime >= jumpCooldown)
+            {
                 velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                lastJumpTime = Time.time;
+            }
         }
         else
         {
