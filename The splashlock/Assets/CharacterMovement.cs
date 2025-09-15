@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 
 public class CharacterMovement : MonoBehaviour
 {
@@ -16,6 +17,9 @@ public class CharacterMovement : MonoBehaviour
     [Header("Shift Lock")]
     public bool shiftLockEnabled = false;
 
+    [Header("Shift Lock UI")]
+    public RawImage shiftLockSymbol; // Sleep hier je RawImage naartoe in de Inspector
+
     [Header("Ground Check")]
     public float groundCheckDistance = 0.2f; // afstand onder collider om te checken
     private bool grounded;
@@ -29,6 +33,10 @@ public class CharacterMovement : MonoBehaviour
 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
+
+        // Zorg dat shift lock symbool standaard uit staat
+        if (shiftLockSymbol != null)
+            shiftLockSymbol.enabled = false;
     }
 
     void Update()
@@ -45,6 +53,10 @@ public class CharacterMovement : MonoBehaviour
             shiftLockEnabled = !shiftLockEnabled;
             Cursor.lockState = shiftLockEnabled ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !shiftLockEnabled;
+
+            // Toon of verberg shift lock symbool
+            if (shiftLockSymbol != null)
+                shiftLockSymbol.enabled = shiftLockEnabled;
         }
     }
 
@@ -68,7 +80,7 @@ public class CharacterMovement : MonoBehaviour
         // Rotatie
         if (shiftLockEnabled)
         {
-            // Shift Lock aan: freeze mee met camera (direct, zonder smooth)
+            // Shift Lock aan: freeze mee met camera
             transform.rotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
         }
         else
