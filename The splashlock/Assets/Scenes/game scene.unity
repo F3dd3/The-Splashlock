@@ -609,7 +609,7 @@ MonoBehaviour:
   player: {fileID: 1631552309}
   distance: 5
   height: 2
-  sensitivity: 3
+  sensitivity: 5
   rotationSmoothTime: 0
 --- !u!1 &1631552302
 GameObject:

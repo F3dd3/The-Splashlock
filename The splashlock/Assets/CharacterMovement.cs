@@ -61,12 +61,25 @@ public class CharacterMovement : MonoBehaviour
         right.Normalize();
 
         Vector3 move = forward * moveZ + right * moveX;
+
+        // Beweeg speler
         controller.Move(move * moveSpeed * Time.deltaTime);
 
-        if (shiftLockEnabled && move.magnitude > 0.05f)
+        // Rotatie
+        if (move.magnitude > 0.05f)
         {
-            Quaternion targetRotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+            if (shiftLockEnabled)
+            {
+                // Shift Lock aan: draai naar camera
+                Quaternion targetRotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+            }
+            else
+            {
+                // Shift Lock uit: draai naar bewegingsrichting (zoals Roblox)
+                Quaternion targetRotation = Quaternion.LookRotation(move, Vector3.up);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+            }
         }
     }
 
