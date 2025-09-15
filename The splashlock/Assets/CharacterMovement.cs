@@ -34,9 +34,8 @@ public class CharacterMovement : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        // Zorg dat shift lock symbool standaard uit staat
         if (shiftLockSymbol != null)
-            shiftLockSymbol.enabled = false;
+            shiftLockSymbol.enabled = false; // standaard uit
     }
 
     void Update()
@@ -54,7 +53,6 @@ public class CharacterMovement : MonoBehaviour
             Cursor.lockState = shiftLockEnabled ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !shiftLockEnabled;
 
-            // Toon of verberg shift lock symbool
             if (shiftLockSymbol != null)
                 shiftLockSymbol.enabled = shiftLockEnabled;
         }
@@ -118,13 +116,16 @@ public class CharacterMovement : MonoBehaviour
 
     void CheckGrounded()
     {
-        // Raycast startpunt: net boven de onderkant van de collider (rekening houdend met skinWidth)
-        Vector3 rayOrigin = transform.position + Vector3.up * controller.center.y - Vector3.up * (controller.height / 2 - controller.skinWidth);
+        // SphereCast radius = half van de CharacterController
+        float radius = controller.radius;
 
-        // Raycast naar beneden
-        grounded = Physics.Raycast(rayOrigin, Vector3.down, groundCheckDistance);
+        // Startpunt: iets boven de onderkant van de collider
+        Vector3 origin = transform.position + Vector3.up * (controller.center.y - controller.height / 2 + radius);
 
-        // Debug ray (groen als grounded, rood als niet)
-        Debug.DrawRay(rayOrigin, Vector3.down * groundCheckDistance, grounded ? Color.green : Color.red);
+        // SphereCast naar beneden
+        grounded = Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit hit, groundCheckDistance);
+
+        // Debug: visualiseer de spherecast
+        Debug.DrawRay(origin, Vector3.down * groundCheckDistance, grounded ? Color.green : Color.red);
     }
 }
