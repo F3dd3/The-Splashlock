@@ -18,10 +18,10 @@ public class CharacterMovement : MonoBehaviour
     public bool shiftLockEnabled = false;
 
     [Header("Shift Lock UI")]
-    public RawImage shiftLockSymbol; // Sleep hier je RawImage naartoe in de Inspector
+    public RawImage shiftLockSymbol;
 
     [Header("Ground Check")]
-    public float groundCheckDistance = 0.2f; // afstand onder collider om te checken
+    public float groundCheckDistance = 0.2f;
     private bool grounded;
 
     void Start()
@@ -35,7 +35,7 @@ public class CharacterMovement : MonoBehaviour
         Cursor.visible = true;
 
         if (shiftLockSymbol != null)
-            shiftLockSymbol.enabled = false; // standaard uit
+            shiftLockSymbol.enabled = false;
     }
 
     void Update()
@@ -78,16 +78,15 @@ public class CharacterMovement : MonoBehaviour
         // Rotatie
         if (shiftLockEnabled)
         {
-            // Shift Lock aan: freeze mee met camera
+            // Shift Lock: speler kijkt exact dezelfde kant als camera
             transform.rotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
         }
         else
         {
-            // Shift Lock uit: draai naar bewegingsrichting met smooth
+            // Shift Lock uit: speler draait direct naar bewegingsrichting (geen smooth)
             if (move.magnitude > 0.05f)
             {
-                Quaternion targetRotation = Quaternion.LookRotation(move, Vector3.up);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+                transform.rotation = Quaternion.LookRotation(move, Vector3.up);
             }
         }
     }
@@ -99,12 +98,10 @@ public class CharacterMovement : MonoBehaviour
         if (grounded)
         {
             if (velocity.y < 0)
-                velocity.y = -2f; // houd speler op de grond
+                velocity.y = -2f;
 
             if (Input.GetButtonDown("Jump"))
-            {
                 velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-            }
         }
         else
         {
@@ -116,16 +113,9 @@ public class CharacterMovement : MonoBehaviour
 
     void CheckGrounded()
     {
-        // SphereCast radius = half van de CharacterController
         float radius = controller.radius;
-
-        // Startpunt: iets boven de onderkant van de collider
         Vector3 origin = transform.position + Vector3.up * (controller.center.y - controller.height / 2 + radius);
-
-        // SphereCast naar beneden
         grounded = Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit hit, groundCheckDistance);
-
-        // Debug: visualiseer de spherecast
         Debug.DrawRay(origin, Vector3.down * groundCheckDistance, grounded ? Color.green : Color.red);
     }
 }
