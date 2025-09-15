@@ -7,9 +7,13 @@ public class CharacterMovement : MonoBehaviour
     public float moveSpeed = 5f;
     public float gravity = -9.81f;
     public float jumpHeight = 2f;
+    public float jumpCooldown = 0.2f; // tijd tussen sprongen als space ingedrukt blijft
+    public float rotationSmoothTime = 0.1f; // smooth rotatie tijd
 
     private CharacterController controller;
     private Vector3 velocity;
+    private float lastJumpTime;
+    private float rotationVelocity;
 
     [Header("Camera")]
     public Transform cameraTransform;
@@ -18,10 +22,10 @@ public class CharacterMovement : MonoBehaviour
     public bool shiftLockEnabled = false;
 
     [Header("Shift Lock UI")]
-    public RawImage shiftLockSymbol; // Sleep hier je RawImage naartoe in de Inspector
+    public RawImage shiftLockSymbol;
 
     [Header("Ground Check")]
-    public float groundCheckDistance = 0.2f; // afstand onder collider om te checken
+    public float groundCheckDistance = 0.2f;
     private bool grounded;
 
     void Start()
@@ -35,7 +39,7 @@ public class CharacterMovement : MonoBehaviour
         Cursor.visible = true;
 
         if (shiftLockSymbol != null)
-            shiftLockSymbol.enabled = false; // standaard uit
+            shiftLockSymbol.enabled = false;
     }
 
     void Update()
@@ -63,6 +67,7 @@ public class CharacterMovement : MonoBehaviour
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
 
+        // Camera basis vectoren
         Vector3 forward = cameraTransform.forward;
         Vector3 right = cameraTransform.right;
         forward.y = 0f;
@@ -70,7 +75,12 @@ public class CharacterMovement : MonoBehaviour
         forward.Normalize();
         right.Normalize();
 
+        // Bewegingsvector relatief aan camera
         Vector3 move = forward * moveZ + right * moveX;
+
+        // Normaliseer diagonale beweging
+        if (move.magnitude > 1f)
+            move.Normalize();
 
         // Beweeg speler
         controller.Move(move * moveSpeed * Time.deltaTime);
@@ -78,16 +88,17 @@ public class CharacterMovement : MonoBehaviour
         // Rotatie
         if (shiftLockEnabled)
         {
-            // Shift Lock aan: freeze mee met camera
+            // Shift Lock: speler kijkt exact dezelfde kant als camera
             transform.rotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
         }
         else
         {
-            // Shift Lock uit: draai naar bewegingsrichting met smooth
-            if (move.magnitude > 0.05f)
+            // Shift Lock uit: speler draait smooth naar bewegingsrichting
+            if (move.sqrMagnitude > 0.001f)
             {
-                Quaternion targetRotation = Quaternion.LookRotation(move, Vector3.up);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+                float targetAngle = Mathf.Atan2(move.x, move.z) * Mathf.Rad2Deg;
+                float smoothAngle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref rotationVelocity, rotationSmoothTime);
+                transform.rotation = Quaternion.Euler(0, smoothAngle, 0);
             }
         }
     }
@@ -99,11 +110,13 @@ public class CharacterMovement : MonoBehaviour
         if (grounded)
         {
             if (velocity.y < 0)
-                velocity.y = -2f; // houd speler op de grond
+                velocity.y = -2f;
 
-            if (Input.GetButtonDown("Jump"))
+            // Continu springen zolang space ingedrukt is
+            if (Input.GetButton("Jump") && Time.time - lastJumpTime >= jumpCooldown)
             {
                 velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                lastJumpTime = Time.time;
             }
         }
         else
@@ -116,16 +129,9 @@ public class CharacterMovement : MonoBehaviour
 
     void CheckGrounded()
     {
-        // SphereCast radius = half van de CharacterController
         float radius = controller.radius;
-
-        // Startpunt: iets boven de onderkant van de collider
         Vector3 origin = transform.position + Vector3.up * (controller.center.y - controller.height / 2 + radius);
-
-        // SphereCast naar beneden
         grounded = Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit hit, groundCheckDistance);
-
-        // Debug: visualiseer de spherecast
         Debug.DrawRay(origin, Vector3.down * groundCheckDistance, grounded ? Color.green : Color.red);
     }
 }
