@@ -1622,7 +1622,7 @@ MonoBehaviour:
   rotationSmoothTime: 0
   minDistance: 3.5
   maxDistance: 7.5
-  zoomSpeed: 3
+  zoomSpeed: 7.5
   zoomSmoothTime: 0.2
 --- !u!1 &1631552302
 GameObject:
