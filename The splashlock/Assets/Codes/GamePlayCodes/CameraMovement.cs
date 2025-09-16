@@ -7,7 +7,7 @@ public class CameraMovement : MonoBehaviour
 
     [Header("Camera Settings")]
     public float distance = 5f;         // startafstand
-    public float height = 2f;
+    public float height = 2f;           // vaste hoogte boven speler
     public float sensitivity = 2f;
     public float rotationSmoothTime = 0.1f;
 
@@ -80,14 +80,18 @@ public class CameraMovement : MonoBehaviour
         // Smooth zoom
         currentDistance = Mathf.SmoothDamp(currentDistance, targetDistance, ref distanceVelocity, zoomSmoothTime);
 
-        // Bereken rotatie en positie
+        // Rotatie berekenen
         Vector3 targetRotation = new Vector3(pitch, yaw);
         currentRotation = Vector3.SmoothDamp(currentRotation, targetRotation, ref smoothVelocity, rotationSmoothTime);
         Quaternion rotation = Quaternion.Euler(currentRotation.x, currentRotation.y, 0);
 
-        Vector3 offset = rotation * new Vector3(0, height, -currentDistance);
+        // Offset berekenen
+        Vector3 offset = rotation * new Vector3(0, 0, -currentDistance); // ZOOM alleen op Z
+        offset += new Vector3(0, height, 0); // HOOGTE apart optellen, draait niet mee
+
         transform.position = player.position + offset;
 
+        // Altijd naar speler kijken
         transform.LookAt(player.position + Vector3.up * 1.5f);
     }
 }
