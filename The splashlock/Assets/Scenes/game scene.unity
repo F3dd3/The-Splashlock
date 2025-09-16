@@ -2274,7 +2274,7 @@ MonoBehaviour:
   height: 2
   sensitivity: 5
   rotationSmoothTime: 0
-  minDistance: 3.5
+  minDistance: 1
   maxDistance: 7.5
   zoomSpeed: 7.5
   zoomSmoothTime: 0.2
