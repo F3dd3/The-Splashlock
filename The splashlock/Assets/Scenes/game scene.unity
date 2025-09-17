@@ -132,8 +132,8 @@ GameObject:
   - component: {fileID: 80284934}
   - component: {fileID: 80284933}
   m_Layer: 0
-  m_Name: TestCubus
-  m_TagString: Untagged
+  m_Name: Start Cubus
+  m_TagString: Start
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -221,8 +221,8 @@ Transform:
   m_GameObject: {fileID: 80284932}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: 2.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: 0, y: 1, z: 2}
+  m_LocalScale: {x: 2, y: 1, z: 2.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -241,7 +241,7 @@ GameObject:
   - component: {fileID: 103897312}
   m_Layer: 0
   m_Name: TestCubus (8)
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -349,7 +349,7 @@ GameObject:
   - component: {fileID: 352465912}
   m_Layer: 0
   m_Name: TestCubus (6)
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -590,7 +590,7 @@ GameObject:
   - component: {fileID: 460319240}
   m_Layer: 0
   m_Name: TestCubus (3)
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -834,7 +834,7 @@ GameObject:
   - component: {fileID: 629784137}
   m_Layer: 0
   m_Name: TestCubus (5)
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1259,7 +1259,7 @@ GameObject:
   - component: {fileID: 895131203}
   m_Layer: 0
   m_Name: TestCubus (4)
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1367,7 +1367,7 @@ GameObject:
   - component: {fileID: 924286159}
   m_Layer: 0
   m_Name: TestCubus (1)
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1715,9 +1715,9 @@ GameObject:
   - component: {fileID: 1190380056}
   - component: {fileID: 1190380055}
   - component: {fileID: 1190380054}
-  m_Layer: 0
-  m_Name: platform
-  m_TagString: Untagged
+  m_Layer: 4
+  m_Name: Water
+  m_TagString: Water
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2005,7 +2005,7 @@ GameObject:
   - component: {fileID: 1425451722}
   m_Layer: 0
   m_Name: TestCubus (2)
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2464,11 +2464,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f87e7ecb09aab4e40b7f170035f00c8f, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.5
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f87e7ecb09aab4e40b7f170035f00c8f, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f87e7ecb09aab4e40b7f170035f00c8f, type: 3}
       propertyPath: m_LocalRotation.w
@@ -2518,6 +2518,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: f87e7ecb09aab4e40b7f170035f00c8f, type: 3}
+      propertyPath: m_TagString
+      value: Water
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -2531,6 +2535,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f87e7ecb09aab4e40b7f170035f00c8f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1918905933}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f87e7ecb09aab4e40b7f170035f00c8f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1918905936}
   m_SourcePrefab: {fileID: 100100000, guid: f87e7ecb09aab4e40b7f170035f00c8f, type: 3}
 --- !u!1 &1918905927 stripped
 GameObject:
@@ -2558,7 +2565,6 @@ MonoBehaviour:
   gravity: -25
   jumpHeight: 2
   jumpCooldown: 0.05
-  rotationSmoothTime: 0.1
   cameraTransform: {fileID: 1428724733}
   shiftLockEnabled: 0
   shiftLockSymbol: {fileID: 1270716606}
@@ -2602,6 +2608,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   trampolineForce: 5
   raycastLength: 0.5
+--- !u!114 &1918905936
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1918905927}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d01c83bd1767c1468be05c762489bd7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  respawnHeight: 1
+  checkDistance: 0.15
+  waterLayer:
+    serializedVersion: 2
+    m_Bits: 16
 --- !u!1 &1988545721
 GameObject:
   m_ObjectHideFlags: 0
@@ -2616,7 +2639,7 @@ GameObject:
   - component: {fileID: 1988545722}
   m_Layer: 0
   m_Name: TestCubus (9)
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2783,7 +2806,7 @@ GameObject:
   - component: {fileID: 2110758873}
   m_Layer: 0
   m_Name: TestCubus (7)
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

@@ -119,7 +119,16 @@ public class CharacterMovement : MonoBehaviour
         float radius = controller.radius;
         Vector3 origin = transform.position + Vector3.up * (controller.center.y - controller.height / 2 + radius);
 
-        grounded = Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit hit, groundCheckDistance);
+        grounded = false; // reset standaard
+
+        if (Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit hit, groundCheckDistance))
+        {
+            if (hit.collider.CompareTag("Ground") || hit.collider.CompareTag("Start"))
+            {
+                grounded = true;
+            }
+        }
+
         Debug.DrawRay(origin, Vector3.down * groundCheckDistance, grounded ? Color.green : Color.red);
     }
 
