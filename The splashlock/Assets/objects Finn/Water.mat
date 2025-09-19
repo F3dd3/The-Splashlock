@@ -43,11 +43,11 @@ Material:
     - _FoamSpeed: 0.1
     - _QueueControl: 0
     - _QueueOffset: 0
-    - _RippleDensity: 5
-    - _RippleSlimness: 8
+    - _RippleDensity: 20
+    - _RippleSlimness: 10
     - _RippleSpeed: 1
-    - _WaveScale: 4
-    - _WaveSpeed: 0.3
+    - _WaveScale: 20
+    - _WaveSpeed: 0.02
     m_Colors:
     - _BaseColor: {r: 0.19424167, g: 0.6164551, b: 0.9150943, a: 0}
     - _RippleColor: {r: 0.3393556, g: 0.8836033, b: 1.754717, a: 0}
