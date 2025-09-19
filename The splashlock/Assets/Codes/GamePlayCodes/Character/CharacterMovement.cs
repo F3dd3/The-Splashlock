@@ -4,7 +4,8 @@ using UnityEngine.UI;
 public class CharacterMovement : MonoBehaviour
 {
     [Header("Movement")]
-    public float moveSpeed = 5f;
+    public float moveSpeed = 5f;         // normale snelheid
+    public float slowSpeed = 2f;         // snelheid op "Slow" objecten
     public float gravity = -9.81f;
     public float jumpHeight = 2f;
     public float jumpCooldown = 0.2f;
@@ -28,8 +29,12 @@ public class CharacterMovement : MonoBehaviour
     private RaycastHit groundHit;
 
     [Header("Slope Settings")]
-    public float slopeSlideSpeed = 8f;   // maximale glijsnelheid op 90° helling
-    public float slopeLimit = 45f;       // vanaf welke hoek je begint te glijden
+    public float slopeSlideSpeed = 8f;
+    public float slopeLimit = 45f;
+
+    [Header("Slow Settings")]
+    public float slowCheckDistance = 1f; // langere check voor Slow
+    private bool onSlowSurface = false;
 
     void Start()
     {
@@ -66,6 +71,7 @@ public class CharacterMovement : MonoBehaviour
 
     void HandleMovementAndGravity()
     {
+        // --- Input ---
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
 
@@ -76,47 +82,27 @@ public class CharacterMovement : MonoBehaviour
         forward.Normalize();
         right.Normalize();
 
-        Vector3 move = forward * moveZ + right * moveX;
-        if (move.magnitude > 1f)
-            move.Normalize();
+        Vector3 moveInput = forward * moveZ + right * moveX;
+        if (moveInput.magnitude > 1f)
+            moveInput.Normalize();
 
         // --- Ground check ---
         CheckGrounded();
 
-        float slopeSpeedFactor = 1f;
+        float slopeAngle = 0f;
+        if (grounded)
+            slopeAngle = Vector3.Angle(groundHit.normal, Vector3.up);
 
+        // --- Verticale beweging (gravity/jump) ---
         if (grounded)
         {
             if (velocity.y < 0)
                 velocity.y = -2f;
 
-            float slopeAngle = Vector3.Angle(groundHit.normal, Vector3.up);
-
             if (Input.GetButton("Jump") && Time.time - lastJumpTime >= jumpCooldown)
             {
                 velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
                 lastJumpTime = Time.time;
-            }
-            else
-            {
-                if (slopeAngle > slopeLimit)
-                {
-                    // ✅ Schuiven naar beneden (steiler = sneller)
-                    float slopeFactor = Mathf.InverseLerp(slopeLimit, 90f, slopeAngle);
-                    Vector3 slideDirection = Vector3.ProjectOnPlane(Vector3.down, groundHit.normal).normalized;
-                    move += slideDirection * slopeFactor * slopeSlideSpeed;
-                }
-                else
-                {
-                    // ✅ Langzamer lopen op helling omhoog
-                    // projecteer movement op grondvlak
-                    Vector3 moveDir = Vector3.ProjectOnPlane(move, groundHit.normal).normalized;
-
-                    // bereken factor afhankelijk van hoek
-                    slopeSpeedFactor = Mathf.Lerp(1f, 0.2f, slopeAngle / slopeLimit);
-
-                    move = moveDir;
-                }
             }
         }
         else
@@ -124,20 +110,49 @@ public class CharacterMovement : MonoBehaviour
             velocity.y += gravity * Time.deltaTime;
         }
 
+        // --- Bepaal huidige snelheid ---
+        float currentSpeed = onSlowSurface ? slowSpeed : moveSpeed;
+
+        // --- Horizontale beweging ---
+        Vector3 horizontalMove = Vector3.zero;
+
+        if (grounded)
+        {
+            if (slopeAngle > slopeLimit)
+            {
+                // Te steil → glijden
+                float slopeFactor = Mathf.InverseLerp(slopeLimit, 90f, slopeAngle);
+                Vector3 slideDirection = Vector3.ProjectOnPlane(Vector3.down, groundHit.normal).normalized;
+                horizontalMove = slideDirection * slopeFactor * slopeSlideSpeed;
+            }
+            else
+            {
+                // Normale movement → projecteer input op helling
+                Vector3 moveDir = Vector3.ProjectOnPlane(moveInput, groundHit.normal).normalized;
+                float slopeSpeedFactor = Mathf.Lerp(1f, 0.2f, slopeAngle / slopeLimit);
+                horizontalMove = moveDir * (currentSpeed * slopeSpeedFactor);
+            }
+        }
+        else
+        {
+            // In de lucht → gewone input gebruiken
+            horizontalMove = moveInput * currentSpeed;
+        }
+
         // --- Rotatie ---
         if (shiftLockEnabled)
         {
             transform.rotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
         }
-        else if (move.sqrMagnitude > 0.001f)
+        else if (moveInput.sqrMagnitude > 0.001f)
         {
-            float targetAngle = Mathf.Atan2(move.x, move.z) * Mathf.Rad2Deg;
+            float targetAngle = Mathf.Atan2(moveInput.x, moveInput.z) * Mathf.Rad2Deg;
             Quaternion targetRotation = Quaternion.Euler(0, targetAngle, 0);
             transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720 * Time.deltaTime);
         }
 
-        // --- Move uitvoeren ---
-        Vector3 finalMove = move * (moveSpeed * slopeSpeedFactor) + velocity;
+        // --- Combineer ---
+        Vector3 finalMove = horizontalMove + new Vector3(0, velocity.y, 0);
         controller.Move(finalMove * Time.deltaTime);
     }
 
@@ -147,17 +162,32 @@ public class CharacterMovement : MonoBehaviour
         Vector3 origin = transform.position + Vector3.up * (controller.center.y - controller.height / 2 + radius);
 
         grounded = false;
+        onSlowSurface = false;
 
+        // --- Normale ground check ---
         if (Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit hit, groundCheckDistance))
         {
-            if (hit.collider.CompareTag("Ground") || hit.collider.CompareTag("Start"))
+            if (hit.collider.CompareTag("Ground") || hit.collider.CompareTag("Start") || hit.collider.CompareTag("Slow"))
             {
                 grounded = true;
                 groundHit = hit;
+
+                if (hit.collider.CompareTag("Slow"))
+                    onSlowSurface = true;
+            }
+        }
+
+        // --- Extra lange check specifiek voor Slow ---
+        if (!onSlowSurface && Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit slowHit, slowCheckDistance))
+        {
+            if (slowHit.collider.CompareTag("Slow"))
+            {
+                onSlowSurface = true;
             }
         }
 
         Debug.DrawRay(origin, Vector3.down * groundCheckDistance, grounded ? Color.green : Color.red);
+        Debug.DrawRay(origin, Vector3.down * slowCheckDistance, onSlowSurface ? Color.blue : Color.gray);
     }
 
     public void SetVerticalVelocity(float newVelocity)
