@@ -9,6 +9,7 @@ TagManager:
   - Start
   - Water
   - Slow
+  - Smash
   layers:
   - Default
   - TransparentFX
