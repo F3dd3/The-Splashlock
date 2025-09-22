@@ -4,8 +4,8 @@ using UnityEngine.UI;
 public class CharacterMovement : MonoBehaviour
 {
     [Header("Movement")]
-    public float moveSpeed = 5f;         // normale snelheid
-    public float slowSpeed = 2f;         // snelheid op "Slow" objecten
+    public float moveSpeed = 5f;
+    public float slowSpeed = 2f;
     public float gravity = -9.81f;
     public float jumpHeight = 2f;
     public float jumpCooldown = 0.2f;
@@ -33,10 +33,10 @@ public class CharacterMovement : MonoBehaviour
     public float slopeLimit = 45f;
 
     [Header("Slow Settings")]
-    public float slowCheckDistance = 1f; // langere check voor Slow
+    public float slowCheckDistance = 1f;
     private bool onSlowSurface = false;
 
-    // ✅ Nieuw: externe kracht (knockback/spinner)
+    // Externe kracht (spinners, knockback, enz.)
     private Vector3 externalForce = Vector3.zero;
 
     void Start()
@@ -118,8 +118,31 @@ public class CharacterMovement : MonoBehaviour
         // --- Bepaal huidige snelheid ---
         float currentSpeed = onSlowSurface ? slowSpeed : moveSpeed;
 
-        // --- Horizontale movement (altijd toegestaan, ook in de lucht) ---
-        Vector3 horizontalMove = moveInput * currentSpeed;
+        // --- Horizontale movement ---
+        Vector3 horizontalMove = Vector3.zero;
+
+        if (grounded)
+        {
+            float slopeAngle = Vector3.Angle(groundHit.normal, Vector3.up);
+
+            if (slopeAngle > slopeLimit)
+            {
+                // Te steil → glijden
+                Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, groundHit.normal).normalized;
+                horizontalMove = slideDir * slopeSlideSpeed;
+            }
+            else
+            {
+                // Normale beweging, geprojecteerd op de helling
+                Vector3 moveDir = Vector3.ProjectOnPlane(moveInput, groundHit.normal).normalized;
+                horizontalMove = moveDir * currentSpeed;
+            }
+        }
+        else
+        {
+            // In de lucht → gewone input
+            horizontalMove = moveInput * currentSpeed;
+        }
 
         // --- Rotatie ---
         if (shiftLockEnabled)
@@ -146,7 +169,6 @@ public class CharacterMovement : MonoBehaviour
         grounded = false;
         onSlowSurface = false;
 
-        // --- Normale ground check ---
         if (Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit hit, groundCheckDistance))
         {
             if (hit.collider.CompareTag("Ground") || hit.collider.CompareTag("Start") || hit.collider.CompareTag("Slow"))
@@ -159,7 +181,6 @@ public class CharacterMovement : MonoBehaviour
             }
         }
 
-        // --- Extra lange check specifiek voor Slow ---
         if (!onSlowSurface && Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit slowHit, slowCheckDistance))
         {
             if (slowHit.collider.CompareTag("Slow"))
@@ -178,7 +199,6 @@ public class CharacterMovement : MonoBehaviour
         lastJumpTime = Time.time;
     }
 
-    // ✅ Functie voor externe objecten (bv. spinners)
     public void AddExternalForce(Vector3 force)
     {
         externalForce += force;
