@@ -4,8 +4,8 @@ using UnityEngine.UI;
 public class CharacterMovement : MonoBehaviour
 {
     [Header("Movement")]
-    public float moveSpeed = 5f;
-    public float slowSpeed = 2f;
+    public float moveSpeed = 5f;         // normale snelheid
+    public float slowSpeed = 2f;         // snelheid op "Slow" objecten
     public float gravity = -9.81f;
     public float jumpHeight = 2f;
     public float jumpCooldown = 0.2f;
@@ -32,10 +32,12 @@ public class CharacterMovement : MonoBehaviour
     public float slopeSlideSpeed = 8f;
     public float slopeLimit = 45f;
 
-    [Header("Slow/Smash Settings")]
-    public float slowCheckDistance = 1f;
+    [Header("Slow Settings")]
+    public float slowCheckDistance = 1f; // langere check voor Slow
     private bool onSlowSurface = false;
-    public float smashForce = 12f;   // kracht van smash
+
+    // ✅ Nieuw: externe kracht (knockback/spinner)
+    private Vector3 externalForce = Vector3.zero;
 
     void Start()
     {
@@ -55,6 +57,12 @@ public class CharacterMovement : MonoBehaviour
     {
         HandleShiftLock();
         HandleMovementAndGravity();
+
+        // Force langzaam laten uitdoven
+        if (externalForce.magnitude > 0.01f)
+            externalForce = Vector3.Lerp(externalForce, Vector3.zero, 5f * Time.deltaTime);
+        else
+            externalForce = Vector3.zero;
     }
 
     void HandleShiftLock()
@@ -72,6 +80,7 @@ public class CharacterMovement : MonoBehaviour
 
     void HandleMovementAndGravity()
     {
+        // --- Input ---
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
 
@@ -86,12 +95,10 @@ public class CharacterMovement : MonoBehaviour
         if (moveInput.magnitude > 1f)
             moveInput.Normalize();
 
+        // --- Ground check ---
         CheckGrounded();
 
-        float slopeAngle = 0f;
-        if (grounded)
-            slopeAngle = Vector3.Angle(groundHit.normal, Vector3.up);
-
+        // --- Verticale beweging (gravity/jump) ---
         if (grounded)
         {
             if (velocity.y < 0)
@@ -108,33 +115,13 @@ public class CharacterMovement : MonoBehaviour
             velocity.y += gravity * Time.deltaTime;
         }
 
-        // --- Speed bepalen ---
-        float currentSpeed = moveSpeed;
-        if (onSlowSurface)
-            currentSpeed = slowSpeed;
+        // --- Bepaal huidige snelheid ---
+        float currentSpeed = onSlowSurface ? slowSpeed : moveSpeed;
 
-        Vector3 horizontalMove = Vector3.zero;
+        // --- Horizontale movement (altijd toegestaan, ook in de lucht) ---
+        Vector3 horizontalMove = moveInput * currentSpeed;
 
-        if (grounded)
-        {
-            if (slopeAngle > slopeLimit)
-            {
-                float slopeFactor = Mathf.InverseLerp(slopeLimit, 90f, slopeAngle);
-                Vector3 slideDirection = Vector3.ProjectOnPlane(Vector3.down, groundHit.normal).normalized;
-                horizontalMove = slideDirection * slopeFactor * slopeSlideSpeed;
-            }
-            else
-            {
-                Vector3 moveDir = Vector3.ProjectOnPlane(moveInput, groundHit.normal).normalized;
-                float slopeSpeedFactor = Mathf.Lerp(1f, 0.2f, slopeAngle / slopeLimit);
-                horizontalMove = moveDir * (currentSpeed * slopeSpeedFactor);
-            }
-        }
-        else
-        {
-            horizontalMove = moveInput * currentSpeed;
-        }
-
+        // --- Rotatie ---
         if (shiftLockEnabled)
         {
             transform.rotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
@@ -146,7 +133,8 @@ public class CharacterMovement : MonoBehaviour
             transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720 * Time.deltaTime);
         }
 
-        Vector3 finalMove = horizontalMove + new Vector3(0, velocity.y, 0);
+        // --- Combineer movement met externalForce ---
+        Vector3 finalMove = horizontalMove + externalForce + new Vector3(0, velocity.y, 0);
         controller.Move(finalMove * Time.deltaTime);
     }
 
@@ -158,6 +146,7 @@ public class CharacterMovement : MonoBehaviour
         grounded = false;
         onSlowSurface = false;
 
+        // --- Normale ground check ---
         if (Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit hit, groundCheckDistance))
         {
             if (hit.collider.CompareTag("Ground") || hit.collider.CompareTag("Start") || hit.collider.CompareTag("Slow"))
@@ -170,35 +159,28 @@ public class CharacterMovement : MonoBehaviour
             }
         }
 
-        // Extra check voor Slow surfaces iets verder weg
-        if (!onSlowSurface && Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit extraHit, slowCheckDistance))
+        // --- Extra lange check specifiek voor Slow ---
+        if (!onSlowSurface && Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit slowHit, slowCheckDistance))
         {
-            if (extraHit.collider.CompareTag("Slow"))
+            if (slowHit.collider.CompareTag("Slow"))
+            {
                 onSlowSurface = true;
+            }
         }
-    }
 
-    void OnControllerColliderHit(ControllerColliderHit hit)
-    {
-        // Smash wordt nu alleen getriggerd door daadwerkelijke collision
-        if (hit.collider.CompareTag("Smash"))
-        {
-            Vector3 center = hit.collider.bounds.center;
-            Vector3 knockDir = (transform.position - center).normalized;
-
-            float distance = Vector3.Distance(transform.position, center);
-            float boost = Mathf.Clamp(distance, 1f, 2f);
-
-            Vector3 force = knockDir * smashForce * boost;
-            force.y = Mathf.Max(force.y, smashForce * 0.5f);
-
-            velocity += force;
-        }
+        Debug.DrawRay(origin, Vector3.down * groundCheckDistance, grounded ? Color.green : Color.red);
+        Debug.DrawRay(origin, Vector3.down * slowCheckDistance, onSlowSurface ? Color.blue : Color.gray);
     }
 
     public void SetVerticalVelocity(float newVelocity)
     {
         velocity.y = newVelocity;
         lastJumpTime = Time.time;
+    }
+
+    // ✅ Functie voor externe objecten (bv. spinners)
+    public void AddExternalForce(Vector3 force)
+    {
+        externalForce += force;
     }
 }
