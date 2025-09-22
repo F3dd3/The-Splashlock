@@ -1991,7 +1991,7 @@ MonoBehaviour:
   shiftLockEnabled: 0
   shiftLockSymbol: {fileID: 1270716606}
   groundCheckDistance: 0.15
-  slopeSlideSpeed: 5
+  slopeSlideSpeed: 1
   slopeLimit: 25
   slowCheckDistance: 2
 --- !u!143 &1918905930
@@ -2183,7 +2183,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5590654894500193065, guid: aa6ba78bc89de4944a9277b0e8886fb6, type: 3}
       propertyPath: rotationSpeed.y
-      value: 100
+      value: 125
       objectReference: {fileID: 0}
     - target: {fileID: 6667793051794483002, guid: aa6ba78bc89de4944a9277b0e8886fb6, type: 3}
       propertyPath: m_LocalPosition.y
