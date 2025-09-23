@@ -59,7 +59,6 @@ public class CharacterMovement : MonoBehaviour
         HandleShiftLock();
         HandleMovement();
 
-        // Laat externe krachten vervagen
         if (externalForce.magnitude > 0.01f)
             externalForce = Vector3.Lerp(externalForce, Vector3.zero, externalForceDecay * Time.deltaTime);
         else
@@ -81,7 +80,6 @@ public class CharacterMovement : MonoBehaviour
 
     void HandleMovement()
     {
-        // --- Input ---
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
 
@@ -96,28 +94,24 @@ public class CharacterMovement : MonoBehaviour
         if (moveInput.magnitude > 1f)
             moveInput.Normalize();
 
-        // --- Grounded check ---
         grounded = controller.isGrounded;
         CheckGroundedExtra();
 
-        // --- Jump ---
         if (Input.GetButton("Jump") && grounded && Time.time - lastJumpTime >= jumpCooldown)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
             lastJumpTime = Time.time;
         }
 
-        // --- Gravity ---
         if (!grounded)
             velocity.y += gravity * Time.deltaTime;
         else if (velocity.y < 0f)
             velocity.y = -2f;
 
-        // --- Horizontale beweging ---
         float currentSpeed = onSlowSurface ? slowSpeed : moveSpeed;
         Vector3 horizontalMove = moveInput * currentSpeed;
 
-        // --- Glijden op hellingen ---
+        // --- Glijden op hellingen (inclusief DevilWheel) ---
         if (grounded && groundHit.collider != null && groundHit.collider.CompareTag("Helling"))
         {
             float slopeAngle = Vector3.Angle(groundHit.normal, Vector3.up);
@@ -128,10 +122,8 @@ public class CharacterMovement : MonoBehaviour
             }
         }
 
-        // --- Combineer beweging met externe krachten ---
         Vector3 finalMove = horizontalMove + externalForce + new Vector3(0, velocity.y, 0);
 
-        // --- Rotatie ---
         if (shiftLockEnabled)
             transform.rotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
         else if (moveInput.sqrMagnitude > 0.001f)
@@ -171,7 +163,6 @@ public class CharacterMovement : MonoBehaviour
         lastJumpTime = Time.time;
     }
 
-    // --- Toevoegen van externe kracht ---
     public void AddExternalForce(Vector3 force)
     {
         externalForce += force;
