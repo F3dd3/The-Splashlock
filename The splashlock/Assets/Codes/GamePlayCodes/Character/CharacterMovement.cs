@@ -4,11 +4,11 @@ using UnityEngine.UI;
 public class CharacterMovement : MonoBehaviour
 {
     [Header("Movement")]
-    public float moveSpeed = 5f;
-    public float slowSpeed = 2f;
-    public float gravity = -9.81f;
-    public float jumpHeight = 2f;
-    public float jumpCooldown = 0.2f;
+    public float moveSpeed = 3.5f;
+    public float slowSpeed = 1f;
+    public float gravity = -20f;
+    public float jumpHeight = 1.5f;
+    public float jumpCooldown = 0.5f;
 
     private CharacterController controller;
     private Vector3 velocity;
@@ -24,25 +24,26 @@ public class CharacterMovement : MonoBehaviour
     public RawImage shiftLockSymbol;
 
     [Header("Ground Check")]
-    public float groundCheckDistance = 0.2f;
+    public float groundCheckDistance = 2f;
     private bool grounded;
     private RaycastHit groundHit;
 
     [Header("Slope Settings")]
-    public float slopeSlideSpeed = 8f;
-    public float slopeLimit = 45f;
+    public float slopeSlideSpeed = 3f;
+    public float slopeLimit = 20f;
 
     [Header("Slow Settings")]
-    public float slowCheckDistance = 1f;
+    public float slowCheckDistance = 2f;
     private bool onSlowSurface = false;
 
-    // Externe kracht (spinners, knockback, enz.)
+    [Header("External Forces")]
+    [Tooltip("Hoe snel externe krachten vervagen")]
+    public float externalForceDecay = 5f;
     private Vector3 externalForce = Vector3.zero;
 
     void Start()
     {
         controller = GetComponent<CharacterController>();
-
         if (cameraTransform == null && Camera.main != null)
             cameraTransform = Camera.main.transform;
 
@@ -56,11 +57,11 @@ public class CharacterMovement : MonoBehaviour
     void Update()
     {
         HandleShiftLock();
-        HandleMovementAndGravity();
+        HandleMovement();
 
-        // Force langzaam laten uitdoven
+        // Laat externe krachten vervagen
         if (externalForce.magnitude > 0.01f)
-            externalForce = Vector3.Lerp(externalForce, Vector3.zero, 5f * Time.deltaTime);
+            externalForce = Vector3.Lerp(externalForce, Vector3.zero, externalForceDecay * Time.deltaTime);
         else
             externalForce = Vector3.zero;
     }
@@ -78,7 +79,7 @@ public class CharacterMovement : MonoBehaviour
         }
     }
 
-    void HandleMovementAndGravity()
+    void HandleMovement()
     {
         // --- Input ---
         float moveX = Input.GetAxis("Horizontal");
@@ -95,60 +96,44 @@ public class CharacterMovement : MonoBehaviour
         if (moveInput.magnitude > 1f)
             moveInput.Normalize();
 
-        // --- Ground check ---
-        CheckGrounded();
+        // --- Grounded check ---
+        grounded = controller.isGrounded;
+        CheckGroundedExtra();
 
-        // --- Verticale beweging (gravity/jump) ---
-        if (grounded)
+        // --- Jump ---
+        if (Input.GetButton("Jump") && grounded && Time.time - lastJumpTime >= jumpCooldown)
         {
-            if (velocity.y < 0)
-                velocity.y = -2f;
-
-            if (Input.GetButton("Jump") && Time.time - lastJumpTime >= jumpCooldown)
-            {
-                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-                lastJumpTime = Time.time;
-            }
+            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            lastJumpTime = Time.time;
         }
-        else
-        {
+
+        // --- Gravity ---
+        if (!grounded)
             velocity.y += gravity * Time.deltaTime;
-        }
+        else if (velocity.y < 0f)
+            velocity.y = -2f;
 
-        // --- Bepaal huidige snelheid ---
+        // --- Horizontale beweging ---
         float currentSpeed = onSlowSurface ? slowSpeed : moveSpeed;
+        Vector3 horizontalMove = moveInput * currentSpeed;
 
-        // --- Horizontale movement ---
-        Vector3 horizontalMove = Vector3.zero;
-
-        if (grounded)
+        // --- Glijden op hellingen ---
+        if (grounded && groundHit.collider != null && groundHit.collider.CompareTag("Helling"))
         {
             float slopeAngle = Vector3.Angle(groundHit.normal, Vector3.up);
-
             if (slopeAngle > slopeLimit)
             {
-                // Te steil → glijden
                 Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, groundHit.normal).normalized;
                 horizontalMove = slideDir * slopeSlideSpeed;
             }
-            else
-            {
-                // Normale beweging, geprojecteerd op de helling
-                Vector3 moveDir = Vector3.ProjectOnPlane(moveInput, groundHit.normal).normalized;
-                horizontalMove = moveDir * currentSpeed;
-            }
         }
-        else
-        {
-            // In de lucht → gewone input
-            horizontalMove = moveInput * currentSpeed;
-        }
+
+        // --- Combineer beweging met externe krachten ---
+        Vector3 finalMove = horizontalMove + externalForce + new Vector3(0, velocity.y, 0);
 
         // --- Rotatie ---
         if (shiftLockEnabled)
-        {
             transform.rotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
-        }
         else if (moveInput.sqrMagnitude > 0.001f)
         {
             float targetAngle = Mathf.Atan2(moveInput.x, moveInput.z) * Mathf.Rad2Deg;
@@ -156,41 +141,28 @@ public class CharacterMovement : MonoBehaviour
             transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720 * Time.deltaTime);
         }
 
-        // --- Combineer movement met externalForce ---
-        Vector3 finalMove = horizontalMove + externalForce + new Vector3(0, velocity.y, 0);
         controller.Move(finalMove * Time.deltaTime);
     }
 
-    void CheckGrounded()
+    void CheckGroundedExtra()
     {
         float radius = controller.radius;
         Vector3 origin = transform.position + Vector3.up * (controller.center.y - controller.height / 2 + radius);
 
-        grounded = false;
         onSlowSurface = false;
 
         if (Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit hit, groundCheckDistance))
         {
-            if (hit.collider.CompareTag("Ground") || hit.collider.CompareTag("Start") || hit.collider.CompareTag("Slow"))
-            {
-                grounded = true;
-                groundHit = hit;
-
-                if (hit.collider.CompareTag("Slow"))
-                    onSlowSurface = true;
-            }
+            groundHit = hit;
+            if (hit.collider.CompareTag("Slow"))
+                onSlowSurface = true;
         }
 
         if (!onSlowSurface && Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit slowHit, slowCheckDistance))
         {
             if (slowHit.collider.CompareTag("Slow"))
-            {
                 onSlowSurface = true;
-            }
         }
-
-        Debug.DrawRay(origin, Vector3.down * groundCheckDistance, grounded ? Color.green : Color.red);
-        Debug.DrawRay(origin, Vector3.down * slowCheckDistance, onSlowSurface ? Color.blue : Color.gray);
     }
 
     public void SetVerticalVelocity(float newVelocity)
@@ -199,6 +171,7 @@ public class CharacterMovement : MonoBehaviour
         lastJumpTime = Time.time;
     }
 
+    // --- Toevoegen van externe kracht ---
     public void AddExternalForce(Vector3 force)
     {
         externalForce += force;
