@@ -22,25 +22,32 @@ public class Stick2 : MonoBehaviour
         transform.Rotate(rotationSpeed * Time.deltaTime);
     }
 
-    private void OnTriggerEnter(Collider other)
+    private void ApplyPush(Collider col)
     {
-        CharacterMovement player = other.GetComponent<CharacterMovement>();
+        CharacterMovement player = col.GetComponent<CharacterMovement>();
         if (player != null)
         {
-            Vector3 pushDir = (other.transform.position - transform.position).normalized;
-            pushDir.y = 0f;
+            Vector3 pushDir = (col.transform.position - transform.position);
+            pushDir.y = 0f; // alleen horizontale push
+            if (pushDir.magnitude < 0.1f)
+            {
+                // fallback richting als speler exact in het midden staat
+                pushDir = transform.forward;
+            }
+            pushDir.Normalize();
+
+            // voeg externe kracht toe
             player.AddExternalForce(pushDir * pushForce);
         }
     }
 
+    private void OnTriggerEnter(Collider other)
+    {
+        ApplyPush(other);
+    }
+
     private void OnTriggerStay(Collider other)
     {
-        CharacterMovement player = other.GetComponent<CharacterMovement>();
-        if (player != null)
-        {
-            Vector3 pushDir = (other.transform.position - transform.position).normalized;
-            pushDir.y = 0f;
-            player.AddExternalForce(pushDir * pushForce * Time.deltaTime);
-        }
+        ApplyPush(other);
     }
 }
