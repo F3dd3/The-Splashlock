@@ -100,7 +100,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   dropHeight: 4
-  speed: 2
+  speed: 3
 --- !u!64 &760235943750714627
 MeshCollider:
   m_ObjectHideFlags: 0
