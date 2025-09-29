@@ -6,9 +6,15 @@ using System;
 public class UnityServicesInitializer : MonoBehaviour
 {
     public static bool ServicesInitialized = false;
+    private static bool isInitializing = false;
 
     async void Awake()
     {
+        if (ServicesInitialized || isInitializing)
+            return;
+
+        isInitializing = true;
+
         try
         {
             await UnityServices.InitializeAsync();
@@ -18,13 +24,16 @@ public class UnityServicesInitializer : MonoBehaviour
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();
             }
 
-            Debug.Log("Signed in as: " + AuthenticationService.Instance.PlayerId);
             ServicesInitialized = true;
+            Debug.Log("Unity Services initialized successfully");
         }
         catch (Exception e)
         {
             Debug.LogError("Unity Services initialization failed: " + e.Message);
-            ServicesInitialized = false;
+        }
+        finally
+        {
+            isInitializing = false;
         }
     }
 }

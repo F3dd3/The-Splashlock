@@ -3,8 +3,6 @@ using UnityEngine.UI;
 using TMPro;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
-using Unity.Services.Core;
-using Unity.Services.Authentication;
 using Unity.Services.Relay;
 using Unity.Services.Relay.Models;
 using System;
@@ -17,35 +15,6 @@ public class LobbyManager : MonoBehaviour
     public TMP_InputField joinCodeInput;
     public TextMeshProUGUI infoText;
 
-    private bool servicesInitialized = false;
-
-    private async void Awake()
-    {
-        await InitializeUnityServices();
-    }
-
-    private async System.Threading.Tasks.Task InitializeUnityServices()
-    {
-        try
-        {
-            await UnityServices.InitializeAsync();
-
-            if (!AuthenticationService.Instance.IsSignedIn)
-            {
-                await AuthenticationService.Instance.SignInAnonymouslyAsync();
-            }
-
-            Debug.Log("Signed in as: " + AuthenticationService.Instance.PlayerId);
-            infoText.text = "Signed in as: " + AuthenticationService.Instance.PlayerId;
-            servicesInitialized = true;
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Unity Services initialization failed: " + e.Message);
-            infoText.text = "Services init failed!";
-        }
-    }
-
     private void Start()
     {
         hostButton.onClick.AddListener(HostGame);
@@ -55,7 +24,7 @@ public class LobbyManager : MonoBehaviour
     // ================= Host =================
     private async void HostGame()
     {
-        if (!servicesInitialized)
+        if (!UnityServicesInitializer.ServicesInitialized)
         {
             infoText.text = "Services not initialized!";
             return;
@@ -112,7 +81,7 @@ public class LobbyManager : MonoBehaviour
 
     private async void JoinRelay(string joinCode)
     {
-        if (!servicesInitialized)
+        if (!UnityServicesInitializer.ServicesInitialized)
         {
             infoText.text = "Services not initialized!";
             return;
