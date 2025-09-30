@@ -897,7 +897,13 @@ PlayerSettings:
   XboxOneOverrideIdentityName: 
   XboxOneOverrideIdentityPublisher: 
   vrEditorSettings: {}
-  cloudServicesEnabled: {}
+  cloudServicesEnabled:
+    Build: 0
+    Game Performance: 0
+    Legacy Analytics: 0
+    Purchasing: 0
+    UDP: 0
+    Unity Ads: 0
   luminIcon:
     m_Name: 
     m_ModelFolderPath: 
@@ -919,11 +925,11 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
-  cloudProjectId: 75a6ea2d-7b7d-4305-b92e-a9bab6b90d68
+  cloudProjectId: 0a000283-0166-4164-acf1-0b261e557c93
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
   projectName: The splashlock
-  organizationId: pooh23896
+  organizationId: fedcool123
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
