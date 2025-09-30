@@ -925,11 +925,11 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
-  cloudProjectId: 0a000283-0166-4164-acf1-0b261e557c93
+  cloudProjectId: b4ad49c5-a8f9-4803-9e08-53cd8a1585d0
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
   projectName: The splashlock
-  organizationId: fedcool123
+  organizationId: wregionguy
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
