@@ -1,17 +1,31 @@
 using UnityEngine;
 using Unity.Services.Core;
 using Unity.Services.Authentication;
-using System;
+using System.Threading.Tasks;
 
 public class UnityServicesInitializer : MonoBehaviour
 {
+    public static UnityServicesInitializer Instance { get; private set; }
     public static bool ServicesInitialized = false;
     private static bool isInitializing = false;
 
-    async void Awake()
+    private void Awake()
     {
-        if (ServicesInitialized || isInitializing)
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
             return;
+        }
+
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        _ = InitializeServicesSafe();
+    }
+
+    private async Task InitializeServicesSafe()
+    {
+        if (ServicesInitialized || isInitializing) return;
 
         isInitializing = true;
 
@@ -21,13 +35,21 @@ public class UnityServicesInitializer : MonoBehaviour
 
             if (!AuthenticationService.Instance.IsSignedIn)
             {
-                await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                try
+                {
+                    await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                }
+                catch (System.InvalidOperationException e)
+                {
+                    // Already signing in: geen fout, gewoon loggen
+                    Debug.Log("Sign-in skipped (already signing in): " + e.Message);
+                }
             }
 
             ServicesInitialized = true;
-            Debug.Log("Unity Services initialized successfully");
+            Debug.Log("Unity Services ready. PlayerId: " + AuthenticationService.Instance.PlayerId);
         }
-        catch (Exception e)
+        catch (System.Exception e)
         {
             Debug.LogError("Unity Services initialization failed: " + e.Message);
         }
@@ -37,4 +59,3 @@ public class UnityServicesInitializer : MonoBehaviour
         }
     }
 }
-

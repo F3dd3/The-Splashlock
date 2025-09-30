@@ -29,8 +29,10 @@ public class LobbyManager : MonoBehaviour
     {
         try
         {
+            // Init Unity Services
             await UnityServices.InitializeAsync();
 
+            // Alleen aanmelden als niet ingelogd
             if (!AuthenticationService.Instance.IsSignedIn)
             {
                 try
@@ -41,7 +43,7 @@ public class LobbyManager : MonoBehaviour
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarning("Already signing in or failed: " + e.Message);
+                    Debug.LogWarning("Sign-in skipped or already in progress: " + e.Message);
                 }
             }
             else
@@ -76,6 +78,7 @@ public class LobbyManager : MonoBehaviour
         infoText.text = "Hosting game...";
         try
         {
+            // Relay allocation
             Allocation allocation = await RelayService.Instance.CreateAllocationAsync(4);
             string joinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
 

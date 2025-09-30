@@ -1,15 +1,16 @@
 using UnityEngine;
 using Unity.Netcode;
+using System.Threading.Tasks;
 
 public class PlayerSpawner : NetworkBehaviour
 {
     public static PlayerSpawner Instance;
 
-    [Header("Spawn Points")]
-    public Transform[] spawnPoints; // [0] = host, [1..N] = joiners
-
     [Header("Player Prefab")]
-    public GameObject playerPrefab; // sleep hier je Player prefab in inspector
+    public GameObject playerPrefab;
+
+    [Header("Spawn Points")]
+    public Transform[] spawnPoints; // [0]=host, [1..]=clients
 
     private void Awake()
     {
@@ -20,25 +21,36 @@ public class PlayerSpawner : NetworkBehaviour
     {
         if (IsServer)
         {
-            // Spawn host player
-            SpawnPlayer(NetworkManager.ServerClientId);
-
-            // Callback voor joiners
-            NetworkManager.Singleton.OnClientConnectedCallback += SpawnPlayer;
+            _ = SpawnHostWhenServicesReady();
+            NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         }
     }
 
     private void OnDisable()
     {
         if (NetworkManager.Singleton != null)
-            NetworkManager.Singleton.OnClientConnectedCallback -= SpawnPlayer;
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+    }
+
+    private async Task SpawnHostWhenServicesReady()
+    {
+        while (!UnityServicesInitializer.ServicesInitialized)
+            await Task.Yield();
+
+        SpawnPlayer(NetworkManager.ServerClientId);
+    }
+
+    private void OnClientConnected(ulong clientId)
+    {
+        if (!UnityServicesInitializer.ServicesInitialized) return;
+        SpawnPlayer(clientId);
     }
 
     private void SpawnPlayer(ulong clientId)
     {
         if (playerPrefab == null)
         {
-            Debug.LogError("Player prefab is not assigned in PlayerSpawner!");
+            Debug.LogError("Player prefab not assigned!");
             return;
         }
 
@@ -46,39 +58,43 @@ public class PlayerSpawner : NetworkBehaviour
         Vector3 spawnPos = spawnPoints[index].position;
         Quaternion spawnRot = spawnPoints[index].rotation;
 
-        // Instantiate prefab
         GameObject playerInstance = Instantiate(playerPrefab, spawnPos, spawnRot);
-
-        // NetworkObject component
         NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
-        if (netObj != null)
+        if (netObj == null)
         {
-            netObj.SpawnAsPlayerObject(clientId, true);
-            Debug.Log($"Player {clientId} spawned at {spawnPos}");
-
-            // Notify broadcaster
-            if (PlayerBroadcaster.Instance != null)
-                PlayerBroadcaster.Instance.OnPlayerJoined(clientId, index);
-        }
-        else
-        {
-            Debug.LogError("Player prefab must have a NetworkObject component!");
+            Debug.LogError("Player prefab must have NetworkObject component!");
             Destroy(playerInstance);
+            return;
         }
+
+        // Spawn network object
+        netObj.SpawnAsPlayerObject(clientId, true);
+
+        // Zet naam server-side zodat alle clients het krijgen
+        string playerName = clientId == NetworkManager.ServerClientId ? "Host" : $"Speler {index}";
+        var nameTag = playerInstance.GetComponent<PlayerNameTag>();
+        if (nameTag != null)
+        {
+            nameTag.playerName.Value = playerName;
+        }
+
+        Debug.Log($"{playerName} spawned at {spawnPos}");
     }
 
     private int GetSpawnIndex(ulong clientId)
     {
-        // Host altijd index 0
         if (clientId == NetworkManager.ServerClientId) return 0;
 
-        // Joiners krijgen de volgende posities
-        int index = NetworkManager.Singleton.ConnectedClientsList.Count;
-        if (index >= spawnPoints.Length)
+        int joinerIndex = 1;
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
         {
-            Debug.LogWarning("Not enough spawn points! Using last spawn point.");
-            index = spawnPoints.Length - 1;
+            if (client.ClientId == clientId) break;
+            if (client.ClientId != NetworkManager.ServerClientId) joinerIndex++;
         }
-        return index;
+
+        if (joinerIndex >= spawnPoints.Length)
+            joinerIndex = spawnPoints.Length - 1;
+
+        return joinerIndex;
     }
 }
