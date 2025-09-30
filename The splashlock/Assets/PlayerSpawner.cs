@@ -1,83 +1,61 @@
 using UnityEngine;
 using Unity.Netcode;
-using TMPro;
 
 public class PlayerSpawner : NetworkBehaviour
 {
     public static PlayerSpawner Instance;
-    public GameObject playerPrefab;
-    public Transform[] spawnPoints;
 
-    [Header("In-game UI")]
-    public TextMeshProUGUI joinMessagesUI;
+    [Header("Spawn Points")]
+    public Transform[] spawnPoints; // vul in inspector: host op [0], joiners daarna
 
     private void Awake()
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        Instance = this;
     }
 
-    // Server spawnt een speler en stuurt meldingen
-    public void SpawnPlayerServer(ulong clientId)
+    public override void OnNetworkSpawn()
     {
-        if (!IsServer)
+        if (IsServer)
         {
-            Debug.LogError("SpawnPlayerServer mag alleen op server!");
-            return;
+            // Spawn host meteen bij start
+            SpawnPlayer(NetworkManager.ServerClientId);
+            NetworkManager.Singleton.OnClientConnectedCallback += SpawnPlayer;
         }
+    }
 
-        int spawnIndex = GetSpawnIndex(clientId);
-        Vector3 spawnPos = spawnPoints[spawnIndex].position;
-
-        GameObject playerObj = Instantiate(playerPrefab, spawnPos, Quaternion.identity);
-        NetworkObject netObj = playerObj.GetComponent<NetworkObject>();
-        if (netObj != null)
+    private void OnDisable()
+    {
+        if (NetworkManager.Singleton != null)
         {
-            netObj.SpawnAsPlayerObject(clientId, true);
+            NetworkManager.Singleton.OnClientConnectedCallback -= SpawnPlayer;
         }
-        else
-        {
-            Debug.LogError("Prefab mist NetworkObject component!");
-        }
+    }
 
-        string label = (clientId == NetworkManager.Singleton.LocalClientId) ? "Host" : $"Speler {spawnIndex}";
+    private void SpawnPlayer(ulong clientId)
+    {
+        int index = GetSpawnIndex(clientId);
+        Vector3 spawnPos = spawnPoints[index].position;
+        Quaternion spawnRot = spawnPoints[index].rotation;
 
-        Debug.Log($"{label} gespawned op {spawnPos}");
+        GameObject playerPrefab = Resources.Load<GameObject>("Player"); // Zorg dat je prefab in Resources/Player.prefab zit
+        GameObject playerInstance = Instantiate(playerPrefab, spawnPos, spawnRot);
 
-        // Stuur melding naar host en joiner zelf
-        ClientRpcParams rpcParams = new ClientRpcParams
-        {
-            Send = new ClientRpcSendParams
-            {
-                TargetClientIds = new ulong[] { NetworkManager.Singleton.LocalClientId, clientId }
-            }
-        };
-        BroadcastSpawnMessageClientRpc(label, rpcParams);
+        var netObj = playerInstance.GetComponent<NetworkObject>();
+        netObj.SpawnAsPlayerObject(clientId, true);
+
+        Debug.Log($"Speler {clientId} gespawned op {spawnPos}");
     }
 
     private int GetSpawnIndex(ulong clientId)
     {
-        if (clientId == NetworkManager.Singleton.LocalClientId) return 0;
-        int index = 1;
-        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
-        {
-            if (client.ClientId == clientId) break;
-            index++;
-        }
-        return Mathf.Clamp(index, 1, spawnPoints.Length - 1);
+        if (clientId == NetworkManager.ServerClientId) return 0; // host altijd op eerste positie
+        return NetworkManager.Singleton.ConnectedClientsList.Count - 1; // joiners daarna
     }
 
-    [ClientRpc]
-    private void BroadcastSpawnMessageClientRpc(string playerLabel, ClientRpcParams rpcParams = default)
+    public Vector3 GetSpawnPosition(int index)
     {
-        if (LobbyManager.Instance != null)
-        {
-            LobbyManager.Instance.ReceiveSpawnMessage(playerLabel);
-        }
-
-        if (joinMessagesUI != null)
-        {
-            joinMessagesUI.text += $"{playerLabel} heeft het spel joined!\n";
-        }
+        if (index >= 0 && index < spawnPoints.Length)
+            return spawnPoints[index].position;
+        return Vector3.zero;
     }
 }

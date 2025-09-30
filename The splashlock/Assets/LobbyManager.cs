@@ -3,131 +3,134 @@ using UnityEngine.UI;
 using TMPro;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
+using Unity.Services.Core;
+using Unity.Services.Authentication;
 using Unity.Services.Relay;
 using Unity.Services.Relay.Models;
 using System;
+using System.Threading.Tasks;
 
 public class LobbyManager : MonoBehaviour
 {
-    public static LobbyManager Instance;
-
+    [Header("UI Elements")]
     public Button hostButton;
     public Button joinButton;
     public TMP_InputField joinCodeInput;
     public TextMeshProUGUI infoText;
 
-    private void Awake()
+    private bool servicesInitialized = false;
+
+    private async void Awake()
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        await InitializeUnityServices();
+    }
+
+    private async Task InitializeUnityServices()
+    {
+        try
+        {
+            await UnityServices.InitializeAsync();
+
+            if (!AuthenticationService.Instance.IsSignedIn)
+            {
+                await AuthenticationService.Instance.SignInAnonymouslyAsync();
+            }
+
+            Debug.Log("Signed in as: " + AuthenticationService.Instance.PlayerId);
+            infoText.text = "Signed in as: " + AuthenticationService.Instance.PlayerId;
+            servicesInitialized = true;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Unity Services initialization failed: " + e.Message);
+            infoText.text = "Services init failed!";
+        }
     }
 
     private void Start()
     {
         hostButton.onClick.AddListener(HostGame);
         joinButton.onClick.AddListener(JoinGame);
-
-        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
     }
 
-    private void OnClientConnected(ulong clientId)
+    private async void HostGame()
     {
-        if (!NetworkManager.Singleton.IsServer) return;
-
-        if (PlayerSpawner.Instance == null)
+        if (!servicesInitialized)
         {
-            Debug.LogError("PlayerSpawner niet gevonden!");
+            infoText.text = "Services not initialized!";
             return;
         }
 
-        // Spawn joiners server-side (host is al gespawned)
-        if (clientId != NetworkManager.Singleton.LocalClientId)
-        {
-            PlayerSpawner.Instance.SpawnPlayerServer(clientId);
-        }
-    }
-
-    // Ontvang meldingen van PlayerSpawner
-    public void ReceiveSpawnMessage(string playerLabel)
-    {
-        infoText.text = $"{playerLabel} heeft het spel joined!";
-        Debug.Log($"{playerLabel} heeft het spel joined!");
-    }
-
-    // ================= Host =================
-    private async void HostGame()
-    {
         infoText.text = "Hosting game...";
         try
         {
             Allocation allocation = await RelayService.Instance.CreateAllocationAsync(4);
-            string joinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
 
-            byte[] allocationIdBytes = allocation.AllocationId.ToByteArray();
-            byte[] keyBytes = allocation.Key;
-            byte[] connectionData = allocation.ConnectionData;
+            string joinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
 
             UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
             transport.SetRelayServerData(
                 allocation.RelayServer.IpV4,
                 (ushort)allocation.RelayServer.Port,
-                allocationIdBytes,
-                keyBytes,
-                connectionData
+                allocation.AllocationIdBytes,
+                allocation.Key,
+                allocation.ConnectionData
             );
 
             NetworkManager.Singleton.StartHost();
-
-            // Spawn host server-side
-            if (PlayerSpawner.Instance != null && NetworkManager.Singleton.IsServer)
-            {
-                PlayerSpawner.Instance.SpawnPlayerServer(NetworkManager.Singleton.LocalClientId);
-            }
-
-            infoText.text = $"Game hosted! Join code: {joinCode}";
+            infoText.text = "Game hosted!\nJoin code: " + joinCode;
+            Debug.Log("Game hosted! Join code: " + joinCode);
         }
         catch (Exception e)
         {
-            Debug.LogError("Host mislukt: " + e.Message);
-            infoText.text = "Host mislukt!";
+            Debug.LogError("Failed to host game: " + e.Message);
+            infoText.text = "Host failed!";
         }
     }
 
-    // ================= Join =================
-    private async void JoinGame()
+    private void JoinGame()
     {
         string joinCode = joinCodeInput.text.Trim();
         if (string.IsNullOrEmpty(joinCode))
         {
-            infoText.text = "Voer een geldige join code in!";
+            infoText.text = "Enter a valid join code!";
             return;
         }
 
-        infoText.text = "Joinen...";
+        infoText.text = "Joining game...";
+        JoinRelay(joinCode);
+    }
+
+    private async void JoinRelay(string joinCode)
+    {
+        if (!servicesInitialized)
+        {
+            infoText.text = "Services not initialized!";
+            return;
+        }
+
         try
         {
-            JoinAllocation joinAllocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
-
-            byte[] allocationIdBytes = joinAllocation.AllocationId.ToByteArray();
-            byte[] keyBytes = joinAllocation.Key;
-            byte[] connectionData = joinAllocation.ConnectionData;
+            JoinAllocation allocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
 
             UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
             transport.SetRelayServerData(
-                joinAllocation.RelayServer.IpV4,
-                (ushort)joinAllocation.RelayServer.Port,
-                allocationIdBytes,
-                keyBytes,
-                connectionData
+                allocation.RelayServer.IpV4,
+                (ushort)allocation.RelayServer.Port,
+                allocation.AllocationIdBytes,
+                allocation.Key,
+                allocation.ConnectionData,
+                allocation.HostConnectionData
             );
 
             NetworkManager.Singleton.StartClient();
             infoText.text = "Joined game!";
+            Debug.Log("Joined game with code: " + joinCode);
         }
         catch (Exception e)
         {
-            Debug.LogError("Join mislukt: " + e.Message);
-            infoText.text = "Join mislukt!";
+            Debug.LogError("Failed to join game: " + e.Message);
+            infoText.text = "Join failed!";
         }
     }
 }
