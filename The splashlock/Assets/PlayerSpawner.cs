@@ -6,7 +6,10 @@ public class PlayerSpawner : NetworkBehaviour
     public static PlayerSpawner Instance;
 
     [Header("Spawn Points")]
-    public Transform[] spawnPoints; // vul in inspector: host op [0], joiners daarna
+    public Transform[] spawnPoints; // [0] = host, [1..N] = joiners
+
+    [Header("Player Prefab")]
+    public GameObject playerPrefab; // sleep hier je Player prefab in inspector
 
     private void Awake()
     {
@@ -17,8 +20,10 @@ public class PlayerSpawner : NetworkBehaviour
     {
         if (IsServer)
         {
-            // Spawn host meteen bij start
+            // Spawn host player
             SpawnPlayer(NetworkManager.ServerClientId);
+
+            // Callback voor joiners
             NetworkManager.Singleton.OnClientConnectedCallback += SpawnPlayer;
         }
     }
@@ -26,36 +31,54 @@ public class PlayerSpawner : NetworkBehaviour
     private void OnDisable()
     {
         if (NetworkManager.Singleton != null)
-        {
             NetworkManager.Singleton.OnClientConnectedCallback -= SpawnPlayer;
-        }
     }
 
     private void SpawnPlayer(ulong clientId)
     {
+        if (playerPrefab == null)
+        {
+            Debug.LogError("Player prefab is not assigned in PlayerSpawner!");
+            return;
+        }
+
         int index = GetSpawnIndex(clientId);
         Vector3 spawnPos = spawnPoints[index].position;
         Quaternion spawnRot = spawnPoints[index].rotation;
 
-        GameObject playerPrefab = Resources.Load<GameObject>("Player"); // Zorg dat je prefab in Resources/Player.prefab zit
+        // Instantiate prefab
         GameObject playerInstance = Instantiate(playerPrefab, spawnPos, spawnRot);
 
-        var netObj = playerInstance.GetComponent<NetworkObject>();
-        netObj.SpawnAsPlayerObject(clientId, true);
+        // NetworkObject component
+        NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
+        if (netObj != null)
+        {
+            netObj.SpawnAsPlayerObject(clientId, true);
+            Debug.Log($"Player {clientId} spawned at {spawnPos}");
 
-        Debug.Log($"Speler {clientId} gespawned op {spawnPos}");
+            // Notify broadcaster
+            if (PlayerBroadcaster.Instance != null)
+                PlayerBroadcaster.Instance.OnPlayerJoined(clientId, index);
+        }
+        else
+        {
+            Debug.LogError("Player prefab must have a NetworkObject component!");
+            Destroy(playerInstance);
+        }
     }
 
     private int GetSpawnIndex(ulong clientId)
     {
-        if (clientId == NetworkManager.ServerClientId) return 0; // host altijd op eerste positie
-        return NetworkManager.Singleton.ConnectedClientsList.Count - 1; // joiners daarna
-    }
+        // Host altijd index 0
+        if (clientId == NetworkManager.ServerClientId) return 0;
 
-    public Vector3 GetSpawnPosition(int index)
-    {
-        if (index >= 0 && index < spawnPoints.Length)
-            return spawnPoints[index].position;
-        return Vector3.zero;
+        // Joiners krijgen de volgende posities
+        int index = NetworkManager.Singleton.ConnectedClientsList.Count;
+        if (index >= spawnPoints.Length)
+        {
+            Debug.LogWarning("Not enough spawn points! Using last spawn point.");
+            index = spawnPoints.Length - 1;
+        }
+        return index;
     }
 }

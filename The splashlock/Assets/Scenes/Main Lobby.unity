@@ -1251,13 +1251,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
-  playerPrefab: {fileID: 8181814165387740709, guid: 31900304b182cfb41992fb195e6a8b37, type: 3}
   spawnPoints:
   - {fileID: 1587212}
   - {fileID: 2050576337}
   - {fileID: 873938020}
   - {fileID: 1648314767}
-  joinMessagesUI: {fileID: 214168125}
+  playerPrefab: {fileID: 8181814165387740709, guid: 31900304b182cfb41992fb195e6a8b37, type: 3}
 --- !u!4 &454710580
 Transform:
   m_ObjectHideFlags: 0
@@ -1784,6 +1783,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
   broadcastText: {fileID: 0}
+  localMessageText: {fileID: 0}
 --- !u!4 &943158590
 Transform:
   m_ObjectHideFlags: 0
@@ -3555,7 +3555,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6960e84d07fb87f47956e7a81d71c4e6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_ProtocolType: 0
+  m_ProtocolType: 1
   m_UseWebSockets: 0
   m_UseEncryption: 0
   m_MaxPacketQueueSize: 128
@@ -3607,7 +3607,7 @@ MonoBehaviour:
     LoadSceneTimeOut: 120
     SpawnTimeout: 10
     EnableNetworkLogs: 1
-    NetworkTopology: 0
+    NetworkTopology: 1
     UseCMBService: 0
     AutoSpawnPlayerPrefabClientSide: 1
     NetworkProfilingMetrics: 1
