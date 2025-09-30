@@ -67,18 +67,10 @@ public class PlayerSpawner : NetworkBehaviour
             return;
         }
 
-        // Spawn network object
+        // Spawn network object zonder name tag
         netObj.SpawnAsPlayerObject(clientId, true);
 
-        // Zet naam server-side zodat alle clients het krijgen
-        string playerName = clientId == NetworkManager.ServerClientId ? "Host" : $"Speler {index}";
-        var nameTag = playerInstance.GetComponent<PlayerNameTag>();
-        if (nameTag != null)
-        {
-            nameTag.playerName.Value = playerName;
-        }
-
-        Debug.Log($"{playerName} spawned at {spawnPos}");
+        Debug.Log($"Player spawned at {spawnPos}");
     }
 
     private int GetSpawnIndex(ulong clientId)
