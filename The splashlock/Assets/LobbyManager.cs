@@ -22,10 +22,10 @@ public class LobbyManager : MonoBehaviour
 
     private async void Awake()
     {
-        await InitializeUnityServices();
+        await InitializeUnityServicesSafe();
     }
 
-    private async Task InitializeUnityServices()
+    private async Task InitializeUnityServicesSafe()
     {
         try
         {
@@ -33,11 +33,23 @@ public class LobbyManager : MonoBehaviour
 
             if (!AuthenticationService.Instance.IsSignedIn)
             {
-                await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                try
+                {
+                    await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                    Debug.Log("Signed in as: " + AuthenticationService.Instance.PlayerId);
+                    infoText.text = "Signed in as: " + AuthenticationService.Instance.PlayerId;
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning("Already signing in or failed: " + e.Message);
+                }
+            }
+            else
+            {
+                Debug.Log("Already signed in: " + AuthenticationService.Instance.PlayerId);
+                infoText.text = "Already signed in: " + AuthenticationService.Instance.PlayerId;
             }
 
-            Debug.Log("Signed in as: " + AuthenticationService.Instance.PlayerId);
-            infoText.text = "Signed in as: " + AuthenticationService.Instance.PlayerId;
             servicesInitialized = true;
         }
         catch (Exception e)
@@ -65,7 +77,6 @@ public class LobbyManager : MonoBehaviour
         try
         {
             Allocation allocation = await RelayService.Instance.CreateAllocationAsync(4);
-
             string joinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
 
             UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
@@ -78,8 +89,8 @@ public class LobbyManager : MonoBehaviour
             );
 
             NetworkManager.Singleton.StartHost();
-            infoText.text = "Game hosted!\nJoin code: " + joinCode;
-            Debug.Log("Game hosted! Join code: " + joinCode);
+            infoText.text = $"Game hosted!\nJoin code: {joinCode}";
+            Debug.Log($"Game hosted! Join code: {joinCode}");
         }
         catch (Exception e)
         {
@@ -126,6 +137,10 @@ public class LobbyManager : MonoBehaviour
             NetworkManager.Singleton.StartClient();
             infoText.text = "Joined game!";
             Debug.Log("Joined game with code: " + joinCode);
+
+            // Lokale melding dat client host heeft gejoined
+            if (PlayerBroadcaster.Instance != null)
+                PlayerBroadcaster.Instance.ShowLocalJoinMessage("You joined the host!");
         }
         catch (Exception e)
         {
