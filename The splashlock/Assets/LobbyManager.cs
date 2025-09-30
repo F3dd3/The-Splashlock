@@ -9,42 +9,64 @@ using System;
 
 public class LobbyManager : MonoBehaviour
 {
-    [Header("UI Elements")]
+    public static LobbyManager Instance;
+
     public Button hostButton;
     public Button joinButton;
     public TMP_InputField joinCodeInput;
     public TextMeshProUGUI infoText;
 
+    private void Awake()
+    {
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
+    }
+
     private void Start()
     {
         hostButton.onClick.AddListener(HostGame);
         joinButton.onClick.AddListener(JoinGame);
+
+        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+    }
+
+    private void OnClientConnected(ulong clientId)
+    {
+        if (!NetworkManager.Singleton.IsServer) return;
+
+        if (PlayerSpawner.Instance == null)
+        {
+            Debug.LogError("PlayerSpawner niet gevonden!");
+            return;
+        }
+
+        // Spawn joiners server-side (host is al gespawned)
+        if (clientId != NetworkManager.Singleton.LocalClientId)
+        {
+            PlayerSpawner.Instance.SpawnPlayerServer(clientId);
+        }
+    }
+
+    // Ontvang meldingen van PlayerSpawner
+    public void ReceiveSpawnMessage(string playerLabel)
+    {
+        infoText.text = $"{playerLabel} heeft het spel joined!";
+        Debug.Log($"{playerLabel} heeft het spel joined!");
     }
 
     // ================= Host =================
     private async void HostGame()
     {
-        if (!UnityServicesInitializer.ServicesInitialized)
-        {
-            infoText.text = "Services not initialized!";
-            return;
-        }
-
         infoText.text = "Hosting game...";
         try
         {
-            // Maak een Relay allocation aan (max 4 spelers)
             Allocation allocation = await RelayService.Instance.CreateAllocationAsync(4);
-
-            // Haal de join code op
             string joinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
 
-            // Zet GUID om naar byte[] voor UnityTransport
             byte[] allocationIdBytes = allocation.AllocationId.ToByteArray();
             byte[] keyBytes = allocation.Key;
             byte[] connectionData = allocation.ConnectionData;
 
-            // Stel UnityTransport in
             UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
             transport.SetRelayServerData(
                 allocation.RelayServer.IpV4,
@@ -55,49 +77,41 @@ public class LobbyManager : MonoBehaviour
             );
 
             NetworkManager.Singleton.StartHost();
-            infoText.text = "Game hosted!\nJoin code: " + joinCode;
-            Debug.Log("Game hosted! Join code: " + joinCode);
+
+            // Spawn host server-side
+            if (PlayerSpawner.Instance != null && NetworkManager.Singleton.IsServer)
+            {
+                PlayerSpawner.Instance.SpawnPlayerServer(NetworkManager.Singleton.LocalClientId);
+            }
+
+            infoText.text = $"Game hosted! Join code: {joinCode}";
         }
         catch (Exception e)
         {
-            Debug.LogError("Failed to host game: " + e.Message);
-            infoText.text = "Host failed!";
+            Debug.LogError("Host mislukt: " + e.Message);
+            infoText.text = "Host mislukt!";
         }
     }
 
     // ================= Join =================
-    private void JoinGame()
+    private async void JoinGame()
     {
         string joinCode = joinCodeInput.text.Trim();
         if (string.IsNullOrEmpty(joinCode))
         {
-            infoText.text = "Enter a valid join code!";
+            infoText.text = "Voer een geldige join code in!";
             return;
         }
 
-        infoText.text = "Joining game...";
-        JoinRelay(joinCode);
-    }
-
-    private async void JoinRelay(string joinCode)
-    {
-        if (!UnityServicesInitializer.ServicesInitialized)
-        {
-            infoText.text = "Services not initialized!";
-            return;
-        }
-
+        infoText.text = "Joinen...";
         try
         {
-            // Join een bestaande Relay allocation
             JoinAllocation joinAllocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
 
-            // Zet GUID om naar byte[] voor UnityTransport
             byte[] allocationIdBytes = joinAllocation.AllocationId.ToByteArray();
             byte[] keyBytes = joinAllocation.Key;
             byte[] connectionData = joinAllocation.ConnectionData;
 
-            // Stel UnityTransport in
             UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
             transport.SetRelayServerData(
                 joinAllocation.RelayServer.IpV4,
@@ -109,12 +123,11 @@ public class LobbyManager : MonoBehaviour
 
             NetworkManager.Singleton.StartClient();
             infoText.text = "Joined game!";
-            Debug.Log("Joined game with code: " + joinCode);
         }
         catch (Exception e)
         {
-            Debug.LogError("Failed to join game: " + e.Message);
-            infoText.text = "Join failed!";
+            Debug.LogError("Join mislukt: " + e.Message);
+            infoText.text = "Join mislukt!";
         }
     }
 }
