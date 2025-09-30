@@ -21,7 +21,10 @@ public class PlayerSpawner : NetworkBehaviour
     {
         if (IsServer)
         {
+            // Alleen de host/server spawn
             _ = SpawnHostWhenServicesReady();
+
+            // Luister naar client joins
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         }
     }
@@ -34,15 +37,20 @@ public class PlayerSpawner : NetworkBehaviour
 
     private async Task SpawnHostWhenServicesReady()
     {
+        // Wacht tot Unity Services ready zijn
         while (!UnityServicesInitializer.ServicesInitialized)
             await Task.Yield();
 
+        // Spawn host alleen als server
         SpawnPlayer(NetworkManager.ServerClientId);
     }
 
     private void OnClientConnected(ulong clientId)
     {
-        if (!UnityServicesInitializer.ServicesInitialized) return;
+        // Spawn alleen clients, niet de host opnieuw
+        if (!UnityServicesInitializer.ServicesInitialized || clientId == NetworkManager.ServerClientId)
+            return;
+
         SpawnPlayer(clientId);
     }
 
@@ -67,10 +75,13 @@ public class PlayerSpawner : NetworkBehaviour
             return;
         }
 
-        // Spawn network object zonder name tag
+        // Spawn network object voor de juiste client
         netObj.SpawnAsPlayerObject(clientId, true);
 
-        Debug.Log($"Player spawned at {spawnPos}");
+        if (clientId == NetworkManager.ServerClientId)
+            Debug.Log("Host spawned (server only).");
+        else
+            Debug.Log($"Client {clientId} spawned.");
     }
 
     private int GetSpawnIndex(ulong clientId)
