@@ -3,16 +3,19 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Unity.Netcode;
-using TMPro; // Voor TextMeshPro
+using TMPro;
 
 public class Back : NetworkBehaviour
 {
     [Header("UI Elements")]
     public Button readyButton;
-    public TMP_Text readyStatusText; // TextMeshPro
+    public TextMeshProUGUI readyStatusText;
 
     // Server-side lijst van ready clients
     private List<ulong> readyClients = new List<ulong>();
+
+    // Bijhouden of lokale speler ready is
+    private bool isLocalReady = false;
 
     private void Start()
     {
@@ -20,6 +23,7 @@ public class Back : NetworkBehaviour
             readyButton.onClick.AddListener(OnReadyClicked);
 
         UpdateReadyStatusUI();
+        UpdateButtonText();
     }
 
     private void OnDestroy()
@@ -32,11 +36,33 @@ public class Back : NetworkBehaviour
     {
         if (!IsClient) return;
 
-        // Vraag server om jou als ready te markeren
-        SetReadyServerRpc(NetworkManager.Singleton.LocalClientId);
+        isLocalReady = !isLocalReady; // toggle ready status
+        UpdateButtonText();
 
-        // Disable de knop zodat je niet meerdere keren klikt
-        readyButton.interactable = false;
+        if (isLocalReady)
+        {
+            SetReadyServerRpc(NetworkManager.Singleton.LocalClientId);
+        }
+        else
+        {
+            UnsetReadyServerRpc(NetworkManager.Singleton.LocalClientId);
+        }
+
+        // Solo player check: meteen starten als alleen
+        if (NetworkManager.Singleton.ConnectedClients.Count == 1 && isLocalReady)
+        {
+            if (IsServer)
+                SwitchSceneClientRpc();
+            else
+                RequestSceneStartServerRpc(NetworkManager.Singleton.LocalClientId);
+        }
+    }
+
+    private void UpdateButtonText()
+    {
+        if (readyButton == null) return;
+
+        readyButton.GetComponentInChildren<TextMeshProUGUI>().text = isLocalReady ? "Cancel Ready" : "Ready";
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -45,20 +71,33 @@ public class Back : NetworkBehaviour
         if (!readyClients.Contains(clientId))
             readyClients.Add(clientId);
 
-        // Update alle clients met de huidige ready status
         UpdateReadyStatusClientRpc(readyClients.ToArray());
-
-        // Check of iedereen ready is
         CheckAllReady();
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void UnsetReadyServerRpc(ulong clientId)
+    {
+        if (readyClients.Contains(clientId))
+            readyClients.Remove(clientId);
+
+        UpdateReadyStatusClientRpc(readyClients.ToArray());
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void RequestSceneStartServerRpc(ulong clientId)
+    {
+        if (IsServer)
+            SwitchSceneClientRpc();
     }
 
     private void CheckAllReady()
     {
-        int totalPlayers = NetworkManager.Singleton.ConnectedClientsList.Count;
+        int totalPlayers = NetworkManager.Singleton.ConnectedClients.Count;
 
-        if (readyClients.Count == totalPlayers)
+        if (readyClients.Count == totalPlayers && totalPlayers > 1)
         {
-            // Iedereen ready → switch scene voor iedereen
+            // Iedereen ready → switch scene
             SwitchSceneClientRpc();
         }
     }
@@ -66,7 +105,6 @@ public class Back : NetworkBehaviour
     [ClientRpc]
     private void UpdateReadyStatusClientRpc(ulong[] readyClientIds)
     {
-        // Update lokale lijst
         readyClients = new List<ulong>(readyClientIds);
         UpdateReadyStatusUI();
     }
