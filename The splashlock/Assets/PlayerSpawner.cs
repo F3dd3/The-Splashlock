@@ -12,6 +12,21 @@ public class PlayerSpawner : NetworkBehaviour
     [Header("Spawn Points")]
     public Transform[] spawnPoints; // [0]=host, [1..]=clients
 
+    private int colorIndex = 0;
+
+    // Kleurenlijst (uitbreidbaar)
+    private readonly Color[] availableColors = new Color[]
+    {
+        Color.red,
+        Color.blue,
+        Color.green,
+        Color.yellow,
+        Color.magenta,
+        Color.cyan,
+        new Color(1f, 0.5f, 0f), // oranje
+        new Color(0.5f, 0f, 0.5f) // paars
+    };
+
     private void Awake()
     {
         Instance = this;
@@ -99,5 +114,13 @@ public class PlayerSpawner : NetworkBehaviour
             joinerIndex = spawnPoints.Length - 1;
 
         return joinerIndex;
+    }
+
+    // Geef volgende unieke kleur terug
+    public Color GetNextUniqueColor()
+    {
+        Color color = availableColors[colorIndex % availableColors.Length];
+        colorIndex++;
+        return color;
     }
 }
