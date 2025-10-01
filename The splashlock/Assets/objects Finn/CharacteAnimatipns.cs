@@ -1,31 +1,33 @@
-using UnityEngine;
+﻿using UnityEngine;
 
-public class PlayerMovement : MonoBehaviour
+public class PlayerAnimation : MonoBehaviour
 {
-    public float moveSpeed = 5f;
     private Animator animator;
+    private CharacterMovement characterMovement;
 
     void Start()
     {
         animator = GetComponent<Animator>();
+        characterMovement = GetComponent<CharacterMovement>();
+
+        if (animator == null)
+            Debug.LogWarning("Animator niet gevonden op " + gameObject.name);
+
+        if (characterMovement == null)
+            Debug.LogWarning("CharacterMovement niet gevonden op " + gameObject.name);
     }
 
     void Update()
     {
-        // Get input
+        if (animator == null || characterMovement == null) return;
+
+        // Input uitlezen
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
+        Vector3 moveInput = new Vector3(horizontal, 0f, vertical);
 
-        Vector3 movement = new Vector3(horizontal, 0f, vertical).normalized;
-
-        // Update animator
-        bool isRunning = movement.magnitude > 0f;
+        // Run bool aanzetten als speler beweegt en op de grond staat
+        bool isRunning = moveInput.magnitude > 0.01f && characterMovement.grounded;
         animator.SetBool("isRunning", isRunning);
-
-        // Move the player (optional)
-        if (isRunning)
-        {
-            transform.Translate(movement * moveSpeed * Time.deltaTime, Space.World);
-        }
     }
 }

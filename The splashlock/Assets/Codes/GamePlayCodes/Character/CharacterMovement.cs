@@ -10,7 +10,9 @@ public class CharacterMovement : MonoBehaviour
     public float jumpHeight = 1.5f;
     public float jumpCooldown = 0.5f;
 
-    private CharacterController controller;
+    [HideInInspector]
+    public bool grounded;  // Andere scripts kunnen dit uitlezen
+
     private Vector3 velocity;
     private float lastJumpTime;
 
@@ -25,8 +27,8 @@ public class CharacterMovement : MonoBehaviour
 
     [Header("Ground Check")]
     public float groundCheckDistance = 2f;
-    private bool grounded;
-    private RaycastHit groundHit;
+    [HideInInspector]
+    public RaycastHit groundHit;
 
     [Header("Slope Settings")]
     public float slopeSlideSpeed = 3f;
@@ -34,12 +36,17 @@ public class CharacterMovement : MonoBehaviour
 
     [Header("Slow Settings")]
     public float slowCheckDistance = 2f;
-    private bool onSlowSurface = false;
+    [HideInInspector]
+    public bool onSlowSurface = false;
 
     [Header("External Forces")]
-    [Tooltip("Hoe snel externe krachten vervagen")]
     public float externalForceDecay = 5f;
     private Vector3 externalForce = Vector3.zero;
+
+    private CharacterController controller;
+
+    // 👉 Property zodat andere scripts VerticalVelocity kunnen uitlezen
+    public float VerticalVelocity => velocity.y;
 
     void Start()
     {
@@ -59,6 +66,7 @@ public class CharacterMovement : MonoBehaviour
         HandleShiftLock();
         HandleMovement();
 
+        // Externe krachten vervagen
         if (externalForce.magnitude > 0.01f)
             externalForce = Vector3.Lerp(externalForce, Vector3.zero, externalForceDecay * Time.deltaTime);
         else
@@ -97,6 +105,7 @@ public class CharacterMovement : MonoBehaviour
         grounded = controller.isGrounded;
         CheckGroundedExtra();
 
+        // Jump
         if (Input.GetButton("Jump") && grounded && Time.time - lastJumpTime >= jumpCooldown)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
@@ -111,7 +120,7 @@ public class CharacterMovement : MonoBehaviour
         float currentSpeed = onSlowSurface ? slowSpeed : moveSpeed;
         Vector3 horizontalMove = moveInput * currentSpeed;
 
-        // --- Glijden op hellingen (inclusief DevilWheel) ---
+        // Glijden op hellingen
         if (grounded && groundHit.collider != null && groundHit.collider.CompareTag("Helling"))
         {
             float slopeAngle = Vector3.Angle(groundHit.normal, Vector3.up);
@@ -124,6 +133,7 @@ public class CharacterMovement : MonoBehaviour
 
         Vector3 finalMove = horizontalMove + externalForce + new Vector3(0, velocity.y, 0);
 
+        // Rotatie
         if (shiftLockEnabled)
             transform.rotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
         else if (moveInput.sqrMagnitude > 0.001f)
