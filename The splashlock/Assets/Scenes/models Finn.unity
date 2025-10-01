@@ -732,6 +732,63 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 47.842, z: 0}
+--- !u!1001 &1814465957
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 5cb38ba3697ac0e4f927780b180dd453, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 107.728355
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 5cb38ba3697ac0e4f927780b180dd453, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -1.31
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 5cb38ba3697ac0e4f927780b180dd453, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 45.831238
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 5cb38ba3697ac0e4f927780b180dd453, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 5cb38ba3697ac0e4f927780b180dd453, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 5cb38ba3697ac0e4f927780b180dd453, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 5cb38ba3697ac0e4f927780b180dd453, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 5cb38ba3697ac0e4f927780b180dd453, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 5cb38ba3697ac0e4f927780b180dd453, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 5cb38ba3697ac0e4f927780b180dd453, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 5cb38ba3697ac0e4f927780b180dd453, type: 3}
+      propertyPath: m_Name
+      value: devil wheel2
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 5cb38ba3697ac0e4f927780b180dd453, type: 3}
 --- !u!1 &1895255133
 GameObject:
   m_ObjectHideFlags: 0
@@ -966,3 +1023,4 @@ SceneRoots:
   - {fileID: 438336780}
   - {fileID: 1194275541}
   - {fileID: 5347378416153436375}
+  - {fileID: 1814465957}
