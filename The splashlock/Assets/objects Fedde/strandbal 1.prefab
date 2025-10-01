@@ -101,6 +101,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dropHeight: 4
   speed: 3
+  checkRadius: 3.5
 --- !u!64 &760235943750714627
 MeshCollider:
   m_ObjectHideFlags: 0

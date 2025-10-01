@@ -4,10 +4,10 @@ public class PlatformMove : MonoBehaviour
 {
     public float dropHeight = 2.5f; // Hoeveel het platform zakt
     public float speed = 0.5f;      // Hoe snel het platform beweegt
+    public float checkRadius = 1f;  // Straal van de sphere check
 
     private Vector3 startPos;
     private Vector3 downPos;
-    private bool playerOnPlatform = false;
 
     void Start()
     {
@@ -17,31 +17,34 @@ public class PlatformMove : MonoBehaviour
 
     void Update()
     {
+        // Check of er een speler binnen de sphere zit
+        bool playerOnPlatform = false;
+
+        Collider[] hits = Physics.OverlapSphere(transform.position, checkRadius);
+        foreach (Collider hit in hits)
+        {
+            if (hit.CompareTag("Player"))
+            {
+                playerOnPlatform = true;
+                break;
+            }
+        }
+
+        // Beweeg het platform
         if (playerOnPlatform)
         {
-            // Zak naar beneden
             transform.position = Vector3.MoveTowards(transform.position, downPos, speed * Time.deltaTime);
         }
         else
         {
-            // Ga weer omhoog
             transform.position = Vector3.MoveTowards(transform.position, startPos, speed * Time.deltaTime);
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    // Optioneel: laat de sphere zien in de Scene view
+    private void OnDrawGizmosSelected()
     {
-        if (other.CompareTag("Player"))
-        {
-            playerOnPlatform = true;
-        }
-    }
-
-    private void OnTriggerExit(Collider other)
-    {
-        if (other.CompareTag("Player"))
-        {
-            playerOnPlatform = false;
-        }
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, checkRadius);
     }
 }
