@@ -52,17 +52,14 @@ public class PlayerSpawner : NetworkBehaviour
 
     private async Task SpawnHostWhenServicesReady()
     {
-        // Wacht tot Unity Services ready zijn
         while (!UnityServicesInitializer.ServicesInitialized)
             await Task.Yield();
 
-        // Spawn host alleen als server
         SpawnPlayer(NetworkManager.ServerClientId);
     }
 
     private void OnClientConnected(ulong clientId)
     {
-        // Spawn alleen clients, niet de host opnieuw
         if (!UnityServicesInitializer.ServicesInitialized || clientId == NetworkManager.ServerClientId)
             return;
 
@@ -81,6 +78,9 @@ public class PlayerSpawner : NetworkBehaviour
         Vector3 spawnPos = spawnPoints[index].position;
         Quaternion spawnRot = spawnPoints[index].rotation;
 
+        // Voeg 180 graden rotatie toe rond Y-as
+        spawnRot *= Quaternion.Euler(0f, 180f, 0f);
+
         GameObject playerInstance = Instantiate(playerPrefab, spawnPos, spawnRot);
         NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
         if (netObj == null)
@@ -92,6 +92,13 @@ public class PlayerSpawner : NetworkBehaviour
 
         // Spawn network object voor de juiste client
         netObj.SpawnAsPlayerObject(clientId, true);
+
+        // Kleur toewijzen via Player script (als die aanwezig is)
+        var playerScript = playerInstance.GetComponent<Player>();
+        if (playerScript != null)
+        {
+            playerScript.SetPlayerColor(GetNextUniqueColor());
+        }
 
         if (clientId == NetworkManager.ServerClientId)
             Debug.Log("Host spawned (server only).");

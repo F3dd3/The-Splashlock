@@ -17,17 +17,15 @@ public class Player : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        // Abonneren op kleurwijziging
         playerColor.OnValueChanged += OnColorChanged;
 
         if (IsServer)
         {
-            // Alleen de server bepaalt kleur en zet hem
+            // Server kiest een unieke kleur voor deze speler
             playerColor.Value = PlayerSpawner.Instance.GetNextUniqueColor();
         }
 
-        // OnValueChanged wordt pas getriggerd bij een echte verandering,
-        // dus hier alvast een force-update uitvoeren
+        // Forceer update van kleur
         OnColorChanged(Color.white, playerColor.Value);
     }
 
@@ -39,9 +37,7 @@ public class Player : NetworkBehaviour
     private void OnColorChanged(Color oldColor, Color newColor)
     {
         if (targetRenderer != null && targetRenderer.material != null)
-        {
             targetRenderer.material.color = newColor;
-        }
     }
 
     private void Start()
@@ -51,4 +47,10 @@ public class Player : NetworkBehaviour
             Debug.Log($"Player {OwnerClientId} ready at position {transform.position}, color: {playerColor.Value}");
         }
     }
+
+    public void SetPlayerColor(Color color)
+    {
+        playerColor.Value = color;
+    }
+
 }
