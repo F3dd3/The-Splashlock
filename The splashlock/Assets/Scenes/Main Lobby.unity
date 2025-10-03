@@ -1112,7 +1112,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 65e1662c573f61d47af13614dad1f80d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ShowTopMostFoldoutHeaderGroup: 1
   playerPrefab: {fileID: 6663194955437687092, guid: b406ea9391eaf714b960ab6961db13fc, type: 3}
   spawnPoints:
   - {fileID: 1587212}

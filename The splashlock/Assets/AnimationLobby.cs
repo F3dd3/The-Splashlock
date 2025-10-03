@@ -22,8 +22,6 @@ public class PlayerLobbyAnimation : NetworkBehaviour
     {
         // Zorg dat alle bewegingsbools uitstaan
         animator.SetBool("isRunning", false);
-        animator.SetBool("isJumping", false);
-        animator.SetBool("isAttacking", false);
         // Je kunt hier andere bools resetten die je Animator heeft
     }
 }

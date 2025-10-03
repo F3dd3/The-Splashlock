@@ -1,133 +1,116 @@
 using UnityEngine;
 using Unity.Netcode;
-using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Linq;
 
-public class PlayerSpawner : NetworkBehaviour
+public class PlayerSpawner : MonoBehaviour
 {
     public static PlayerSpawner Instance;
 
-    [Header("Player Prefab")]
+    [Header("Prefab van de speler")]
     public GameObject playerPrefab;
 
-    [Header("Spawn Points")]
-    public Transform[] spawnPoints; // [0]=host, [1..]=clients
+    [Header("Spawnpunten in de scene")]
+    public Transform[] spawnPoints;
 
-    private int colorIndex = 0;
-
-    // Kleurenlijst (uitbreidbaar)
-    private readonly Color[] availableColors = new Color[]
+    // Alle mogelijke kleuren
+    private List<Color> allColors = new List<Color>
     {
         Color.red,
-        Color.blue,
         Color.green,
+        Color.blue,
         Color.yellow,
         Color.magenta,
-        Color.cyan,
-        new Color(1f, 0.5f, 0f), // oranje
-        new Color(0.5f, 0f, 0.5f) // paars
+        Color.cyan
     };
+
+    // Houd bij welke kleuren al in gebruik zijn (clientId -> kleur)
+    private Dictionary<ulong, Color> playerColors = new Dictionary<ulong, Color>();
+
+    private int nextSpawnIndex = 0;
 
     private void Awake()
     {
-        Instance = this;
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
     }
 
-    public override void OnNetworkSpawn()
+    private void Start()
     {
-        if (IsServer)
+        if (NetworkManager.Singleton != null)
         {
-            // Alleen de host/server spawn
-            _ = SpawnHostWhenServicesReady();
-
-            // Luister naar client joins
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
         }
     }
 
-    private void OnDisable()
+    private void OnDestroy()
     {
         if (NetworkManager.Singleton != null)
+        {
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
-    }
-
-    private async Task SpawnHostWhenServicesReady()
-    {
-        while (!UnityServicesInitializer.ServicesInitialized)
-            await Task.Yield();
-
-        SpawnPlayer(NetworkManager.ServerClientId);
+            NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
+        }
     }
 
     private void OnClientConnected(ulong clientId)
     {
-        if (!UnityServicesInitializer.ServicesInitialized || clientId == NetworkManager.ServerClientId)
-            return;
+        // Alleen server spawn
+        if (!NetworkManager.Singleton.IsServer) return;
 
         SpawnPlayer(clientId);
+    }
+
+    private void OnClientDisconnected(ulong clientId)
+    {
+        // Geef kleur vrij
+        if (playerColors.ContainsKey(clientId))
+            playerColors.Remove(clientId);
+    }
+
+    private Vector3 GetNextSpawnPosition()
+    {
+        if (spawnPoints.Length == 0) return Vector3.zero;
+
+        Vector3 pos = spawnPoints[nextSpawnIndex % spawnPoints.Length].position;
+        nextSpawnIndex++;
+        return pos;
+    }
+
+    private Color GetNextUniqueColor()
+    {
+        var usedColors = playerColors.Values.ToList();
+        var availableColors = allColors.Except(usedColors).ToList();
+
+        if (availableColors.Count == 0) return Color.white; // fallback
+
+        return availableColors[0];
     }
 
     private void SpawnPlayer(ulong clientId)
     {
         if (playerPrefab == null)
         {
-            Debug.LogError("Player prefab not assigned!");
+            Debug.LogError("Player prefab is niet ingesteld!");
             return;
         }
 
-        int index = GetSpawnIndex(clientId);
-        Vector3 spawnPos = spawnPoints[index].position;
-        Quaternion spawnRot = spawnPoints[index].rotation;
+        Vector3 spawnPos = GetNextSpawnPosition();
+        GameObject player = Instantiate(playerPrefab, spawnPos, Quaternion.identity);
+        player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
 
-        // Voeg 180 graden rotatie toe rond Y-as
-        spawnRot *= Quaternion.Euler(0f, 180f, 0f);
+        // Alleen server bepaalt de kleur
+        Color playerColorValue = GetNextUniqueColor();
+        playerColors[clientId] = playerColorValue;
 
-        GameObject playerInstance = Instantiate(playerPrefab, spawnPos, spawnRot);
-        NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
-        if (netObj == null)
-        {
-            Debug.LogError("Player prefab must have NetworkObject component!");
-            Destroy(playerInstance);
-            return;
-        }
-
-        // Spawn network object voor de juiste client
-        netObj.SpawnAsPlayerObject(clientId, true);
-
-        // Kleur toewijzen via Player script (als die aanwezig is)
-        var playerScript = playerInstance.GetComponent<Player>();
+        Player playerScript = player.GetComponent<Player>();
         if (playerScript != null)
         {
-            playerScript.SetPlayerColor(GetNextUniqueColor());
+            // Schrijven naar NetworkVariable gebeurt alleen op server
+            if (NetworkManager.Singleton.IsServer)
+            {
+                playerScript.playerColor.Value = playerColorValue;
+            }
         }
-
-        if (clientId == NetworkManager.ServerClientId)
-            Debug.Log("Host spawned (server only).");
-        else
-            Debug.Log($"Client {clientId} spawned.");
-    }
-
-    private int GetSpawnIndex(ulong clientId)
-    {
-        if (clientId == NetworkManager.ServerClientId) return 0;
-
-        int joinerIndex = 1;
-        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
-        {
-            if (client.ClientId == clientId) break;
-            if (client.ClientId != NetworkManager.ServerClientId) joinerIndex++;
-        }
-
-        if (joinerIndex >= spawnPoints.Length)
-            joinerIndex = spawnPoints.Length - 1;
-
-        return joinerIndex;
-    }
-
-    // Geef volgende unieke kleur terug
-    public Color GetNextUniqueColor()
-    {
-        Color color = availableColors[colorIndex % availableColors.Length];
-        colorIndex++;
-        return color;
     }
 }
