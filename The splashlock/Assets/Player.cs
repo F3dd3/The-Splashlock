@@ -1,50 +1,55 @@
-using UnityEngine;
+﻿using UnityEngine;
 using Unity.Netcode;
 
 public class Player : NetworkBehaviour
 {
-    [Header("Renderer die gekleurd moet worden")]
-    public Renderer targetRenderer;
-
-    // NetworkVariable: read door iedereen, write alleen door server
-    public NetworkVariable<Color> playerColor = new NetworkVariable<Color>(
-        Color.clear, // start zonder kleur
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server
-    );
+    [Header("MeshRenderer van de speler")]
+    public MeshRenderer targetRenderer;
 
     private void Awake()
     {
         if (targetRenderer == null)
-            targetRenderer = GetComponentInChildren<Renderer>();
-
-        // Maak een instanced materiaal zodat elke speler zijn eigen kleur kan krijgen
-        if (targetRenderer != null)
-            targetRenderer.material = new Material(targetRenderer.material);
+            targetRenderer = GetComponentInChildren<MeshRenderer>();
     }
 
     public override void OnNetworkSpawn()
     {
-        // Blijf luisteren naar veranderingen
-        playerColor.OnValueChanged += OnColorChanged;
-
-        // Force update bij spawn
-        ApplyColor(playerColor.Value);
+        // Kies materiaal bij spawn
+        ApplyUniqueMaterial();
     }
 
-    private void OnDestroy()
+    private void ApplyUniqueMaterial()
     {
-        playerColor.OnValueChanged -= OnColorChanged;
-    }
+        if (targetRenderer == null || targetRenderer.sharedMaterials.Length == 0) return;
 
-    private void OnColorChanged(Color oldColor, Color newColor)
-    {
-        ApplyColor(newColor);
-    }
+        // Vraag de lijst van reeds gebruikte materialen van de Spawner
+        var usedIndices = PlayerSpawner.Instance.GetUsedMaterialIndices();
 
-    private void ApplyColor(Color color)
-    {
-        if (targetRenderer != null && targetRenderer.material != null)
-            targetRenderer.material.color = color;
+        int total = targetRenderer.sharedMaterials.Length;
+        int selectedIndex = -1;
+
+        // Kies een materiaal dat nog niet gebruikt wordt
+        for (int i = 0; i < total; i++)
+        {
+            if (!usedIndices.Contains(i))
+            {
+                selectedIndex = i;
+                break;
+            }
+        }
+
+        // fallback: als alle materialen gebruikt zijn, kies random
+        if (selectedIndex == -1)
+            selectedIndex = Random.Range(0, total);
+
+        // Pas het materiaal toe op een **instanced materiaal array**
+        Material[] mats = targetRenderer.materials; // maakt automatisch kopie
+        mats[0] = targetRenderer.sharedMaterials[selectedIndex];
+        targetRenderer.materials = mats;
+
+        // Registreer bij de Spawner dat dit materiaal nu in gebruik is
+        PlayerSpawner.Instance.RegisterMaterial(selectedIndex);
+
+        Debug.Log($"[Player {OwnerClientId}] toegewezen materiaal index {selectedIndex}");
     }
 }

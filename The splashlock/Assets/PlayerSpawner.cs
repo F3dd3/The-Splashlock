@@ -1,7 +1,6 @@
 using UnityEngine;
 using Unity.Netcode;
 using System.Collections.Generic;
-using System.Linq;
 
 public class PlayerSpawner : MonoBehaviour
 {
@@ -13,20 +12,8 @@ public class PlayerSpawner : MonoBehaviour
     [Header("Spawnpunten in de scene")]
     public Transform[] spawnPoints;
 
-    // Alle mogelijke kleuren
-    private List<Color> allColors = new List<Color>
-    {
-        Color.red,
-        Color.green,
-        Color.blue,
-        Color.yellow,
-        Color.magenta,
-        Color.cyan
-    };
-
-    // Houd bij welke kleuren al in gebruik zijn (clientId -> kleur)
-    private Dictionary<ulong, Color> playerColors = new Dictionary<ulong, Color>();
-
+    // Houd bij welke materiaal indices al gebruikt worden
+    private HashSet<int> usedMaterialIndices = new HashSet<int>();
     private int nextSpawnIndex = 0;
 
     private void Awake()
@@ -55,7 +42,6 @@ public class PlayerSpawner : MonoBehaviour
 
     private void OnClientConnected(ulong clientId)
     {
-        // Alleen server spawn
         if (!NetworkManager.Singleton.IsServer) return;
 
         SpawnPlayer(clientId);
@@ -63,9 +49,8 @@ public class PlayerSpawner : MonoBehaviour
 
     private void OnClientDisconnected(ulong clientId)
     {
-        // Geef kleur vrij
-        if (playerColors.ContainsKey(clientId))
-            playerColors.Remove(clientId);
+        // TODO: vrijgeven van materiaal als speler disconnect
+        // (optioneel, implementatie kan per index of via Player script)
     }
 
     private Vector3 GetNextSpawnPosition()
@@ -75,16 +60,6 @@ public class PlayerSpawner : MonoBehaviour
         Vector3 pos = spawnPoints[nextSpawnIndex % spawnPoints.Length].position;
         nextSpawnIndex++;
         return pos;
-    }
-
-    private Color GetNextUniqueColor()
-    {
-        var usedColors = playerColors.Values.ToList();
-        var availableColors = allColors.Except(usedColors).ToList();
-
-        if (availableColors.Count == 0) return Color.white; // fallback
-
-        return availableColors[0];
     }
 
     private void SpawnPlayer(ulong clientId)
@@ -97,20 +72,20 @@ public class PlayerSpawner : MonoBehaviour
 
         Vector3 spawnPos = GetNextSpawnPosition();
         GameObject player = Instantiate(playerPrefab, spawnPos, Quaternion.identity);
+
         player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
+    }
 
-        // Alleen server bepaalt de kleur
-        Color playerColorValue = GetNextUniqueColor();
-        playerColors[clientId] = playerColorValue;
+    // Functie die Player kan aanroepen om de reeds gebruikte materialen te checken
+    public HashSet<int> GetUsedMaterialIndices()
+    {
+        return usedMaterialIndices;
+    }
 
-        Player playerScript = player.GetComponent<Player>();
-        if (playerScript != null)
-        {
-            // Schrijven naar NetworkVariable gebeurt alleen op server
-            if (NetworkManager.Singleton.IsServer)
-            {
-                playerScript.playerColor.Value = playerColorValue;
-            }
-        }
+    // Functie die Player kan aanroepen om een materiaal als gebruikt te markeren
+    public void RegisterMaterial(int index)
+    {
+        if (!usedMaterialIndices.Contains(index))
+            usedMaterialIndices.Add(index);
     }
 }
