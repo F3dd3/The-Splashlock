@@ -80,9 +80,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e809394f8206f5f4a82f893664b9bed4, type: 3}
       insertIndex: -1
       addedObject: {fileID: -4256190165821319977}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e809394f8206f5f4a82f893664b9bed4, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 4238339130516080484}
   m_SourcePrefab: {fileID: 100100000, guid: e809394f8206f5f4a82f893664b9bed4, type: 3}
 --- !u!1 &6663194955437687092 stripped
 GameObject:
@@ -167,7 +164,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
-  targetRenderer: {fileID: 4238339130516080484}
+  targetRenderer: {fileID: 0}
+  playerColor:
+    m_InternalValue: {r: 1, g: 1, b: 1, a: 1}
 --- !u!114 &7107244613085946979
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -274,51 +273,3 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!23 &4238339130516080484
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6663194955437687092}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: b084485fa14f92e4da0eedd070a0f001, type: 2}
-  - {fileID: 2100000, guid: 99191fa323c782e46bc982454e3c79f0, type: 2}
-  - {fileID: 2100000, guid: d6f51d688baadba42a118383456afbd8, type: 2}
-  - {fileID: -6478536213147159724, guid: 1aa5bf51697961e47a6581bfd1a2496a, type: 3}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_AdditionalVertexStreams: {fileID: 0}
