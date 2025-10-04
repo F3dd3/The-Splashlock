@@ -55,7 +55,7 @@ public class PlayerSpawner : MonoBehaviour
 
     private void OnClientConnected(ulong clientId)
     {
-        // Alleen server spawn
+        // Alleen server spawnt spelers
         if (!NetworkManager.Singleton.IsServer) return;
 
         SpawnPlayer(clientId);
@@ -68,13 +68,13 @@ public class PlayerSpawner : MonoBehaviour
             playerColors.Remove(clientId);
     }
 
-    private Vector3 GetNextSpawnPosition()
+    private Transform GetNextSpawnPoint()
     {
-        if (spawnPoints.Length == 0) return Vector3.zero;
+        if (spawnPoints.Length == 0) return null;
 
-        Vector3 pos = spawnPoints[nextSpawnIndex % spawnPoints.Length].position;
+        Transform spawn = spawnPoints[nextSpawnIndex % spawnPoints.Length];
         nextSpawnIndex++;
-        return pos;
+        return spawn;
     }
 
     private Color GetNextUniqueColor()
@@ -95,8 +95,17 @@ public class PlayerSpawner : MonoBehaviour
             return;
         }
 
-        Vector3 spawnPos = GetNextSpawnPosition();
-        GameObject player = Instantiate(playerPrefab, spawnPos, Quaternion.identity);
+        Transform spawnPoint = GetNextSpawnPoint();
+        if (spawnPoint == null)
+        {
+            Debug.LogWarning("Geen spawnpoints ingesteld!");
+            return;
+        }
+
+        // Rotatie van het spawnpoint + 180 graden op Y-as
+        Quaternion spawnRot = spawnPoint.rotation * Quaternion.Euler(0, 180f, 0);
+
+        GameObject player = Instantiate(playerPrefab, spawnPoint.position, spawnRot);
         player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
 
         // Alleen server bepaalt de kleur
@@ -106,7 +115,6 @@ public class PlayerSpawner : MonoBehaviour
         Player playerScript = player.GetComponent<Player>();
         if (playerScript != null)
         {
-            // Schrijven naar NetworkVariable gebeurt alleen op server
             if (NetworkManager.Singleton.IsServer)
             {
                 playerScript.playerColor.Value = playerColorValue;
