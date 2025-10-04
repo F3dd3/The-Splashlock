@@ -11,10 +11,7 @@ public class Back : NetworkBehaviour
     public Button readyButton;
     public TextMeshProUGUI readyStatusText;
 
-    // Server-side lijst van ready clients
     private List<ulong> readyClients = new List<ulong>();
-
-    // Bijhouden of lokale speler ready is
     private bool isLocalReady = false;
 
     private void Start()
@@ -36,32 +33,24 @@ public class Back : NetworkBehaviour
     {
         if (!IsClient) return;
 
-        isLocalReady = !isLocalReady; // toggle ready status
+        isLocalReady = !isLocalReady;
         UpdateButtonText();
 
         if (isLocalReady)
-        {
             SetReadyServerRpc(NetworkManager.Singleton.LocalClientId);
-        }
         else
-        {
             UnsetReadyServerRpc(NetworkManager.Singleton.LocalClientId);
-        }
 
-        // Solo player check: meteen starten als alleen
         if (NetworkManager.Singleton.ConnectedClients.Count == 1 && isLocalReady)
         {
-            if (IsServer)
-                SwitchSceneClientRpc();
-            else
-                RequestSceneStartServerRpc(NetworkManager.Singleton.LocalClientId);
+            if (IsServer) SwitchSceneClientRpc();
+            else RequestSceneStartServerRpc(NetworkManager.Singleton.LocalClientId);
         }
     }
 
     private void UpdateButtonText()
     {
         if (readyButton == null) return;
-
         readyButton.GetComponentInChildren<TextMeshProUGUI>().text = isLocalReady ? "Cancel Ready" : "Ready";
     }
 
@@ -87,8 +76,7 @@ public class Back : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     private void RequestSceneStartServerRpc(ulong clientId)
     {
-        if (IsServer)
-            SwitchSceneClientRpc();
+        if (IsServer) SwitchSceneClientRpc();
     }
 
     private void CheckAllReady()
@@ -96,10 +84,7 @@ public class Back : NetworkBehaviour
         int totalPlayers = NetworkManager.Singleton.ConnectedClients.Count;
 
         if (readyClients.Count == totalPlayers && totalPlayers > 1)
-        {
-            // Iedereen ready → switch scene
             SwitchSceneClientRpc();
-        }
     }
 
     [ClientRpc]

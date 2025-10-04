@@ -3,12 +3,11 @@ using Unity.Netcode;
 
 public class Player : NetworkBehaviour
 {
-    [Header("Renderer die gekleurd moet worden")]
+    [Header("Renderer to color")]
     public Renderer targetRenderer;
 
-    // NetworkVariable: read door iedereen, write alleen door server
     public NetworkVariable<Color> playerColor = new NetworkVariable<Color>(
-        Color.clear, // start zonder kleur
+        Color.clear,
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server
     );
@@ -18,23 +17,22 @@ public class Player : NetworkBehaviour
         if (targetRenderer == null)
             targetRenderer = GetComponentInChildren<Renderer>();
 
-        // Maak een instanced materiaal zodat elke speler zijn eigen kleur kan krijgen
         if (targetRenderer != null)
             targetRenderer.material = new Material(targetRenderer.material);
     }
 
     public override void OnNetworkSpawn()
     {
-        // Blijf luisteren naar veranderingen
-        playerColor.OnValueChanged += OnColorChanged;
+        if (playerColor != null)
+            playerColor.OnValueChanged += OnColorChanged;
 
-        // Force update bij spawn
         ApplyColor(playerColor.Value);
     }
 
     private void OnDestroy()
     {
-        playerColor.OnValueChanged -= OnColorChanged;
+        if (playerColor != null)
+            playerColor.OnValueChanged -= OnColorChanged;
     }
 
     private void OnColorChanged(Color oldColor, Color newColor)
