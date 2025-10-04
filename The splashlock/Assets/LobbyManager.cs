@@ -29,26 +29,22 @@ public class LobbyManager : MonoBehaviour
     {
         try
         {
-            // Init Unity Services
             await UnityServices.InitializeAsync();
 
-            // Alleen aanmelden als niet ingelogd
             if (!AuthenticationService.Instance.IsSignedIn)
             {
                 try
                 {
                     await AuthenticationService.Instance.SignInAnonymouslyAsync();
-                    Debug.Log("Signed in as: " + AuthenticationService.Instance.PlayerId);
                     infoText.text = "Signed in as: " + AuthenticationService.Instance.PlayerId;
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarning("Sign-in skipped or already in progress: " + e.Message);
+                    Debug.LogWarning("Sign-in skipped: " + e.Message);
                 }
             }
             else
             {
-                Debug.Log("Already signed in: " + AuthenticationService.Instance.PlayerId);
                 infoText.text = "Already signed in: " + AuthenticationService.Instance.PlayerId;
             }
 
@@ -56,7 +52,7 @@ public class LobbyManager : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError("Unity Services initialization failed: " + e.Message);
+            Debug.LogError("Unity Services init failed: " + e.Message);
             infoText.text = "Services init failed!";
         }
     }
@@ -78,7 +74,6 @@ public class LobbyManager : MonoBehaviour
         infoText.text = "Hosting game...";
         try
         {
-            // Relay allocation
             Allocation allocation = await RelayService.Instance.CreateAllocationAsync(4);
             string joinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
 
@@ -93,7 +88,6 @@ public class LobbyManager : MonoBehaviour
 
             NetworkManager.Singleton.StartHost();
             infoText.text = $"Game hosted!\nJoin code: {joinCode}";
-            Debug.Log($"Game hosted! Join code: {joinCode}");
         }
         catch (Exception e)
         {
@@ -139,16 +133,17 @@ public class LobbyManager : MonoBehaviour
 
             NetworkManager.Singleton.StartClient();
             infoText.text = "Joined game!";
-            Debug.Log("Joined game with code: " + joinCode);
-
-            // Lokale melding dat client host heeft gejoined
-            if (PlayerBroadcaster.Instance != null)
-                PlayerBroadcaster.Instance.ShowLocalJoinMessage("You joined the host!");
         }
         catch (Exception e)
         {
             Debug.LogError("Failed to join game: " + e.Message);
             infoText.text = "Join failed!";
         }
+    }
+
+    private void OnDestroy()
+    {
+        hostButton.onClick.RemoveAllListeners();
+        joinButton.onClick.RemoveAllListeners();
     }
 }

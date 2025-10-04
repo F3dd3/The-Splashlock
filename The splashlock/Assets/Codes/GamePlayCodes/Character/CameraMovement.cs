@@ -15,7 +15,7 @@ public class CameraMovement : NetworkBehaviour
     public float zoomSpeed = 5f;
     public float zoomSmoothTime = 0.1f;
 
-    public RawImage shiftLockPrefab; // prefab asset van ShiftLock UI
+    public RawImage shiftLockPrefab; // ShiftLock UI prefab
     private RawImage shiftLockInstance;
 
     private float yaw, pitch;

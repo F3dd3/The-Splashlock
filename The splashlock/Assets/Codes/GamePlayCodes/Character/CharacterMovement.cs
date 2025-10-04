@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 
+[RequireComponent(typeof(CharacterController))]
 public class CharacterMovement : MonoBehaviour
 {
     [Header("Movement")]
@@ -10,25 +11,22 @@ public class CharacterMovement : MonoBehaviour
     public float jumpHeight = 1.5f;
     public float jumpCooldown = 0.5f;
 
-    [HideInInspector]
-    public bool grounded;  // Andere scripts kunnen dit uitlezen
+    [HideInInspector] public bool grounded;
 
     private Vector3 velocity;
     private float lastJumpTime;
+    private CharacterController controller;
 
     [Header("Camera")]
     public Transform cameraTransform;
 
     [Header("Shift Lock")]
     public bool shiftLockEnabled = false;
-
-    [Header("Shift Lock UI")]
     public RawImage shiftLockSymbol;
 
     [Header("Ground Check")]
     public float groundCheckDistance = 2f;
-    [HideInInspector]
-    public RaycastHit groundHit;
+    [HideInInspector] public RaycastHit groundHit;
 
     [Header("Slope Settings")]
     public float slopeSlideSpeed = 3f;
@@ -36,19 +34,15 @@ public class CharacterMovement : MonoBehaviour
 
     [Header("Slow Settings")]
     public float slowCheckDistance = 2f;
-    [HideInInspector]
-    public bool onSlowSurface = false;
+    [HideInInspector] public bool onSlowSurface = false;
 
     [Header("External Forces")]
     public float externalForceDecay = 5f;
     private Vector3 externalForce = Vector3.zero;
 
-    private CharacterController controller;
-
-    // 👉 Property zodat andere scripts VerticalVelocity kunnen uitlezen
     public float VerticalVelocity => velocity.y;
 
-    void Start()
+    private void Start()
     {
         controller = GetComponent<CharacterController>();
         if (cameraTransform == null && Camera.main != null)
@@ -61,7 +55,7 @@ public class CharacterMovement : MonoBehaviour
             shiftLockSymbol.enabled = false;
     }
 
-    void Update()
+    private void Update()
     {
         HandleShiftLock();
         HandleMovement();
@@ -73,7 +67,7 @@ public class CharacterMovement : MonoBehaviour
             externalForce = Vector3.zero;
     }
 
-    void HandleShiftLock()
+    private void HandleShiftLock()
     {
         if (Input.GetKeyDown(KeyCode.LeftShift))
         {
@@ -86,7 +80,7 @@ public class CharacterMovement : MonoBehaviour
         }
     }
 
-    void HandleMovement()
+    private void HandleMovement()
     {
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
@@ -105,7 +99,6 @@ public class CharacterMovement : MonoBehaviour
         grounded = controller.isGrounded;
         CheckGroundedExtra();
 
-        // Jump
         if (Input.GetButton("Jump") && grounded && Time.time - lastJumpTime >= jumpCooldown)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
@@ -120,7 +113,6 @@ public class CharacterMovement : MonoBehaviour
         float currentSpeed = onSlowSurface ? slowSpeed : moveSpeed;
         Vector3 horizontalMove = moveInput * currentSpeed;
 
-        // Glijden op hellingen
         if (grounded && groundHit.collider != null && groundHit.collider.CompareTag("Helling"))
         {
             float slopeAngle = Vector3.Angle(groundHit.normal, Vector3.up);
@@ -133,7 +125,6 @@ public class CharacterMovement : MonoBehaviour
 
         Vector3 finalMove = horizontalMove + externalForce + new Vector3(0, velocity.y, 0);
 
-        // Rotatie
         if (shiftLockEnabled)
             transform.rotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
         else if (moveInput.sqrMagnitude > 0.001f)
@@ -146,7 +137,7 @@ public class CharacterMovement : MonoBehaviour
         controller.Move(finalMove * Time.deltaTime);
     }
 
-    void CheckGroundedExtra()
+    private void CheckGroundedExtra()
     {
         float radius = controller.radius;
         Vector3 origin = transform.position + Vector3.up * (controller.center.y - controller.height / 2 + radius);

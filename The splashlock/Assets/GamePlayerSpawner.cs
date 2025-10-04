@@ -2,60 +2,70 @@
 using Unity.Netcode;
 using UnityEngine.SceneManagement;
 
-public class GamePlayerSpawner : NetworkBehaviour
+public class GamePlayerSpawner : MonoBehaviour
 {
-    public GameObject gamePlayerPrefab;
+    [Header("Player Prefab")]
+    public GameObject playerPrefab;
+
+    [Header("Spawnpoints in Scene")]
     public Transform[] spawnPoints;
 
     private int nextSpawnIndex = 0;
 
-    private void Awake()
+    private void OnEnable()
     {
-        // Zorg dat we een callback krijgen wanneer scene geladen is
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
-    private void OnDestroy()
+    private void OnDisable()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
-
-        if (NetworkManager.Singleton != null)
-            NetworkManager.Singleton.OnClientConnectedCallback -= SpawnPlayerForClient;
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        if (!IsServer) return;
+        if (!NetworkManager.Singleton.IsServer) return;
 
-        // Server spawnt alle clients die al connected zijn
+        // Spawn voor alle bestaande clients (host + clients)
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
         {
             SpawnPlayerForClient(client.ClientId);
         }
 
-        // Subscribe toekomstige clients
+        // Subscribe voor toekomstige clients
         NetworkManager.Singleton.OnClientConnectedCallback += SpawnPlayerForClient;
     }
 
     private void SpawnPlayerForClient(ulong clientId)
     {
-        if (gamePlayerPrefab == null)
+        if (playerPrefab == null)
         {
-            Debug.LogError("⚠️ GamePlayer prefab niet ingesteld!");
+            Debug.LogError("Player prefab niet ingesteld!");
             return;
         }
 
         Transform spawn = GetNextSpawnPoint();
-        GameObject player = Instantiate(gamePlayerPrefab, spawn.position, spawn.rotation);
+        GameObject player = Instantiate(playerPrefab, spawn.position, spawn.rotation);
 
         NetworkObject netObj = player.GetComponent<NetworkObject>();
         if (netObj != null)
+        {
             netObj.SpawnAsPlayerObject(clientId, true);
+        }
+        else
+        {
+            Debug.LogError("Player prefab mist NetworkObject component!");
+        }
 
-        // Zorg dat alleen de owner camera activeert
+        // Alleen owner camera activeren
         CameraMovement cam = player.GetComponentInChildren<CameraMovement>();
         if (cam != null)
             cam.gameObject.SetActive(clientId == NetworkManager.Singleton.LocalClientId);
+
+        // Zet cameraTransform in CharacterMovement
+        CharacterMovement cm = player.GetComponent<CharacterMovement>();
+        if (cm != null && cam != null)
+            cm.cameraTransform = cam.transform;
     }
 
     private Transform GetNextSpawnPoint()
