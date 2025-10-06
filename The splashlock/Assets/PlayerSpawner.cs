@@ -80,7 +80,7 @@ public class PlayerSpawner : MonoBehaviour
         }
 
         Vector3 spawnPos = GetNextSpawnPosition();
-        GameObject player = Instantiate(playerPrefab, spawnPos, Quaternion.identity);
+        GameObject player = Instantiate(playerPrefab, spawnPos, Quaternion.Euler(0f, 180f, 0f));
         player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
 
         Color playerColorValue = GetNextUniqueColor();
