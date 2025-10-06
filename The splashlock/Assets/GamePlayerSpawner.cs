@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 public class GamePlayerSpawner : MonoBehaviour
 {
@@ -14,26 +15,37 @@ public class GamePlayerSpawner : MonoBehaviour
 
     private void OnEnable()
     {
-        SceneManager.sceneLoaded += OnSceneLoaded;
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
+        {
+            // Luister naar Netcode scene load events (belangrijk!)
+            NetworkManager.Singleton.SceneManager.OnLoadEventCompleted += OnLoadEventCompleted;
+        }
     }
 
     private void OnDisable()
     {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
+        {
+            NetworkManager.Singleton.SceneManager.OnLoadEventCompleted -= OnLoadEventCompleted;
+        }
     }
 
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    /// <summary>
+    /// Wordt aangeroepen zodra ALLE clients de scene hebben geladen.
+    /// </summary>
+    private void OnLoadEventCompleted(string sceneName, LoadSceneMode loadSceneMode, List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
     {
         if (!NetworkManager.Singleton.IsServer) return;
 
-        // Spawn voor alle bestaande clients (host + clients)
-        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        if (sceneName == "GameScene")
         {
-            SpawnPlayerForClient(client.ClientId);
-        }
+            Debug.Log("[Server] Alle clients hebben GameScene geladen. Spawning players...");
 
-        // Subscribe voor toekomstige clients
-        NetworkManager.Singleton.OnClientConnectedCallback += SpawnPlayerForClient;
+            foreach (ulong clientId in clientsCompleted)
+            {
+                SpawnPlayerForClient(clientId);
+            }
+        }
     }
 
     private void SpawnPlayerForClient(ulong clientId)
@@ -45,7 +57,10 @@ public class GamePlayerSpawner : MonoBehaviour
         }
 
         Transform spawn = GetNextSpawnPoint();
-        GameObject player = Instantiate(playerPrefab, spawn.position, spawn.rotation);
+
+        // 180 graden draaien bij spawn
+        Quaternion spawnRot = spawn.rotation * Quaternion.Euler(0f, 180f, 0f);
+        GameObject player = Instantiate(playerPrefab, spawn.position, spawnRot);
 
         NetworkObject netObj = player.GetComponent<NetworkObject>();
         if (netObj != null)
