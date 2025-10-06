@@ -19,6 +19,7 @@ public class PlayerAnimation2 : MonoBehaviour
 
     void Update()
     {
+
         if (animator == null || characterMovement == null) return;
 
         // Input uitlezen
@@ -26,8 +27,14 @@ public class PlayerAnimation2 : MonoBehaviour
         float vertical = Input.GetAxisRaw("Vertical");
         Vector3 moveInput = new Vector3(horizontal, 0f, vertical);
 
-        // Run bool aanzetten als speler beweegt en op de grond staat
+        // Controleer lopen
         bool isRunning = moveInput.magnitude > 0.01f && characterMovement.grounded;
         animator.SetBool("isRunning", isRunning);
+
+        // Controleer springen
+        bool isJumping = !characterMovement.grounded; // springt als niet op de grond
+        animator.SetBool("isJumping", isJumping);
+        Debug.Log($"Input: {moveInput} | Grounded: {characterMovement.grounded} | isRunning: {isRunning}");
+
     }
 }
