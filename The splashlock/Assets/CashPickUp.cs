@@ -18,27 +18,27 @@ public class CoinPickup : NetworkBehaviour
 
     private void Update()
     {
-        if (!IsOwner || pickedUp) return;
+        if (!IsOwner) return;
 
         var localPlayer = NetworkManager.Singleton.LocalClient.PlayerObject;
         if (localPlayer == null) return;
 
-        // Vind CashE TMP op de local player (child van Canvas)
+        // Vind CashE TMP op de local player (include inactive)
         if (localPlayerInteractText == null)
         {
             localPlayerInteractText = localPlayer
-                .GetComponentsInChildren<TextMeshProUGUI>(true) // <- include inactive
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
                 .FirstOrDefault(t => t.name == "CashE");
 
             if (localPlayerInteractText != null)
-                localPlayerInteractText.gameObject.SetActive(false);
+                localPlayerInteractText.gameObject.SetActive(false); // standaard uit
         }
 
         if (localPlayerInteractText == null) return;
 
         float distance = Vector3.Distance(localPlayer.transform.position, transform.position);
 
-        if (distance <= interactDistance)
+        if (distance <= interactDistance && !pickedUp)
         {
             SetInteractTextVisible(true);
 
@@ -46,9 +46,15 @@ public class CoinPickup : NetworkBehaviour
             {
                 PlayerCash playerCash = localPlayer.GetComponent<PlayerCash>();
                 TryPickup(playerCash);
+
+                // Check of er andere munten in de buurt zijn
+                if (!IsOtherCoinNearby(localPlayer.transform))
+                {
+                    SetInteractTextVisible(false);
+                }
             }
         }
-        else
+        else if (!IsOtherCoinNearby(localPlayer.transform))
         {
             SetInteractTextVisible(false);
         }
@@ -103,5 +109,22 @@ public class CoinPickup : NetworkBehaviour
             netObj.Despawn();
         else
             Destroy(gameObject);
+    }
+
+    private bool IsOtherCoinNearby(Transform playerTransform)
+    {
+        var allCoins = FindObjectsOfType<CoinPickup>();
+
+        foreach (var coin in allCoins)
+        {
+            if (coin == this) continue;
+            if (coin.pickedUp) continue;
+
+            float dist = Vector3.Distance(playerTransform.position, coin.transform.position);
+            if (dist <= interactDistance)
+                return true;
+        }
+
+        return false;
     }
 }
