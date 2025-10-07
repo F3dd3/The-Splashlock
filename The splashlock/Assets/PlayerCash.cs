@@ -11,6 +11,7 @@ public class PlayerCash : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        // Luister naar NetworkVariable veranderingen
         cash.OnValueChanged += (oldValue, newValue) => OnCashChanged?.Invoke(oldValue, newValue);
     }
 
@@ -18,13 +19,5 @@ public class PlayerCash : NetworkBehaviour
     public void AddCashServerRpc(int amount)
     {
         cash.Value += amount;
-    }
-
-    // Lokale toevoeging voor UI (ClientRpc)
-    public void AddCashLocal(int amount)
-    {
-        int oldValue = cash.Value;
-        cash.Value += amount;
-        OnCashChanged?.Invoke(oldValue, cash.Value);
     }
 }
