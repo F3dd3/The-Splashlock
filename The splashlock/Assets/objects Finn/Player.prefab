@@ -235,7 +235,7 @@ MonoBehaviour:
   cameraTransform: {fileID: 5176748956025412027, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
   shiftLockEnabled: 0
   shiftLockSymbol: {fileID: 0}
-  groundCheckDistance: 0.93
+  groundCheckDistance: 2
   slopeSlideSpeed: 3
   slopeLimit: 20
   slowCheckDistance: 2
@@ -253,8 +253,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7d01c83bd1767c1468be05c762489bd7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  respawnHeight: 2
-  checkDistance: 1
+  respawnHeight: 5
+  checkDistance: 2
   waterLayer:
     serializedVersion: 2
     m_Bits: 16
