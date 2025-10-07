@@ -17,7 +17,6 @@ public class CoinPickup : NetworkBehaviour
 
     private TextMeshProUGUI localPlayerInteractText;
 
-    // Statische lijst van alle actieve munten
     private static List<CoinPickup> activeCoins = new List<CoinPickup>();
 
     private void OnEnable() => activeCoins.Add(this);
@@ -26,28 +25,23 @@ public class CoinPickup : NetworkBehaviour
     private void Update()
     {
         if (!IsClient) return;
-
         var localPlayer = NetworkManager.Singleton.LocalClient.PlayerObject;
         if (localPlayer == null) return;
 
-        // Vind CashE TMP
         if (localPlayerInteractText == null)
         {
             localPlayerInteractText = localPlayer
                 .GetComponentsInChildren<TextMeshProUGUI>(true)
                 .FirstOrDefault(t => t.name == "CashE");
-
             if (localPlayerInteractText != null)
                 localPlayerInteractText.gameObject.SetActive(false);
         }
 
         if (localPlayerInteractText == null) return;
 
-        // Check of er een munt dichtbij is
         bool coinNearby = IsCoinNearby(localPlayer.transform);
         SetInteractTextVisible(coinNearby);
 
-        // Interactie
         if (coinNearby && Input.GetKeyDown(KeyCode.E))
         {
             CoinPickup nearestCoin = activeCoins
@@ -58,7 +52,6 @@ public class CoinPickup : NetworkBehaviour
             if (nearestCoin != null)
             {
                 PlayerCash playerCash = localPlayer.GetComponent<PlayerCash>();
-                // Vraag de server om de munt op te pakken en cash toe te voegen
                 nearestCoin.PickupCoinServerRpc(playerCash.NetworkObjectId);
             }
         }
@@ -80,15 +73,16 @@ public class CoinPickup : NetworkBehaviour
 
         pickedUp = true;
 
-        // Voeg cash toe aan de speler
         if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(playerId, out NetworkObject playerNetObj))
         {
             PlayerCash playerCash = playerNetObj.GetComponent<PlayerCash>();
             if (playerCash != null)
+            {
+                // Voegt cash toe via ServerRpc
                 playerCash.AddCashServerRpc(cashAmount);
+            }
         }
 
-        // Despawn de munt voor alle clients
         NetworkObject netObj = GetComponent<NetworkObject>();
         if (netObj != null)
             netObj.Despawn();
