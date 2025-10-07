@@ -4630,7 +4630,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   optionsMenu: {fileID: 1714806069}
-  playerController: {fileID: 0}
+  leaveButton: {fileID: 400736482}
+  playerController: {fileID: 484280222030682799, guid: 17dd55d8cbc4e294591748275d41c89f, type: 3}
 --- !u!4 &2100004209
 Transform:
   m_ObjectHideFlags: 0
