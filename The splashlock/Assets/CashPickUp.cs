@@ -58,7 +58,8 @@ public class CoinPickup : NetworkBehaviour
             if (nearestCoin != null)
             {
                 PlayerCash playerCash = localPlayer.GetComponent<PlayerCash>();
-                nearestCoin.PickupCoin(playerCash);
+                // Vraag de server om de munt op te pakken en cash toe te voegen
+                nearestCoin.PickupCoinServerRpc(playerCash.NetworkObjectId);
             }
         }
     }
@@ -72,44 +73,27 @@ public class CoinPickup : NetworkBehaviour
         isInteractVisible = visible;
     }
 
-    public void PickupCoin(PlayerCash playerCash)
+    [ServerRpc(RequireOwnership = false)]
+    private void PickupCoinServerRpc(ulong playerId)
     {
         if (pickedUp) return;
 
         pickedUp = true;
 
-        if (playerCash != null)
-        {
-            // Vraag server om cash toe te voegen
-            AddCashServerRpc(playerCash.NetworkObjectId, cashAmount);
-        }
-
-        // Vraag server om de munt te despawnen
-        DespawnCoinServerRpc();
-    }
-
-    [ServerRpc(RequireOwnership = false)]
-    private void AddCashServerRpc(ulong playerId, int amount)
-    {
+        // Voeg cash toe aan de speler
         if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(playerId, out NetworkObject playerNetObj))
         {
             PlayerCash playerCash = playerNetObj.GetComponent<PlayerCash>();
             if (playerCash != null)
-                playerCash.AddCashServerRpc(amount);
+                playerCash.AddCashServerRpc(cashAmount);
         }
-    }
 
-    [ServerRpc(RequireOwnership = false)]
-    private void DespawnCoinServerRpc()
-    {
-        if (pickedUp)
-        {
-            NetworkObject netObj = GetComponent<NetworkObject>();
-            if (netObj != null)
-                netObj.Despawn();
-            else
-                Destroy(gameObject);
-        }
+        // Despawn de munt voor alle clients
+        NetworkObject netObj = GetComponent<NetworkObject>();
+        if (netObj != null)
+            netObj.Despawn();
+        else
+            Destroy(gameObject);
     }
 
     private bool IsCoinNearby(Transform playerTransform)
