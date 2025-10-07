@@ -11,10 +11,7 @@ public class PlayerCash : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        cash.OnValueChanged += (oldValue, newValue) =>
-        {
-            OnCashChanged?.Invoke(oldValue, newValue);
-        };
+        cash.OnValueChanged += (oldValue, newValue) => OnCashChanged?.Invoke(oldValue, newValue);
     }
 
     [ServerRpc(RequireOwnership = false)]

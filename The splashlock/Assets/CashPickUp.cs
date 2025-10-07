@@ -17,27 +17,20 @@ public class CoinPickup : NetworkBehaviour
 
     private TextMeshProUGUI localPlayerInteractText;
 
-    // Static list om alle actieve coins bij te houden
+    // Statische lijst van alle actieve munten
     private static List<CoinPickup> activeCoins = new List<CoinPickup>();
 
-    private void OnEnable()
-    {
-        activeCoins.Add(this);
-    }
-
-    private void OnDisable()
-    {
-        activeCoins.Remove(this);
-    }
+    private void OnEnable() => activeCoins.Add(this);
+    private void OnDisable() => activeCoins.Remove(this);
 
     private void Update()
     {
         if (!IsClient) return;
-        if (NetworkManager.Singleton.LocalClient.PlayerObject == null) return;
 
         var localPlayer = NetworkManager.Singleton.LocalClient.PlayerObject;
+        if (localPlayer == null) return;
 
-        // Vind CashE TMP (include inactive)
+        // Vind CashE TMP
         if (localPlayerInteractText == null)
         {
             localPlayerInteractText = localPlayer
@@ -45,7 +38,7 @@ public class CoinPickup : NetworkBehaviour
                 .FirstOrDefault(t => t.name == "CashE");
 
             if (localPlayerInteractText != null)
-                localPlayerInteractText.gameObject.SetActive(false); // standaard uit
+                localPlayerInteractText.gameObject.SetActive(false);
         }
 
         if (localPlayerInteractText == null) return;
@@ -54,9 +47,9 @@ public class CoinPickup : NetworkBehaviour
         bool coinNearby = IsCoinNearby(localPlayer.transform);
         SetInteractTextVisible(coinNearby);
 
+        // Interactie
         if (coinNearby && Input.GetKeyDown(KeyCode.E))
         {
-            // Vind de dichtstbijzijnde munt
             CoinPickup nearestCoin = activeCoins
                 .Where(c => !c.pickedUp)
                 .OrderBy(c => Vector3.Distance(localPlayer.transform.position, c.transform.position))
@@ -87,10 +80,12 @@ public class CoinPickup : NetworkBehaviour
 
         if (playerCash != null)
         {
+            // Vraag server om cash toe te voegen
             AddCashServerRpc(playerCash.NetworkObjectId, cashAmount);
         }
 
-        DespawnCoin();
+        // Vraag server om de munt te despawnen
+        DespawnCoinServerRpc();
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -100,19 +95,21 @@ public class CoinPickup : NetworkBehaviour
         {
             PlayerCash playerCash = playerNetObj.GetComponent<PlayerCash>();
             if (playerCash != null)
-            {
                 playerCash.AddCashServerRpc(amount);
-            }
         }
     }
 
-    private void DespawnCoin()
+    [ServerRpc(RequireOwnership = false)]
+    private void DespawnCoinServerRpc()
     {
-        NetworkObject netObj = GetComponent<NetworkObject>();
-        if (netObj != null)
-            netObj.Despawn();
-        else
-            Destroy(gameObject);
+        if (pickedUp)
+        {
+            NetworkObject netObj = GetComponent<NetworkObject>();
+            if (netObj != null)
+                netObj.Despawn();
+            else
+                Destroy(gameObject);
+        }
     }
 
     private bool IsCoinNearby(Transform playerTransform)
