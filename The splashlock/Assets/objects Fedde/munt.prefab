@@ -122,7 +122,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
   cashAmount: 100
-  interactDistance: 1
+  interactDistance: 2
 --- !u!65 &-609156544830173074
 BoxCollider:
   m_ObjectHideFlags: 0

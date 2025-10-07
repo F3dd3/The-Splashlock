@@ -49,11 +49,11 @@ public class CharacterMovement : NetworkBehaviour
         if (cameraTransform == null && Camera.main != null)
             cameraTransform = Camera.main.transform;
 
-        // Zorg dat Cursor standaard zichtbaar is
+        // Cursor standaard zichtbaar
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        // ----------------- LOCAL PLAYER UI -----------------
+        // Alleen local player ziet shift lock UI
         if (!IsOwner)
         {
             if (shiftLockSymbol != null)
@@ -64,7 +64,6 @@ public class CharacterMovement : NetworkBehaviour
             if (shiftLockSymbol != null)
                 shiftLockSymbol.enabled = false;
         }
-        // ---------------------------------------------------
     }
 
     private void Update()
@@ -81,7 +80,6 @@ public class CharacterMovement : NetworkBehaviour
             externalForce = Vector3.zero;
     }
 
-    // ----------------- AANGEPASTE SHIFT LOCK -----------------
     private void HandleShiftLock()
     {
         if (Input.GetKeyDown(KeyCode.LeftShift))
@@ -95,7 +93,6 @@ public class CharacterMovement : NetworkBehaviour
                 shiftLockSymbol.enabled = shiftLockEnabled;
         }
     }
-    // ----------------------------------------------------------
 
     private void HandleMovement()
     {

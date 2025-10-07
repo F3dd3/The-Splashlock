@@ -1,35 +1,34 @@
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
 using Unity.Netcode;
 
 public class PlayerCashUI : NetworkBehaviour
 {
-    [Header("Sleep hier je TextMeshProUGUI voor cash")]
     public TextMeshProUGUI cashText;
-
     private PlayerCash playerCash;
 
     public override void OnNetworkSpawn()
     {
-        playerCash = GetComponent<PlayerCash>();
         if (!IsOwner)
         {
-            if (cashText != null)
-                cashText.gameObject.SetActive(false);
+            if (cashText != null) cashText.gameObject.SetActive(false);
             return;
         }
 
-        playerCash.OnCashChanged += UpdateCashUI;
-        UpdateCashUI(0, playerCash.Cash); // Init
+        playerCash = GetComponent<PlayerCash>();
+        if (playerCash == null)
+        {
+            Debug.LogError("[PlayerCashUI] PlayerCash component niet gevonden!");
+            return;
+        }
+
+        playerCash.SubscribeCash(UpdateCashUI);
+
+        // Init UI
+        UpdateCashUI(playerCash.Cash);
     }
 
-    private void OnDestroy()
-    {
-        if (playerCash != null)
-            playerCash.OnCashChanged -= UpdateCashUI;
-    }
-
-    private void UpdateCashUI(int oldValue, int newValue)
+    private void UpdateCashUI(int newValue)
     {
         if (cashText != null)
             cashText.text = $"Cash: ${newValue}";

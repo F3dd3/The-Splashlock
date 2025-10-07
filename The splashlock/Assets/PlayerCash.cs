@@ -4,20 +4,23 @@ using System;
 
 public class PlayerCash : NetworkBehaviour
 {
-    private NetworkVariable<int> cash = new NetworkVariable<int>(0);
+    private NetworkVariable<int> cash = new NetworkVariable<int>(
+        0,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
     public int Cash => cash.Value;
 
-    public event Action<int, int> OnCashChanged;
-
-    public override void OnNetworkSpawn()
+    public void SubscribeCash(Action<int> callback)
     {
-        // Luister naar NetworkVariable veranderingen
-        cash.OnValueChanged += (oldValue, newValue) => OnCashChanged?.Invoke(oldValue, newValue);
+        cash.OnValueChanged += (oldValue, newValue) => callback?.Invoke(newValue);
     }
 
     [ServerRpc(RequireOwnership = false)]
     public void AddCashServerRpc(int amount)
     {
         cash.Value += amount;
+        Debug.Log($"[PlayerCash] +{amount} cash toegevoegd. Huidige cash: {cash.Value}");
     }
 }

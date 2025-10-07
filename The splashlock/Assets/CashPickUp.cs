@@ -1,12 +1,12 @@
-using UnityEngine;
-using TMPro;
+﻿using UnityEngine;
 using Unity.Netcode;
+using TMPro;
 using System.Linq;
 using System.Collections.Generic;
 
 public class CoinPickup : NetworkBehaviour
 {
-    [Header("Cash Amount")]
+    [Header("Cash amount")]
     public int cashAmount = 100;
 
     [Header("Interact afstand")]
@@ -14,10 +14,8 @@ public class CoinPickup : NetworkBehaviour
 
     private bool pickedUp = false;
     private bool isInteractVisible = false;
-
     private TextMeshProUGUI localPlayerInteractText;
 
-    // Lijst van actieve munten
     private static List<CoinPickup> activeCoins = new List<CoinPickup>();
 
     private void OnEnable() => activeCoins.Add(this);
@@ -27,10 +25,13 @@ public class CoinPickup : NetworkBehaviour
     {
         if (!IsClient) return;
 
-        var localPlayer = NetworkManager.Singleton.LocalClient.PlayerObject;
-        if (localPlayer == null) return;
+        var nm = NetworkManager.Singleton;
+        if (!nm.ConnectedClients.TryGetValue(nm.LocalClientId, out var client)) return;
+        if (client?.PlayerObject == null) return;
 
-        // Vind CashE TMP
+        var localPlayer = client.PlayerObject;
+
+        // Vind de interact TextMeshProUGUI "CashE"
         if (localPlayerInteractText == null)
         {
             localPlayerInteractText = localPlayer
@@ -43,11 +44,11 @@ public class CoinPickup : NetworkBehaviour
 
         if (localPlayerInteractText == null) return;
 
-        // Check munten dichtbij
-        bool coinNearby = IsCoinNearby(localPlayer.transform);
+        // Is coin dichtbij?
+        bool coinNearby = activeCoins.Any(c => !c.pickedUp && Vector3.Distance(c.transform.position, localPlayer.transform.position) <= interactDistance);
         SetInteractTextVisible(coinNearby);
 
-        // Interactie
+        // Interactie: stuur alleen een ServerRpc, laat de server alles afhandelen
         if (coinNearby && Input.GetKeyDown(KeyCode.E))
         {
             CoinPickup nearestCoin = activeCoins
@@ -57,13 +58,7 @@ public class CoinPickup : NetworkBehaviour
 
             if (nearestCoin != null)
             {
-                PlayerCash playerCash = localPlayer.GetComponent<PlayerCash>();
-
-                // Vraag de server om munt op te pakken en cash toe te voegen
-                nearestCoin.PickupCoinServerRpc(playerCash.NetworkObjectId);
-
-                // E direct verbergen voor lokale feedback
-                SetInteractTextVisible(false);
+                nearestCoin.PickupCoinServerRpc(nm.LocalClientId);
             }
         }
     }
@@ -78,30 +73,26 @@ public class CoinPickup : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void PickupCoinServerRpc(ulong playerId)
+    private void PickupCoinServerRpc(ulong clientId)
     {
         if (pickedUp) return;
 
         pickedUp = true;
 
-        // Voeg cash toe aan speler via NetworkVariable
-        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(playerId, out NetworkObject playerNetObj))
+        // Cash toevoegen via NetworkVariable op de server
+        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client) && client.PlayerObject != null)
         {
-            PlayerCash playerCash = playerNetObj.GetComponent<PlayerCash>();
+            PlayerCash playerCash = client.PlayerObject.GetComponent<PlayerCash>();
             if (playerCash != null)
-                playerCash.AddCashServerRpc(cashAmount); // Dit triggert OnValueChanged op eigenaar
+            {
+                playerCash.AddCashServerRpc(cashAmount);
+                Debug.Log($"[CoinPickup] {cashAmount} cash toegevoegd aan speler {clientId}");
+            }
         }
 
-        // Despawn coin voor alle clients
+        // Despawn coin voor alle clients via NetworkObject
         NetworkObject netObj = GetComponent<NetworkObject>();
-        if (netObj != null)
-            netObj.Despawn();
-        else
-            Destroy(gameObject);
-    }
-
-    private bool IsCoinNearby(Transform playerTransform)
-    {
-        return activeCoins.Any(c => !c.pickedUp && Vector3.Distance(playerTransform.position, c.transform.position) <= interactDistance);
+        if (netObj != null && netObj.IsSpawned)
+            netObj.Despawn(false); // safe
     }
 }
