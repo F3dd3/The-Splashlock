@@ -1,8 +1,9 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+using Unity.Netcode;
 
 [RequireComponent(typeof(CharacterController))]
-public class CharacterMovement : MonoBehaviour
+public class CharacterMovement : NetworkBehaviour
 {
     [Header("Movement")]
     public float moveSpeed = 3.5f;
@@ -48,15 +49,28 @@ public class CharacterMovement : MonoBehaviour
         if (cameraTransform == null && Camera.main != null)
             cameraTransform = Camera.main.transform;
 
+        // Zorg dat Cursor standaard zichtbaar is
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        if (shiftLockSymbol != null)
-            shiftLockSymbol.enabled = false;
+        // ----------------- LOCAL PLAYER UI -----------------
+        if (!IsOwner)
+        {
+            if (shiftLockSymbol != null)
+                shiftLockSymbol.gameObject.SetActive(false);
+        }
+        else
+        {
+            if (shiftLockSymbol != null)
+                shiftLockSymbol.enabled = false;
+        }
+        // ---------------------------------------------------
     }
 
     private void Update()
     {
+        if (!IsOwner) return; // Alleen local player bestuurt zichzelf en ziet UI
+
         HandleShiftLock();
         HandleMovement();
 
@@ -67,6 +81,7 @@ public class CharacterMovement : MonoBehaviour
             externalForce = Vector3.zero;
     }
 
+    // ----------------- AANGEPASTE SHIFT LOCK -----------------
     private void HandleShiftLock()
     {
         if (Input.GetKeyDown(KeyCode.LeftShift))
@@ -75,10 +90,12 @@ public class CharacterMovement : MonoBehaviour
             Cursor.lockState = shiftLockEnabled ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !shiftLockEnabled;
 
+            // Alleen voor local player UI
             if (shiftLockSymbol != null)
                 shiftLockSymbol.enabled = shiftLockEnabled;
         }
     }
+    // ----------------------------------------------------------
 
     private void HandleMovement()
     {
