@@ -142,7 +142,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 1901201621
+  GlobalObjectIdHash: 591996033
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -168,7 +168,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
-  player: {fileID: 1903631329356986602, guid: 717a4d866fb1e4f42a4c79c793b31d9e, type: 3}
+  player: {fileID: 3663125367498178285, guid: 74e0abfd031bba141a3fe6056ecf3a92, type: 3}
   distance: 5
   height: 2
   sensitivity: 2
