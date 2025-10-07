@@ -18,12 +18,12 @@ public class CoinPickup : NetworkBehaviour
 
     private void Update()
     {
-        if (!IsOwner) return;
+        if (!IsClient || pickedUp) return; // client check
 
         var localPlayer = NetworkManager.Singleton.LocalClient.PlayerObject;
         if (localPlayer == null) return;
 
-        // Vind CashE TMP op de local player (include inactive)
+        // Vind CashE TMP (include inactive)
         if (localPlayerInteractText == null)
         {
             localPlayerInteractText = localPlayer
@@ -46,12 +46,6 @@ public class CoinPickup : NetworkBehaviour
             {
                 PlayerCash playerCash = localPlayer.GetComponent<PlayerCash>();
                 TryPickup(playerCash);
-
-                // Check of er andere munten in de buurt zijn
-                if (!IsOtherCoinNearby(localPlayer.transform))
-                {
-                    SetInteractTextVisible(false);
-                }
             }
         }
         else if (!IsOtherCoinNearby(localPlayer.transform))
@@ -73,16 +67,7 @@ public class CoinPickup : NetworkBehaviour
     {
         if (playerCash == null || pickedUp) return;
 
-        if (IsServer)
-        {
-            playerCash.AddCashServerRpc(cashAmount);
-            pickedUp = true;
-            DespawnCoin();
-        }
-        else
-        {
-            SubmitPickupServerRpc(playerCash.NetworkObjectId);
-        }
+        SubmitPickupServerRpc(playerCash.NetworkObjectId);
     }
 
     [ServerRpc(RequireOwnership = false)]
