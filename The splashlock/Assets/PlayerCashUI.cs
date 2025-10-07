@@ -4,7 +4,7 @@ using Unity.Netcode;
 
 public class PlayerCashUI : NetworkBehaviour
 {
-    [Header("Sleep hier je TextMeshProUGUI")]
+    [Header("Sleep hier je TextMeshProUGUI voor cash")]
     public TextMeshProUGUI cashText;
 
     private PlayerCash playerCash;
@@ -19,10 +19,7 @@ public class PlayerCashUI : NetworkBehaviour
             return;
         }
 
-        // Luister naar cash updates
         playerCash.OnCashChanged += UpdateCashUI;
-
-        // Initiele waarde tonen
         UpdateCashUI(0, playerCash.Cash);
     }
 
