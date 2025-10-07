@@ -11,17 +11,12 @@ public class PlayerCash : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        // Luister naar wijzigingen in de NetworkVariable
-        cash.OnValueChanged += (oldValue, newValue) =>
-        {
-            OnCashChanged?.Invoke(oldValue, newValue);
-        };
+        cash.OnValueChanged += (oldValue, newValue) => OnCashChanged?.Invoke(oldValue, newValue);
     }
 
-    // Server voegt cash toe
     [ServerRpc(RequireOwnership = false)]
     public void AddCashServerRpc(int amount)
     {
-        cash.Value += amount; // NetworkVariable update wordt automatisch naar alle clients gestuurd
+        cash.Value += amount;
     }
 }
