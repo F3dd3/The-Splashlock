@@ -20,7 +20,7 @@ public class PlayerCashUI : NetworkBehaviour
         }
 
         playerCash.OnCashChanged += UpdateCashUI;
-        UpdateCashUI(0, playerCash.Cash);
+        UpdateCashUI(0, playerCash.Cash); // Init
     }
 
     private void OnDestroy()

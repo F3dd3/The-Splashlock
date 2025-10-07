@@ -11,6 +11,7 @@ public class PlayerCash : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        // Luister naar NetworkVariable veranderingen
         cash.OnValueChanged += (oldValue, newValue) => OnCashChanged?.Invoke(oldValue, newValue);
     }
 
