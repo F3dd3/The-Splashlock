@@ -3,13 +3,12 @@ using Unity.Netcode;
 
 public class CoinManager : NetworkBehaviour
 {
-    public GameObject coinPrefab; // prefab moet een NetworkObject hebben
+    public GameObject coinPrefab;
     public Transform[] spawnPoints;
 
     public override void OnNetworkSpawn()
     {
-        // Alleen de server spawn coins
-        if (!IsServer) return;
+        if (!IsServer) return; // Alleen server spawnt coins
 
         foreach (var spawn in spawnPoints)
         {

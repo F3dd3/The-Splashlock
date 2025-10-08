@@ -2,30 +2,32 @@
 using TMPro;
 using Unity.Netcode;
 
-public class PlayerCashUI : NetworkBehaviour
+public class PlayerCashUI : MonoBehaviour
 {
     public TextMeshProUGUI cashText;
     private PlayerCash playerCash;
 
-    public override void OnNetworkSpawn()
+    private void Start()
     {
-        if (!IsOwner)
-        {
-            if (cashText != null) cashText.gameObject.SetActive(false);
-            return;
-        }
+        InvokeRepeating(nameof(FindLocalPlayerCash), 0.5f, 0.5f);
+    }
 
-        playerCash = GetComponent<PlayerCash>();
-        if (playerCash == null)
-        {
-            Debug.LogError("[PlayerCashUI] PlayerCash component niet gevonden!");
-            return;
-        }
+    private void FindLocalPlayerCash()
+    {
+        if (playerCash != null) return;
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsConnectedClient) return;
 
-        playerCash.SubscribeCash(UpdateCashUI);
+        var nm = NetworkManager.Singleton;
+        if (!nm.ConnectedClients.TryGetValue(nm.LocalClientId, out var client)) return;
+        if (client?.PlayerObject == null) return;
 
-        // Init UI
-        UpdateCashUI(playerCash.Cash);
+        playerCash = client.PlayerObject.GetComponent<PlayerCash>();
+        if (playerCash == null) return;
+
+        playerCash.Cash.OnValueChanged += (oldValue, newValue) => UpdateCashUI(newValue);
+        UpdateCashUI(playerCash.Cash.Value);
+
+        CancelInvoke(nameof(FindLocalPlayerCash));
     }
 
     private void UpdateCashUI(int newValue)

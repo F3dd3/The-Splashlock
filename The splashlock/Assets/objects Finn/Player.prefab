@@ -972,6 +972,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
+  Cash:
+    m_InternalValue: 0
 --- !u!4 &5247233457665916695 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}

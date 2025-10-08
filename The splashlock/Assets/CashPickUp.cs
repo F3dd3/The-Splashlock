@@ -31,7 +31,6 @@ public class CoinPickup : NetworkBehaviour
 
         var localPlayer = client.PlayerObject;
 
-        // Vind de interact TextMeshProUGUI "CashE"
         if (localPlayerInteractText == null)
         {
             localPlayerInteractText = localPlayer
@@ -44,11 +43,10 @@ public class CoinPickup : NetworkBehaviour
 
         if (localPlayerInteractText == null) return;
 
-        // Is coin dichtbij?
-        bool coinNearby = activeCoins.Any(c => !c.pickedUp && Vector3.Distance(c.transform.position, localPlayer.transform.position) <= interactDistance);
+        bool coinNearby = activeCoins.Any(c => !c.pickedUp &&
+                                               Vector3.Distance(c.transform.position, localPlayer.transform.position) <= interactDistance);
         SetInteractTextVisible(coinNearby);
 
-        // Interactie: stuur alleen een ServerRpc, laat de server alles afhandelen
         if (coinNearby && Input.GetKeyDown(KeyCode.E))
         {
             CoinPickup nearestCoin = activeCoins
@@ -58,7 +56,7 @@ public class CoinPickup : NetworkBehaviour
 
             if (nearestCoin != null)
             {
-                nearestCoin.PickupCoinServerRpc(nm.LocalClientId);
+                nearestCoin.TryPickupClientSide(nm.LocalClientId);
             }
         }
     }
@@ -72,27 +70,46 @@ public class CoinPickup : NetworkBehaviour
         isInteractVisible = visible;
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    private void PickupCoinServerRpc(ulong clientId)
+    private void TryPickupClientSide(ulong clientId)
     {
         if (pickedUp) return;
 
         pickedUp = true;
 
-        // Cash toevoegen via NetworkVariable op de server
-        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client) && client.PlayerObject != null)
+        // 🔹 Directe clientside feedback
+        var nm = NetworkManager.Singleton;
+        if (nm.ConnectedClients.TryGetValue(clientId, out var client))
         {
-            PlayerCash playerCash = client.PlayerObject.GetComponent<PlayerCash>();
-            if (playerCash != null)
+            var player = client.PlayerObject;
+            if (player != null)
             {
-                playerCash.AddCashServerRpc(cashAmount);
-                Debug.Log($"[CoinPickup] {cashAmount} cash toegevoegd aan speler {clientId}");
+                var playerCash = player.GetComponent<PlayerCash>();
+                if (playerCash != null)
+                {
+                    playerCash.AddCashLocal(cashAmount); // lokale cash wijziging
+                }
             }
         }
 
-        // Despawn coin voor alle clients via NetworkObject
+        gameObject.SetActive(false); // verdwijnt meteen
+
+        // 🔹 Vraag server om bevestiging
+        PickupCoinServerRpc(clientId);
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void PickupCoinServerRpc(ulong clientId)
+    {
+        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client) &&
+            client.PlayerObject != null)
+        {
+            PlayerCash playerCash = client.PlayerObject.GetComponent<PlayerCash>();
+            if (playerCash != null)
+                playerCash.AddCashServerRpc(cashAmount);
+        }
+
         NetworkObject netObj = GetComponent<NetworkObject>();
         if (netObj != null && netObj.IsSpawned)
-            netObj.Despawn(false); // safe
+            netObj.Despawn(true);
     }
 }
