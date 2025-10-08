@@ -76,24 +76,25 @@ public class CoinPickup : NetworkBehaviour
 
         pickedUp = true;
 
-        // 🔹 Directe clientside feedback
         var nm = NetworkManager.Singleton;
-        if (nm.ConnectedClients.TryGetValue(clientId, out var client))
+
+        if (nm.ConnectedClients.TryGetValue(clientId, out var client) && client.PlayerObject != null)
         {
-            var player = client.PlayerObject;
-            if (player != null)
+            var playerCash = client.PlayerObject.GetComponent<PlayerCash>();
+
+            if (playerCash != null)
             {
-                var playerCash = player.GetComponent<PlayerCash>();
-                if (playerCash != null)
+                // Alleen lokale voorspelling voor clients, niet voor host
+                if (!IsServer) // IsClient maar niet host
                 {
-                    playerCash.AddCashLocal(cashAmount); // lokale cash wijziging
+                    playerCash.AddCashLocal(cashAmount);
                 }
             }
         }
 
-        gameObject.SetActive(false); // verdwijnt meteen
+        gameObject.SetActive(false);
 
-        // 🔹 Vraag server om bevestiging
+        // Vraag server om bevestiging
         PickupCoinServerRpc(clientId);
     }
 

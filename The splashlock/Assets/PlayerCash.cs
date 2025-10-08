@@ -16,7 +16,7 @@ public class PlayerCash : NetworkBehaviour
         Debug.Log($"[Server] +{amount} cash toegevoegd aan speler {OwnerClientId}. Totaal: {Cash.Value}");
     }
 
-    // 🔹 Wordt alleen lokaal op client aangeroepen (voor visuele feedback)
+    // Wordt alleen lokaal op client aangeroepen (voor visuele feedback)
     public void AddCashLocal(int amount)
     {
         if (IsOwner)
