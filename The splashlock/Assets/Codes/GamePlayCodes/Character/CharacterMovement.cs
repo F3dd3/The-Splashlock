@@ -11,12 +11,15 @@ public class CharacterMovement : NetworkBehaviour
     public float jumpHeight = 1.5f;
     public float jumpCooldown = 0.5f;
 
-    [Header("Debug")]
-    public Vector3 velocity;
+    [Header("Networked Variables")]
+    public NetworkVariable<Vector3> velocity = new NetworkVariable<Vector3>(
+        new Vector3(0f, -2f, 0f),
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
 
     [HideInInspector] public bool grounded;
-    [HideInInspector] public RaycastHit groundHit;
-    [HideInInspector] public bool onSlowSurface = false;
+    [HideInInspector] public bool onSlowSurface;
 
     private float lastJumpTime;
     private CharacterController controller;
@@ -39,122 +42,68 @@ public class CharacterMovement : NetworkBehaviour
     public float externalForceDecay = 5f;
     private Vector3 externalForce = Vector3.zero;
 
-    public NetworkVariable<Vector3> NetworkVelocity = new NetworkVariable<Vector3>(
-        new Vector3(0, -2f, 0),
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-
-    public float VerticalVelocity => velocity.y;
+    public float VerticalVelocity => velocity.Value.y;
 
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
-    }
-
-    public override void OnNetworkSpawn()
-    {
-        if (IsOwner)
-        {
-            // owner velocity init
-            velocity = new Vector3(0, -2f, 0);
-            NetworkVelocity.Value = velocity;
-        }
-        else
-        {
-            // niet-owner: velocity alvast op -2 zodat player niet door de grond valt
-            velocity = new Vector3(0, -2f, 0);
-        }
-
-        // cameraTransform fix
-        if (IsOwner && cameraTransform == null && Camera.main != null)
-            cameraTransform = Camera.main.transform;
+        velocity.Value = new Vector3(0f, -2f, 0f);
     }
 
     private void Update()
-    {
-        grounded = controller.isGrounded;
-        CheckGroundedExtra();
-
-        if (IsOwner)
-        {
-            HandleShiftLock();
-            HandleMovement();
-
-            // update NetworkVariable
-            NetworkVelocity.Value = velocity;
-
-            // Externe krachten
-            if (externalForce.magnitude > 0.01f)
-                externalForce = Vector3.Lerp(externalForce, Vector3.zero, externalForceDecay * Time.deltaTime);
-            else
-                externalForce = Vector3.zero;
-        }
-        else
-        {
-            // gebruik NetworkVariable voor niet-owner
-            velocity = NetworkVelocity.Value;
-
-            // always grounded fix
-            if (grounded && velocity.y < 0f)
-                velocity.y = -2f;
-        }
-    }
-
-    private void HandleShiftLock()
-    {
-        if (Input.GetKeyDown(KeyCode.LeftShift))
-        {
-            shiftLockEnabled = !shiftLockEnabled;
-            Cursor.lockState = shiftLockEnabled ? CursorLockMode.Locked : CursorLockMode.None;
-            Cursor.visible = !shiftLockEnabled;
-        }
-    }
-
-    private void HandleMovement()
     {
         if (!IsOwner) return;
 
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
+        bool jump = Input.GetButton("Jump");
 
-        Vector3 forward = cameraTransform.forward;
-        Vector3 right = cameraTransform.right;
-        forward.y = 0; right.y = 0;
+        HandleMovement(moveX, moveZ, jump, shiftLockEnabled);
+    }
+
+    private void HandleMovement(float moveX, float moveZ, bool jump, bool shiftLock)
+    {
+        Vector3 forward = cameraTransform != null ? cameraTransform.forward : transform.forward;
+        Vector3 right = cameraTransform != null ? cameraTransform.right : transform.right;
+        forward.y = 0f; right.y = 0f;
         forward.Normalize(); right.Normalize();
 
         Vector3 moveInput = forward * moveZ + right * moveX;
         if (moveInput.magnitude > 1f) moveInput.Normalize();
 
-        // jump
-        if (Input.GetButton("Jump") && grounded && Time.time - lastJumpTime >= jumpCooldown)
+        grounded = controller.isGrounded;
+        CheckGroundedExtra();
+
+        // Jump
+        if (jump && grounded && Time.time - lastJumpTime >= jumpCooldown)
         {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            SetVerticalVelocity(Mathf.Sqrt(jumpHeight * -2f * gravity));
             lastJumpTime = Time.time;
         }
 
-        // gravity
-        if (!grounded) velocity.y += gravity * Time.deltaTime;
-        else if (velocity.y < 0f) velocity.y = -2f;
+        // Gravity
+        if (!grounded)
+            velocity.Value += new Vector3(0, gravity * Time.deltaTime, 0);
+        else if (velocity.Value.y < 0f)
+            velocity.Value = new Vector3(velocity.Value.x, -2f, velocity.Value.z);
 
         float currentSpeed = onSlowSurface ? slowSpeed : moveSpeed;
         Vector3 horizontalMove = moveInput * currentSpeed;
 
-        // slope slide
-        if (grounded && groundHit.collider != null && groundHit.collider.CompareTag("Helling"))
+        // Slope sliding
+        if (grounded && Physics.Raycast(transform.position, Vector3.down, out RaycastHit hit, 1f))
         {
-            float slopeAngle = Vector3.Angle(groundHit.normal, Vector3.up);
+            float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
             if (slopeAngle > slopeLimit)
             {
-                Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, groundHit.normal).normalized;
+                Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, hit.normal).normalized;
                 horizontalMove = slideDir * slopeSlideSpeed;
             }
         }
 
-        Vector3 finalMove = horizontalMove + externalForce + new Vector3(0, velocity.y, 0);
+        Vector3 finalMove = horizontalMove + externalForce + new Vector3(0, velocity.Value.y, 0);
 
-        // rotation
-        if (shiftLockEnabled)
+        if (shiftLock)
             transform.rotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
         else if (moveInput.sqrMagnitude > 0.001f)
         {
@@ -163,17 +112,21 @@ public class CharacterMovement : NetworkBehaviour
         }
 
         controller.Move(finalMove * Time.deltaTime);
+
+        // External forces decay
+        if (externalForce.magnitude > 0.01f)
+            externalForce = Vector3.Lerp(externalForce, Vector3.zero, externalForceDecay * Time.deltaTime);
+        else
+            externalForce = Vector3.zero;
     }
 
     private void CheckGroundedExtra()
     {
         Vector3 origin = transform.position + Vector3.up * (controller.height / 2 - controller.radius);
-
         onSlowSurface = false;
 
         if (Physics.SphereCast(origin, controller.radius, Vector3.down, out RaycastHit hit, groundCheckDistance))
         {
-            groundHit = hit;
             if (hit.collider.CompareTag("Slow"))
                 onSlowSurface = true;
         }
@@ -185,14 +138,16 @@ public class CharacterMovement : NetworkBehaviour
         }
     }
 
+    // --------------------------- Public Methods ---------------------------
     public void SetCamera(Transform camTransform) => cameraTransform = camTransform;
+
     public void AddExternalForce(Vector3 force) => externalForce += force;
+
     public void SetVerticalVelocity(float newVelocity)
     {
-        velocity.y = newVelocity;
+        Vector3 v = velocity.Value;
+        v.y = newVelocity;
+        velocity.Value = v;
         lastJumpTime = Time.time;
-
-        if (IsOwner)
-            NetworkVelocity.Value = velocity;
     }
 }
