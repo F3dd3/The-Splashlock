@@ -8,30 +8,42 @@ public class RagdollControllerSmooth : MonoBehaviour
     public Animator animator;
 
     [Header("Instellingen")]
-    public float ragdollDuration = 5f;    // hoe lang ragdoll actief is
-    public float blendDuration = 2f;      // duur van terugblend
+    public float ragdollDuration = 5f;   // Hoe lang de ragdoll actief blijft
+    public float blendDuration = 2f;     // Hoe lang de blend duurt
 
     [Header("Referenties")]
-    public Transform hipsBone;             // meestal "Hips" of "Pelvis"
+    public Transform hipsBone;           // Meestal "Hips" of "Pelvis"
 
     private Rigidbody[] ragdollRigidbodies;
     private Transform[] bones;
     private bool isRagdoll = false;
 
+    // Huidige ragdoll data
     private Vector3[] savedLocalPositions;
     private Quaternion[] savedLocalRotations;
 
+    // Originele pre-ragdoll data
+    private Vector3[] originalLocalPositions;
+    private Quaternion[] originalLocalRotations;
+    private Vector3 originalRootPosition;
+    private Quaternion originalRootRotation;
+
+    private Rigidbody rootRigidbody;
+    private Collider rootCollider;
+
     void Awake()
     {
-        // Verzamel alle rigdoll rigidbodies en bones
         ragdollRigidbodies = GetComponentsInChildren<Rigidbody>();
         bones = new Transform[ragdollRigidbodies.Length];
         for (int i = 0; i < ragdollRigidbodies.Length; i++)
             bones[i] = ragdollRigidbodies[i].transform;
 
-        // Automatische hips detectie voor humanoids
+        // Automatische hips detectie
         if (animator != null && hipsBone == null && animator.isHuman)
             hipsBone = animator.GetBoneTransform(HumanBodyBones.Hips);
+
+        rootRigidbody = GetComponent<Rigidbody>();
+        rootCollider = GetComponent<Collider>();
 
         SetRagdoll(false);
     }
@@ -44,8 +56,25 @@ public class RagdollControllerSmooth : MonoBehaviour
 
     private void ActivateRagdoll()
     {
-        if (animator == null || hipsBone == null) return;
+        if (animator == null || hipsBone == null)
+        {
+            Debug.LogWarning("Animator of hipsBone ontbreekt!");
+            return;
+        }
 
+        // 1️⃣ Sla originele positie/rotatie op
+        originalRootPosition = transform.position;
+        originalRootRotation = transform.rotation;
+
+        originalLocalPositions = new Vector3[bones.Length];
+        originalLocalRotations = new Quaternion[bones.Length];
+        for (int i = 0; i < bones.Length; i++)
+        {
+            originalLocalPositions[i] = bones[i].localPosition;
+            originalLocalRotations[i] = bones[i].localRotation;
+        }
+
+        // 2️⃣ Start ragdoll
         isRagdoll = true;
         SetRagdoll(true);
         StartCoroutine(ReturnToAnimationAfterDelay(ragdollDuration));
@@ -55,10 +84,10 @@ public class RagdollControllerSmooth : MonoBehaviour
     {
         yield return new WaitForSeconds(delay);
         if (isRagdoll)
-            StartCoroutine(BlendBackToAnimation());
+            StartCoroutine(BlendBackToOriginalPose());
     }
 
-    private IEnumerator BlendBackToAnimation()
+    private IEnumerator BlendBackToOriginalPose()
     {
         // 1️⃣ Sla ragdoll pose lokaal op
         savedLocalPositions = new Vector3[bones.Length];
@@ -69,43 +98,33 @@ public class RagdollControllerSmooth : MonoBehaviour
             savedLocalRotations[i] = bones[i].localRotation;
         }
 
-        // 2️⃣ Sla ragdoll hips wereldpositie op
-        Vector3 ragdollHipsWorldPos = hipsBone.position;
-        Quaternion ragdollHipsWorldRot = hipsBone.rotation;
-
-        // 3️⃣ Zet animator terug aan (bevries pose)
+        // 2️⃣ Zet animator weer aan
         SetRagdoll(false);
         animator.Rebind();
         animator.Update(0f);
 
-        // 4️⃣ Bereken offset om root te verplaatsen zodat hips gelijk blijven
-        Vector3 animatorHipsWorldPos = hipsBone.position;
-        Quaternion animatorHipsWorldRot = hipsBone.rotation;
-
-        Vector3 positionOffset = ragdollHipsWorldPos - animatorHipsWorldPos;
-        Quaternion rotationOffset = ragdollHipsWorldRot * Quaternion.Inverse(animatorHipsWorldRot);
-
-        transform.position += positionOffset;
-        transform.rotation = rotationOffset * transform.rotation;
-
-        // 5️⃣ Blend bones lokaal terug naar animator pose
+        // 3️⃣ Blend lokaal terug naar originele pre-ragdoll pose
         float timer = 0f;
         while (timer < blendDuration)
         {
             float t = timer / blendDuration;
             for (int i = 0; i < bones.Length; i++)
             {
-                bones[i].localPosition = Vector3.Lerp(savedLocalPositions[i], bones[i].localPosition, t);
-                bones[i].localRotation = Quaternion.Slerp(savedLocalRotations[i], bones[i].localRotation, t);
+                bones[i].localPosition = Vector3.Lerp(savedLocalPositions[i], originalLocalPositions[i], t);
+                bones[i].localRotation = Quaternion.Slerp(savedLocalRotations[i], originalLocalRotations[i], t);
             }
 
             timer += Time.deltaTime;
             yield return null;
         }
 
-        // 6️⃣ Forceer animator pose na blend zodat hij exact overeenkomt
+        // 4️⃣ Zet root exact terug naar waar hij stond
+        transform.position = originalRootPosition;
+        transform.rotation = originalRootRotation;
+
+        // 5️⃣ Forceer animatie-pose na herstel
         animator.Rebind();
-        yield return null;             // 1 frame wachten
+        yield return null;
         animator.Update(Time.deltaTime);
 
         isRagdoll = false;
@@ -116,18 +135,20 @@ public class RagdollControllerSmooth : MonoBehaviour
         if (animator != null)
             animator.enabled = !active;
 
+        if (rootRigidbody != null)
+            rootRigidbody.isKinematic = true;
+
+        if (rootCollider != null)
+            rootCollider.enabled = !active;
+
         foreach (Rigidbody rb in ragdollRigidbodies)
         {
             if (rb == null) continue;
 
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
             rb.isKinematic = !active;
             rb.detectCollisions = active;
-
-            if (!active)
-            {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-            }
         }
 
         if (!active && animator != null)
