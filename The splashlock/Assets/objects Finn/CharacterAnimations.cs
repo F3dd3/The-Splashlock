@@ -1,11 +1,22 @@
 using UnityEngine;
+using Unity.Netcode;
 
 [RequireComponent(typeof(Animator))]
 [RequireComponent(typeof(CharacterMovement))]
-public class PlayerAnimation : MonoBehaviour
+public class PlayerAnimation : NetworkBehaviour
 {
     private Animator animator;
     private CharacterMovement characterMovement;
+
+    // --- Netcode variabelen voor synchronisatie ---
+    private NetworkVariable<bool> isRunning = new NetworkVariable<bool>(
+        false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+    private NetworkVariable<bool> isJumping = new NetworkVariable<bool>(
+        false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+    private NetworkVariable<bool> isFalling = new NetworkVariable<bool>(
+        false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+    private NetworkVariable<float> moveSpeed = new NetworkVariable<float>(
+        0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
     void Start()
     {
@@ -15,29 +26,44 @@ public class PlayerAnimation : MonoBehaviour
 
     void Update()
     {
-        if (animator == null || characterMovement == null) return;
+        if (animator == null || characterMovement == null)
+            return;
 
-        // Alleen animaties voor lokale speler
-        if (!characterMovement.IsOwner) return;
+        if (IsOwner)
+        {
+            HandleLocalAnimation();
+        }
 
-        // Input
+        // Sync met de waarden die over het netwerk komen
+        ApplyNetworkedAnimation();
+    }
+
+    // ------------------ Lokale speler berekent animatie ------------------
+    private void HandleLocalAnimation()
+    {
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
         Vector3 moveInput = new Vector3(horizontal, 0f, vertical);
 
-        // Run
-        bool isRunning = moveInput.magnitude > 0.1f && characterMovement.grounded;
-        animator.SetBool("isRunning", isRunning);
+        bool running = moveInput.magnitude > 0.1f && characterMovement.grounded;
 
-        // Jump
-        bool isJumping = !characterMovement.grounded && characterMovement.VerticalVelocity > 0.1f;
-        animator.SetBool("isJumping", isJumping);
+        float verticalVel = characterMovement.VerticalVelocity;
+        bool jumping = !characterMovement.grounded && verticalVel > 0.1f;
+        bool falling = !characterMovement.grounded && verticalVel < -0.1f;
 
-        // Fall
-        bool isFalling = !characterMovement.grounded && characterMovement.VerticalVelocity < -0.1f;
-        animator.SetBool("isFalling", isFalling);
+        // Update NetworkVariables
+        isRunning.Value = running;
+        isJumping.Value = jumping;
+        isFalling.Value = falling;
+        moveSpeed.Value = moveInput.magnitude;
+    }
 
-        // Movement magnitude voor blend tree
-        animator.SetFloat("moveSpeed", moveInput.magnitude);
+    // ------------------ Wordt door iedereen uitgevoerd ------------------
+    private void ApplyNetworkedAnimation()
+    {
+        animator.SetBool("isRunning", isRunning.Value);
+        animator.SetBool("isJumping", isJumping.Value);
+        animator.SetBool("isFalling", isFalling.Value);
+        animator.SetFloat("moveSpeed", moveSpeed.Value);
     }
 }

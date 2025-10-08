@@ -636,10 +636,10 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}
       insertIndex: -1
-      addedObject: {fileID: -1597230253291876702}
+      addedObject: {fileID: -5662115894276466267}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}
       insertIndex: -1
-      addedObject: {fileID: -5662115894276466267}
+      addedObject: {fileID: -1597230253291876702}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8672890222862384002}
@@ -670,18 +670,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}
   m_PrefabInstance: {fileID: 5718254836471159036}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &-1597230253291876702
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4871271555852199341}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ceb2baf97ae165e4c9a6df1897cc82fc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &-5662115894276466267
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -707,6 +695,19 @@ MonoBehaviour:
   AutoObjectParentSync: 1
   SyncOwnerTransformWhenParented: 1
   AllowOwnerToParent: 0
+--- !u!114 &-1597230253291876702
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4871271555852199341}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ceb2baf97ae165e4c9a6df1897cc82fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!95 &8672890222862384002
 Animator:
   serializedVersion: 7
@@ -747,7 +748,8 @@ MonoBehaviour:
   gravity: -20
   jumpHeight: 1.5
   jumpCooldown: 0.5
-  velocity: {x: 0, y: 0, z: 0}
+  velocity:
+    m_InternalValue: {x: 0, y: -2, z: 0}
   grounded: 0
   onSlowSurface: 0
   cameraTransform: {fileID: 5176748956025412027, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
@@ -757,8 +759,6 @@ MonoBehaviour:
   slopeSlideSpeed: 3
   slopeLimit: 20
   externalForceDecay: 5
-  NetworkVelocity:
-    m_InternalValue: {x: 0, y: -2, z: 0}
 --- !u!114 &7977197145192358774
 MonoBehaviour:
   m_ObjectHideFlags: 0
