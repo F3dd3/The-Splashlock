@@ -485,6 +485,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 0da1a9ba937396046857830cab0d54ac, type: 3}
+--- !u!114 &234045393112544785 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3535012317650503521, guid: 0da1a9ba937396046857830cab0d54ac, type: 3}
+  m_PrefabInstance: {fileID: 3616845641616617840}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!224 &2474646597277956453 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1181675978676226069, guid: 0da1a9ba937396046857830cab0d54ac, type: 3}
@@ -754,6 +765,7 @@ MonoBehaviour:
   onSlowSurface: 0
   cameraTransform: {fileID: 5176748956025412027, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
   shiftLockEnabled: 0
+  shiftLockImage: {fileID: 234045393112544785}
   groundCheckDistance: 2
   slowCheckDistance: 2
   slopeSlideSpeed: 3

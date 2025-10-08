@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 using Unity.Netcode;
 
 [RequireComponent(typeof(CharacterController))]
@@ -29,6 +30,7 @@ public class CharacterMovement : NetworkBehaviour
 
     [Header("Shift Lock")]
     public bool shiftLockEnabled = false;
+    public RawImage shiftLockImage; // sleep de child RawImage in inspector
 
     [Header("Ground Check")]
     public float groundCheckDistance = 0.3f;
@@ -48,17 +50,38 @@ public class CharacterMovement : NetworkBehaviour
     {
         controller = GetComponent<CharacterController>();
         velocity.Value = new Vector3(0f, -2f, 0f);
+
+        // Zet image uit standaard, alleen eigenaar kan aanzetten
+        if (shiftLockImage != null)
+            shiftLockImage.enabled = false;
     }
 
     private void Update()
     {
+        // Alleen eigenaar mag input verwerken
         if (!IsOwner) return;
+
+        HandleShiftLock();
 
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
         bool jump = Input.GetButton("Jump");
 
         HandleMovement(moveX, moveZ, jump, shiftLockEnabled);
+    }
+
+    private void HandleShiftLock()
+    {
+        if (Input.GetKeyDown(KeyCode.LeftShift))
+        {
+            shiftLockEnabled = !shiftLockEnabled;
+            Cursor.lockState = shiftLockEnabled ? CursorLockMode.Locked : CursorLockMode.None;
+            Cursor.visible = !shiftLockEnabled;
+
+            // Alleen eigenaar mag de image aan/uit zetten
+            if (shiftLockImage != null)
+                shiftLockImage.enabled = shiftLockEnabled;
+        }
     }
 
     private void HandleMovement(float moveX, float moveZ, bool jump, bool shiftLock)
