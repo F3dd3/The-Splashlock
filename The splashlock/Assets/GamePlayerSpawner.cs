@@ -16,23 +16,15 @@ public class GamePlayerSpawner : MonoBehaviour
     private void OnEnable()
     {
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
-        {
-            // Luister naar Netcode scene load events (belangrijk!)
             NetworkManager.Singleton.SceneManager.OnLoadEventCompleted += OnLoadEventCompleted;
-        }
     }
 
     private void OnDisable()
     {
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
-        {
             NetworkManager.Singleton.SceneManager.OnLoadEventCompleted -= OnLoadEventCompleted;
-        }
     }
 
-    /// <summary>
-    /// Wordt aangeroepen zodra ALLE clients de scene hebben geladen.
-    /// </summary>
     private void OnLoadEventCompleted(string sceneName, LoadSceneMode loadSceneMode, List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
     {
         if (!NetworkManager.Singleton.IsServer) return;
@@ -40,11 +32,8 @@ public class GamePlayerSpawner : MonoBehaviour
         if (sceneName == "GameScene")
         {
             Debug.Log("[Server] Alle clients hebben GameScene geladen. Spawning players...");
-
             foreach (ulong clientId in clientsCompleted)
-            {
                 SpawnPlayerForClient(clientId);
-            }
         }
     }
 
@@ -57,8 +46,6 @@ public class GamePlayerSpawner : MonoBehaviour
         }
 
         Transform spawn = GetNextSpawnPoint();
-
-        // 180 graden draaien bij spawn
         Quaternion spawnRot = spawn.rotation * Quaternion.Euler(0f, 180f, 0f);
         GameObject player = Instantiate(playerPrefab, spawn.position, spawnRot);
 
@@ -75,18 +62,19 @@ public class GamePlayerSpawner : MonoBehaviour
         // Alleen owner camera activeren
         CameraMovement cam = player.GetComponentInChildren<CameraMovement>();
         if (cam != null)
-            cam.gameObject.SetActive(clientId == NetworkManager.Singleton.LocalClientId);
+            cam.SetOwnerCamera(clientId == NetworkManager.Singleton.LocalClientId);
 
         // Zet cameraTransform in CharacterMovement
         CharacterMovement cm = player.GetComponent<CharacterMovement>();
         if (cm != null && cam != null)
-            cm.cameraTransform = cam.transform;
+            cm.SetCamera(cam.transform);
     }
 
     private Transform GetNextSpawnPoint()
     {
         if (spawnPoints.Length == 0)
         {
+            Debug.LogWarning("Geen spawnpoints ingesteld. Dummy spawnpoint wordt gebruikt.");
             GameObject dummy = new GameObject("SpawnPoint");
             return dummy.transform;
         }
