@@ -72,6 +72,9 @@ PrefabInstance:
       addedObject: {fileID: 8176386724458692050}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ff2fe23c72d5ebc47ba2deb95ef7f241, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 4629741253993211396}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ff2fe23c72d5ebc47ba2deb95ef7f241, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 755761374406214241}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ff2fe23c72d5ebc47ba2deb95ef7f241, type: 3}
       insertIndex: -1
@@ -84,9 +87,6 @@ PrefabInstance:
       addedObject: {fileID: 1706081795609700011}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ff2fe23c72d5ebc47ba2deb95ef7f241, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4629741253993211396}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ff2fe23c72d5ebc47ba2deb95ef7f241, type: 3}
-      insertIndex: -1
       addedObject: {fileID: -7401888362745231842}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ff2fe23c72d5ebc47ba2deb95ef7f241, type: 3}
       insertIndex: -1
@@ -94,6 +94,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ff2fe23c72d5ebc47ba2deb95ef7f241, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3055746766430967556}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ff2fe23c72d5ebc47ba2deb95ef7f241, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5248583507634343463}
   m_SourcePrefab: {fileID: 100100000, guid: ff2fe23c72d5ebc47ba2deb95ef7f241, type: 3}
 --- !u!1 &4151713787948508247 stripped
 GameObject:
@@ -134,6 +137,31 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3959251df559ff941aca1fcb1e60ff69, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &4629741253993211396
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4151713787948508247}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GlobalObjectIdHash: 1453858709
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!114 &755761374406214241
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -146,6 +174,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cdfa000d5988c98408e1059aae25816e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
   moveSpeed: 3.5
   slowSpeed: 1
   gravity: -20
@@ -217,31 +246,6 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0.87, z: 0}
---- !u!114 &4629741253993211396
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4151713787948508247}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 1453858709
-  InScenePlacedSourceGlobalObjectIdHash: 0
-  DeferredDespawnTick: 0
-  Ownership: 1
-  AlwaysReplicateAsRoot: 0
-  SynchronizeTransform: 1
-  ActiveSceneSynchronization: 0
-  SceneMigrationSynchronization: 1
-  SpawnWithObservers: 1
-  DontDestroyWithOwner: 0
-  AutoObjectParentSync: 1
-  SyncOwnerTransformWhenParented: 1
-  AllowOwnerToParent: 0
 --- !u!114 &-7401888362745231842
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -332,3 +336,33 @@ MonoBehaviour:
   UseRigidBodyForMotion: 0
   AutoUpdateKinematicState: 1
   AutoSetKinematicOnDespawn: 1
+--- !u!114 &5248583507634343463
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4151713787948508247}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1acdf2e07a1bd543aebeb0e214117cd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  moveSpeed: 3.5
+  slowSpeed: 1
+  gravity: -20
+  jumpHeight: 1.5
+  jumpCooldown: 0.5
+  velocity: {x: 0, y: 0, z: 0}
+  lastJumpTime: 0
+  controller: {fileID: 0}
+  cameraTransform: {fileID: 0}
+  shiftLockEnabled: 0
+  shiftLockSymbol: {fileID: 0}
+  groundCheckDistance: 2
+  slopeSlideSpeed: 3
+  slopeLimit: 20
+  slowCheckDistance: 2
+  onSlowSurface: 0
+  externalForceDecay: 5
+  externalForce: {x: 0, y: 0, z: 0}

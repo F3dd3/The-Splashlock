@@ -1062,7 +1062,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animator: {fileID: 8372602678987158262}
   ragdollDuration: 5
-  blendDuration: 2
+  blendDuration: 1
   hipsBone: {fileID: 8309979760839688887}
 --- !u!114 &6223255457269449666
 MonoBehaviour:
