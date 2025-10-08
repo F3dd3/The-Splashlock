@@ -1,31 +1,38 @@
 ﻿using UnityEngine;
 
-public class PlayerAnimation2 : MonoBehaviour
+[RequireComponent(typeof(Animator))]
+[RequireComponent(typeof(CharacterMovement_Local))]
+public class PlayerAnimation_Local : MonoBehaviour
 {
     private Animator animator;
-    private CharacterMovement characterMovement;
+    private CharacterMovement_Local characterMovement;
 
     void Start()
     {
         animator = GetComponent<Animator>();
-        characterMovement = GetComponent<CharacterMovement>();
+        characterMovement = GetComponent<CharacterMovement_Local>();
     }
 
     void Update()
     {
         if (animator == null || characterMovement == null) return;
 
-        // Input uitlezen
+        // Movement input uitlezen
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
         Vector3 moveInput = new Vector3(horizontal, 0f, vertical);
 
-        // Controleer lopen
-        bool isRunning = moveInput.magnitude > 0.01f && characterMovement.grounded;
+        // Lopen/running animatie
+        bool isRunning = moveInput.magnitude > 0.01f && characterMovement.controller.isGrounded;
         animator.SetBool("isRunning", isRunning);
 
-        // Controleer springen
-        bool isJumping = !characterMovement.grounded; // springt als niet op de grond
+        // Spring animatie
+        bool isJumping = !characterMovement.controller.isGrounded;
         animator.SetBool("isJumping", isJumping);
+
+        // Optioneel: val animatie
+        bool isFalling = characterMovement.controller.velocity.y < -0.1f && !characterMovement.controller.isGrounded;
+        animator.SetBool("isFalling", isFalling);
     }
 }
+
