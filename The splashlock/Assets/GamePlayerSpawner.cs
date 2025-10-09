@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.SceneManagement;
+using System.Collections;
 using System.Collections.Generic;
 
 public class GamePlayerSpawner : MonoBehaviour
@@ -12,56 +13,93 @@ public class GamePlayerSpawner : MonoBehaviour
     public Transform[] spawnPoints;
 
     private Dictionary<ulong, int> clientSpawnIndex = new Dictionary<ulong, int>();
+    private bool spawningInProgress = false;
 
     private void OnEnable()
     {
-        if (NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
+        if (NetworkManager.Singleton == null) return;
+
+        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        if (NetworkManager.Singleton.SceneManager != null)
             NetworkManager.Singleton.SceneManager.OnLoadEventCompleted += OnLoadEventCompleted;
     }
 
     private void OnDisable()
     {
-        if (NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
+        if (NetworkManager.Singleton == null) return;
+
+        NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+        if (NetworkManager.Singleton.SceneManager != null)
             NetworkManager.Singleton.SceneManager.OnLoadEventCompleted -= OnLoadEventCompleted;
     }
 
-    private void OnLoadEventCompleted(string sceneName, LoadSceneMode loadSceneMode, List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
+    private void OnClientConnected(ulong clientId)
+    {
+        Debug.Log($"Client {clientId} connected to server.");
+    }
+
+    private void OnLoadEventCompleted(string sceneName, LoadSceneMode loadSceneMode,
+        List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
     {
         if (!NetworkManager.Singleton.IsServer) return;
         if (sceneName != "GameScene") return;
 
-        Debug.Log("[Server] Alle clients hebben GameScene geladen. Spawning players...");
+        if (!spawningInProgress)
+            StartCoroutine(SpawnPlayersSequentiallyWithDelay(clientsCompleted));
+    }
 
-        int spawnCounter = 0;
-        foreach (ulong clientId in clientsCompleted)
+    private IEnumerator SpawnPlayersSequentiallyWithDelay(List<ulong> clientsCompleted)
+    {
+        spawningInProgress = true;
+
+        Debug.Log("[Server] Waiting a bit before spawning players...");
+        yield return new WaitForSeconds(1.0f); // <<--- wacht tot alles echt geladen is
+
+        Debug.Log("[Server] Spawning players sequentially...");
+
+        for (int i = 0; i < clientsCompleted.Count; i++)
         {
-            clientSpawnIndex[clientId] = spawnCounter++;
-            SpawnPlayerForClient(clientId, clientSpawnIndex[clientId]);
+            ulong clientId = clientsCompleted[i];
+            int spawnIndex = i % spawnPoints.Length;
+            clientSpawnIndex[clientId] = spawnIndex;
+
+            yield return new WaitForSeconds(0.3f); // korte delay tussen spelers
+            SpawnPlayerForClient(clientId, spawnIndex);
         }
+
+        spawningInProgress = false;
     }
 
     private void SpawnPlayerForClient(ulong clientId, int spawnIndex)
     {
         if (playerPrefab == null)
         {
-            Debug.LogError("Player prefab niet ingesteld!");
+            Debug.LogError("❌ Player prefab niet ingesteld!");
             return;
         }
 
-        Transform spawn = spawnPoints.Length > 0 ? spawnPoints[spawnIndex % spawnPoints.Length] : new GameObject("DummySpawn").transform;
-        Quaternion spawnRot = spawn.rotation * Quaternion.Euler(0f, 180f, 0f);
-        GameObject player = Instantiate(playerPrefab, spawn.position, spawnRot);
+        if (spawnPoints.Length == 0)
+        {
+            Debug.LogError("❌ Geen spawnpoints ingesteld in inspector!");
+            return;
+        }
 
-        // Zet spawnpoint info in Die component
-        Die dieComp = player.GetComponent<Die>();
-        if (dieComp != null)
-            dieComp.respawnPoint = spawn;
+        Transform spawn = spawnPoints[spawnIndex];
+        Vector3 spawnPos = spawn.position + Vector3.up * 0.5f; // iets boven platform
+        Quaternion spawnRot = spawn.rotation * Quaternion.Euler(0f, 180f, 0f);
+
+        GameObject player = Instantiate(playerPrefab, spawnPos, spawnRot);
 
         NetworkObject netObj = player.GetComponent<NetworkObject>();
         if (netObj != null)
+        {
             netObj.SpawnAsPlayerObject(clientId, true);
+            Debug.Log($"✅ Spawned player {clientId} at {spawn.name}");
+        }
         else
-            Debug.LogError("Player prefab mist NetworkObject component!");
+        {
+            Debug.LogError("❌ Player prefab mist NetworkObject component!");
+        }
 
         // Camera setup
         CameraMovement cam = player.GetComponentInChildren<CameraMovement>();
@@ -71,5 +109,10 @@ public class GamePlayerSpawner : MonoBehaviour
         CharacterMovement cm = player.GetComponent<CharacterMovement>();
         if (cm != null && cam != null)
             cm.SetCamera(cam.transform);
+
+        // Spawn protectie aan Die-component doorgeven
+        Die die = player.GetComponent<Die>();
+        if (die != null)
+            die.SetSpawnProtection(spawn.position + Vector3.up * 0.5f);
     }
 }
