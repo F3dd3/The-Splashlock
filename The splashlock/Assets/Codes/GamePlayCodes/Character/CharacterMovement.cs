@@ -17,7 +17,7 @@ public class CharacterMovement : NetworkBehaviour
     public float smashCooldown = 1f;
     private float lastSmashTime;
 
-    [Header("Networked Variables")]
+    [Header("Network Variables")]
     public NetworkVariable<Vector3> velocity = new NetworkVariable<Vector3>(
         new Vector3(0f, -2f, 0f),
         NetworkVariableReadPermission.Everyone,
@@ -35,7 +35,7 @@ public class CharacterMovement : NetworkBehaviour
 
     [Header("Shift Lock")]
     public bool shiftLockEnabled = false;
-    public RawImage shiftLockImage; // sleep de child RawImage in inspector
+    public RawImage shiftLockImage;
 
     [Header("Ground Check")]
     public float groundCheckDistance = 0.3f;
@@ -49,6 +49,8 @@ public class CharacterMovement : NetworkBehaviour
     public float externalForceDecay = 5f;
     private Vector3 externalForce = Vector3.zero;
 
+    private float spawnTime;
+
     public float VerticalVelocity => velocity.Value.y;
 
     private void Awake()
@@ -58,6 +60,11 @@ public class CharacterMovement : NetworkBehaviour
 
         if (shiftLockImage != null)
             shiftLockImage.enabled = false;
+    }
+
+    private void Start()
+    {
+        spawnTime = Time.time;
     }
 
     private void Update()
@@ -98,7 +105,6 @@ public class CharacterMovement : NetworkBehaviour
 
         grounded = controller.isGrounded;
 
-        // Check afzonderlijk slow en smash
         CheckSlowSurfaces();
         CheckSmashHit();
 
@@ -141,22 +147,19 @@ public class CharacterMovement : NetworkBehaviour
 
         controller.Move(finalMove * Time.deltaTime);
 
-        // External forces decay
         if (externalForce.magnitude > 0.01f)
             externalForce = Vector3.Lerp(externalForce, Vector3.zero, externalForceDecay * Time.deltaTime);
         else
             externalForce = Vector3.zero;
     }
 
-    // ---------------------- LOSSE CHECKS ----------------------
-
-    // Alleen voor slow & smash (snelheid aanpassen)
     private void CheckSlowSurfaces()
     {
         onSlowSurface = false;
 
-        Vector3 origin = transform.position + Vector3.up * (controller.height / 2 - controller.radius);
+        if (Time.time - spawnTime < 0.1f) return; // geen slow direct na spawn
 
+        Vector3 origin = transform.position + Vector3.up * (controller.height / 2 - controller.radius);
         if (Physics.SphereCast(origin, controller.radius, Vector3.down, out RaycastHit hit, slowCheckDistance))
         {
             if (hit.collider.CompareTag("Slow") || hit.collider.CompareTag("Smash"))
@@ -164,30 +167,24 @@ public class CharacterMovement : NetworkBehaviour
         }
     }
 
-    // Alleen voor smash impact (wegslaan)
     private void CheckSmashHit()
     {
-        // We casten iets korter en alleen voor smash hit detection
-        Vector3 origin = transform.position + Vector3.up * (controller.height / 2);
-        if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, groundCheckDistance + 0.1f))
-        {
-            if (hit.collider.CompareTag("Smash"))
-            {
-                if (Time.time - lastSmashTime >= smashCooldown)
-                {
-                    lastSmashTime = Time.time;
+        if (Time.time - spawnTime < 0.1f) return; // geen smash direct na spawn
 
-                    // Richting: van smash oppervlak af + beetje omhoog
-                    Vector3 dir = (transform.position - hit.point).normalized;
-                    dir.y = 0.5f;
-                    AddExternalForce(dir * smashForce);
-                }
+        Vector3 origin = transform.position + Vector3.up * (controller.height / 2);
+        if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 0.6f))
+        {
+            if (hit.collider.CompareTag("Smash") && Time.time - lastSmashTime >= smashCooldown)
+            {
+                lastSmashTime = Time.time;
+                Vector3 dir = (transform.position - hit.point).normalized;
+                dir.y = 0.5f;
+                AddExternalForce(dir * smashForce);
             }
         }
     }
 
-    // ---------------------- PUBLIC METHODS ----------------------
-
+    // -------------------- PUBLIC METHODS --------------------
     public void SetCamera(Transform camTransform) => cameraTransform = camTransform;
     public void AddExternalForce(Vector3 force) => externalForce += force;
 

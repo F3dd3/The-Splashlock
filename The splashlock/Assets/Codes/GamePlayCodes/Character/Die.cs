@@ -3,61 +3,58 @@
 public class Die : MonoBehaviour
 {
     [Header("Respawn Settings")]
-    public float respawnHeight = 2f;       // Hoeveel boven "Start" punt spawnen
-    public float checkDistance = 1f;       // Hoe ver de raycast onder de speler checkt
-    public LayerMask waterLayer;           // Layer voor water (zorg dat je Water objecten hierin zitten)
+    public float respawnHeight = 2f;
+    public float checkDistance = 1f;
+    public LayerMask waterLayer;
+
+    [HideInInspector]
+    public Transform respawnPoint; // ingesteld door GamePlayerSpawner
 
     private CharacterController controller;
 
-    void Start()
+    private void Start()
     {
         controller = GetComponent<CharacterController>();
     }
 
-    void Update()
+    private void Update()
     {
         CheckWaterBelow();
     }
 
-    void CheckWaterBelow()
+    private void CheckWaterBelow()
     {
-        Vector3 origin = transform.position + Vector3.up * 0.1f; // iets boven de voeten
-        Ray ray = new Ray(origin, Vector3.down);
-        RaycastHit hit;
-
-        if (Physics.Raycast(ray, out hit, checkDistance, waterLayer))
+        Vector3 origin = transform.position + Vector3.up * 0.1f;
+        if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, checkDistance, waterLayer))
         {
             if (hit.collider.CompareTag("Water"))
-            {
                 Respawn();
-            }
         }
-
-        // Debug zichtbaar maken in Scene
         Debug.DrawRay(origin, Vector3.down * checkDistance, Color.blue);
     }
 
-    void Respawn()
+    private void Respawn()
     {
-        GameObject startObj = GameObject.FindGameObjectWithTag("Start");
-        if (startObj != null)
+        if (respawnPoint == null)
         {
-            Vector3 respawnPos = startObj.transform.position + Vector3.up * respawnHeight;
-
-            if (controller != null)
-            {
-                controller.enabled = false;
-                transform.position = respawnPos;
-                controller.enabled = true;
-            }
+            GameObject startObj = GameObject.FindGameObjectWithTag("Start");
+            if (startObj != null)
+                respawnPoint = startObj.transform;
             else
-            {
-                transform.position = respawnPos;
-            }
+                return;
+        }
+
+        Vector3 respawnPos = respawnPoint.position + Vector3.up * respawnHeight;
+
+        if (controller != null)
+        {
+            controller.enabled = false;
+            transform.position = respawnPos;
+            controller.enabled = true;
         }
         else
         {
-            Debug.LogWarning("⚠️ Geen object met tag 'Start' gevonden!");
+            transform.position = respawnPos;
         }
     }
 }

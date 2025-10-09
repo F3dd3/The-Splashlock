@@ -11,7 +11,7 @@ public class GamePlayerSpawner : MonoBehaviour
     [Header("Spawnpoints in Scene")]
     public Transform[] spawnPoints;
 
-    private int nextSpawnIndex = 0;
+    private Dictionary<ulong, int> clientSpawnIndex = new Dictionary<ulong, int>();
 
     private void OnEnable()
     {
@@ -28,16 +28,19 @@ public class GamePlayerSpawner : MonoBehaviour
     private void OnLoadEventCompleted(string sceneName, LoadSceneMode loadSceneMode, List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
     {
         if (!NetworkManager.Singleton.IsServer) return;
+        if (sceneName != "GameScene") return;
 
-        if (sceneName == "GameScene")
+        Debug.Log("[Server] Alle clients hebben GameScene geladen. Spawning players...");
+
+        int spawnCounter = 0;
+        foreach (ulong clientId in clientsCompleted)
         {
-            Debug.Log("[Server] Alle clients hebben GameScene geladen. Spawning players...");
-            foreach (ulong clientId in clientsCompleted)
-                SpawnPlayerForClient(clientId);
+            clientSpawnIndex[clientId] = spawnCounter++;
+            SpawnPlayerForClient(clientId, clientSpawnIndex[clientId]);
         }
     }
 
-    private void SpawnPlayerForClient(ulong clientId)
+    private void SpawnPlayerForClient(ulong clientId, int spawnIndex)
     {
         if (playerPrefab == null)
         {
@@ -45,42 +48,28 @@ public class GamePlayerSpawner : MonoBehaviour
             return;
         }
 
-        Transform spawn = GetNextSpawnPoint();
+        Transform spawn = spawnPoints.Length > 0 ? spawnPoints[spawnIndex % spawnPoints.Length] : new GameObject("DummySpawn").transform;
         Quaternion spawnRot = spawn.rotation * Quaternion.Euler(0f, 180f, 0f);
         GameObject player = Instantiate(playerPrefab, spawn.position, spawnRot);
 
+        // Zet spawnpoint info in Die component
+        Die dieComp = player.GetComponent<Die>();
+        if (dieComp != null)
+            dieComp.respawnPoint = spawn;
+
         NetworkObject netObj = player.GetComponent<NetworkObject>();
         if (netObj != null)
-        {
             netObj.SpawnAsPlayerObject(clientId, true);
-        }
         else
-        {
             Debug.LogError("Player prefab mist NetworkObject component!");
-        }
 
-        // Alleen owner camera activeren
+        // Camera setup
         CameraMovement cam = player.GetComponentInChildren<CameraMovement>();
         if (cam != null)
             cam.SetOwnerCamera(clientId == NetworkManager.Singleton.LocalClientId);
 
-        // Zet cameraTransform in CharacterMovement
         CharacterMovement cm = player.GetComponent<CharacterMovement>();
         if (cm != null && cam != null)
             cm.SetCamera(cam.transform);
-    }
-
-    private Transform GetNextSpawnPoint()
-    {
-        if (spawnPoints.Length == 0)
-        {
-            Debug.LogWarning("Geen spawnpoints ingesteld. Dummy spawnpoint wordt gebruikt.");
-            GameObject dummy = new GameObject("SpawnPoint");
-            return dummy.transform;
-        }
-
-        Transform t = spawnPoints[nextSpawnIndex % spawnPoints.Length];
-        nextSpawnIndex++;
-        return t;
     }
 }
