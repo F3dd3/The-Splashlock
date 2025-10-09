@@ -509,6 +509,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 7249985323931149439}
     m_Modifications:
+    - target: {fileID: 891810053983330137, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
+      propertyPath: far clip plane
+      value: 10000
+      objectReference: {fileID: 0}
     - target: {fileID: 2349586561129446533, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
       propertyPath: m_Name
       value: MainCamera
@@ -793,11 +797,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7d01c83bd1767c1468be05c762489bd7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
   respawnHeight: 5
   checkDistance: 2
   waterLayer:
     serializedVersion: 2
     m_Bits: 16
+  spawnProtectionTime: 0.5
 --- !u!114 &8013285790486836883
 MonoBehaviour:
   m_ObjectHideFlags: 0
