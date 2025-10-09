@@ -12,6 +12,11 @@ public class CharacterMovement : NetworkBehaviour
     public float jumpHeight = 1.5f;
     public float jumpCooldown = 0.5f;
 
+    [Header("Smash Settings")]
+    public float smashForce = 8f;
+    public float smashCooldown = 1f;
+    private float lastSmashTime;
+
     [Header("Networked Variables")]
     public NetworkVariable<Vector3> velocity = new NetworkVariable<Vector3>(
         new Vector3(0f, -2f, 0f),
@@ -51,14 +56,12 @@ public class CharacterMovement : NetworkBehaviour
         controller = GetComponent<CharacterController>();
         velocity.Value = new Vector3(0f, -2f, 0f);
 
-        // Zet image uit standaard, alleen eigenaar kan aanzetten
         if (shiftLockImage != null)
             shiftLockImage.enabled = false;
     }
 
     private void Update()
     {
-        // Alleen eigenaar mag input verwerken
         if (!IsOwner) return;
 
         HandleShiftLock();
@@ -78,7 +81,6 @@ public class CharacterMovement : NetworkBehaviour
             Cursor.lockState = shiftLockEnabled ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !shiftLockEnabled;
 
-            // Alleen eigenaar mag de image aan/uit zetten
             if (shiftLockImage != null)
                 shiftLockImage.enabled = shiftLockEnabled;
         }
@@ -95,7 +97,10 @@ public class CharacterMovement : NetworkBehaviour
         if (moveInput.magnitude > 1f) moveInput.Normalize();
 
         grounded = controller.isGrounded;
-        CheckGroundedExtra();
+
+        // Check afzonderlijk slow en smash
+        CheckSlowSurfaces();
+        CheckSmashHit();
 
         // Jump
         if (jump && grounded && Time.time - lastJumpTime >= jumpCooldown)
@@ -114,12 +119,12 @@ public class CharacterMovement : NetworkBehaviour
         Vector3 horizontalMove = moveInput * currentSpeed;
 
         // Slope sliding
-        if (grounded && Physics.Raycast(transform.position, Vector3.down, out RaycastHit hit, 1f))
+        if (grounded && Physics.Raycast(transform.position, Vector3.down, out RaycastHit slopeHit, 1f))
         {
-            float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
+            float slopeAngle = Vector3.Angle(slopeHit.normal, Vector3.up);
             if (slopeAngle > slopeLimit)
             {
-                Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, hit.normal).normalized;
+                Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, slopeHit.normal).normalized;
                 horizontalMove = slideDir * slopeSlideSpeed;
             }
         }
@@ -143,27 +148,47 @@ public class CharacterMovement : NetworkBehaviour
             externalForce = Vector3.zero;
     }
 
-    private void CheckGroundedExtra()
+    // ---------------------- LOSSE CHECKS ----------------------
+
+    // Alleen voor slow & smash (snelheid aanpassen)
+    private void CheckSlowSurfaces()
     {
-        Vector3 origin = transform.position + Vector3.up * (controller.height / 2 - controller.radius);
         onSlowSurface = false;
 
-        if (Physics.SphereCast(origin, controller.radius, Vector3.down, out RaycastHit hit, groundCheckDistance))
-        {
-            if (hit.collider.CompareTag("Slow"))
-                onSlowSurface = true;
-        }
+        Vector3 origin = transform.position + Vector3.up * (controller.height / 2 - controller.radius);
 
-        if (!onSlowSurface && Physics.SphereCast(origin, controller.radius, Vector3.down, out RaycastHit slowHit, slowCheckDistance))
+        if (Physics.SphereCast(origin, controller.radius, Vector3.down, out RaycastHit hit, slowCheckDistance))
         {
-            if (slowHit.collider.CompareTag("Slow"))
+            if (hit.collider.CompareTag("Slow") || hit.collider.CompareTag("Smash"))
                 onSlowSurface = true;
         }
     }
 
-    // --------------------------- Public Methods ---------------------------
-    public void SetCamera(Transform camTransform) => cameraTransform = camTransform;
+    // Alleen voor smash impact (wegslaan)
+    private void CheckSmashHit()
+    {
+        // We casten iets korter en alleen voor smash hit detection
+        Vector3 origin = transform.position + Vector3.up * (controller.height / 2);
+        if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, groundCheckDistance + 0.1f))
+        {
+            if (hit.collider.CompareTag("Smash"))
+            {
+                if (Time.time - lastSmashTime >= smashCooldown)
+                {
+                    lastSmashTime = Time.time;
 
+                    // Richting: van smash oppervlak af + beetje omhoog
+                    Vector3 dir = (transform.position - hit.point).normalized;
+                    dir.y = 0.5f;
+                    AddExternalForce(dir * smashForce);
+                }
+            }
+        }
+    }
+
+    // ---------------------- PUBLIC METHODS ----------------------
+
+    public void SetCamera(Transform camTransform) => cameraTransform = camTransform;
     public void AddExternalForce(Vector3 force) => externalForce += force;
 
     public void SetVerticalVelocity(float newVelocity)

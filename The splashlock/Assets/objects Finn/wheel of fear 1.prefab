@@ -167,7 +167,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rotationSpeed: {x: 0, y: -125, z: 0}
-  pushForce: 5
+  pushForce: 2.5
 --- !u!54 &1027174319226267803
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -255,7 +255,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rotationSpeed: {x: 0, y: 75, z: 0}
-  pushForce: 5
+  pushForce: 2.5
 --- !u!54 &403715259943120162
 Rigidbody:
   m_ObjectHideFlags: 0

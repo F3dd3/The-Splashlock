@@ -525,6 +525,14 @@ PrefabInstance:
       propertyPath: player
       value: 
       objectReference: {fileID: 5247233457665916695}
+    - target: {fileID: 3509628425637211841, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
+      propertyPath: sensitivity
+      value: 3.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 3509628425637211841, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
+      propertyPath: rotationSmoothTime
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5088995817644693414, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
       propertyPath: GlobalObjectIdHash
       value: 944107814
@@ -754,11 +762,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
-  moveSpeed: 3.5
-  slowSpeed: 1
+  moveSpeed: 5
+  slowSpeed: 1.5
   gravity: -20
   jumpHeight: 1.5
   jumpCooldown: 0.5
+  smashForce: 8
+  smashCooldown: 1
   velocity:
     m_InternalValue: {x: 0, y: -2, z: 0}
   grounded: 0
@@ -800,7 +810,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a07e640692a1e5145b0f6c074659f728, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  trampolineForce: 10
+  trampolineForce: 3.5
   raycastLength: 0.6
 --- !u!143 &3645299568484232256
 CharacterController:
