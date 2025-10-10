@@ -1,6 +1,8 @@
 using UnityEngine;
+using Unity.Netcode;
 
-public class PlayerAttack : MonoBehaviour
+[RequireComponent(typeof(Animator))]
+public class PlayerAttackNetworked : NetworkBehaviour
 {
     public Animator animator;
     public float attackCooldown = 1f;
@@ -8,26 +10,29 @@ public class PlayerAttack : MonoBehaviour
 
     void Update()
     {
-        // Linkermuisknop om te slaan
+        if (!IsOwner) return;
+
         if (Input.GetMouseButtonDown(0) && canAttack)
         {
-            Attack();
+            canAttack = false;
+            AttackServerRpc();
+            Invoke(nameof(ResetAttack), attackCooldown);
         }
     }
 
-    void Attack()
-    {
-        // Trigger de animatie
-        animator.SetTrigger("Attack");
+    void ResetAttack() => canAttack = true;
 
-        // Start cooldown
-        canAttack = false;
-        Invoke(nameof(ResetAttack), attackCooldown);
+    [ServerRpc]
+    void AttackServerRpc(ServerRpcParams rpcParams = default)
+    {
+        // Trigger animatie op alle clients
+        TriggerAttackClientRpc();
     }
 
-    void ResetAttack()
+    [ClientRpc]
+    void TriggerAttackClientRpc(ClientRpcParams rpcParams = default)
     {
-        canAttack = true;
+        if (animator != null)
+            animator.SetTrigger("Attack");
     }
 }
-

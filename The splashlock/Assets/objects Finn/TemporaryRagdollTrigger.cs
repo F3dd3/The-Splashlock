@@ -1,17 +1,18 @@
 using UnityEngine;
 
+[RequireComponent(typeof(Collider))]
 public class TemporaryRagdollTrigger : MonoBehaviour
 {
     [Header("Instellingen")]
     [Tooltip("Hoe lang de ragdoll actief mag zijn (in seconden) nadat je klikt).")]
-    public float activeDuration = 1f; // tijd dat de trigger aan blijft
+    public float activeDuration = 1f;
 
     private bool ragdollEnabled = false;
     private float timer = 0f;
 
     void Update()
     {
-        // Klik om de ragdoll trigger tijdelijk te activeren
+        // Klik om de tijdelijke ragdoll trigger te activeren
         if (Input.GetMouseButtonDown(0))
         {
             ragdollEnabled = true;
@@ -19,7 +20,7 @@ public class TemporaryRagdollTrigger : MonoBehaviour
             Debug.Log("TemporaryRagdollTrigger geactiveerd voor " + activeDuration + " seconde(n).");
         }
 
-        // Tel af als de ragdoll aanstaat
+        // Tel af als ragdoll aanstaat
         if (ragdollEnabled)
         {
             timer -= Time.deltaTime;
@@ -35,18 +36,20 @@ public class TemporaryRagdollTrigger : MonoBehaviour
     {
         if (!ragdollEnabled) return;
 
-        RagdollActivator activator = collision.collider.GetComponentInParent<RagdollActivator>();
-        if (activator != null)
-        {
-            activator.EnableRagdoll();
-        }
+        TryEnableRagdoll(collision.collider);
     }
 
     private void OnTriggerEnter(Collider other)
     {
         if (!ragdollEnabled) return;
 
-        RagdollActivator activator = other.GetComponentInParent<RagdollActivator>();
+        TryEnableRagdoll(other);
+    }
+
+    private void TryEnableRagdoll(Collider col)
+    {
+        // Haal de Networked RagdollActivator
+        RagdollActivatorNetworked activator = col.GetComponentInParent<RagdollActivatorNetworked>();
         if (activator != null)
         {
             activator.EnableRagdoll();

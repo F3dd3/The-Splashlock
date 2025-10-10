@@ -1616,8 +1616,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 88b0653e08d1c85458e8fb80ef41f59d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
   scriptsToToggle: []
-  pushBackForce: {x: 0, y: 0, z: -2}
+  pushBackForce: {x: 0, y: 0, z: -5}
   ragdollImmunityDuration: 0.5
 --- !u!114 &9091749041603514987
 MonoBehaviour:
@@ -1663,6 +1664,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b9045d347ee6e9e41b18d6995576a33d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
   animator: {fileID: 8372602678987158262}
   attackCooldown: 1
 --- !u!114 &-7915556972754169361
@@ -1677,12 +1679,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dc7121778d445c24bb2d0479d8f40eba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
   maxDistance: 1
   maxAngle: 60
   targetLayer:
     serializedVersion: 2
     m_Bits: 8
-  pushBackForce: {x: 0, y: 0, z: 5}
   ragdollCooldown: 0.5
   ragdollDelay: 0.41
 --- !u!114 &-6922734886859466854
@@ -1784,7 +1786,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b2903d9ade091734fadf6846815e28a2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
   playerRenderer: {fileID: 0}
+  playerColor:
+    m_InternalValue: {x: 0, y: 0, z: 0}
 --- !u!1 &4570022284767648247 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1019709688074568302, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}

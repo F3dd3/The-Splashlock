@@ -1,19 +1,22 @@
 using UnityEngine;
 
+[RequireComponent(typeof(Collider))]
 public class RagdollTrigger : MonoBehaviour
 {
     private void OnCollisionEnter(Collision collision)
     {
-        RagdollActivator activator = collision.collider.GetComponentInParent<RagdollActivator>();
-        if (activator != null)
-        {
-            activator.EnableRagdoll();
-        }
+        TryEnableRagdoll(collision.collider);
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        RagdollActivator activator = other.GetComponentInParent<RagdollActivator>();
+        TryEnableRagdoll(other);
+    }
+
+    private void TryEnableRagdoll(Collider col)
+    {
+        // Haal de Networked RagdollActivator
+        RagdollActivatorNetworked activator = col.GetComponentInParent<RagdollActivatorNetworked>();
         if (activator != null)
         {
             activator.EnableRagdoll();
