@@ -1556,7 +1556,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a07e640692a1e5145b0f6c074659f728, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  trampolineForce: 10
+  trampolineForce: 3.5
   raycastLength: 0.6
 --- !u!143 &7090233153647673204
 CharacterController:
@@ -1630,7 +1630,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
   moveSpeed: 3.5
-  slowSpeed: 1
+  slowSpeed: 1.5
   gravity: -20
   jumpHeight: 1.5
   jumpCooldown: 0.5
@@ -1643,7 +1643,7 @@ MonoBehaviour:
   cameraTransform: {fileID: 186781053408517031}
   shiftLockEnabled: 0
   shiftLockImage: {fileID: 7047156292004137910}
-  groundCheckDistance: 0.3
+  groundCheckDistance: 1
   slowCheckDistance: 0.5
   slopeSlideSpeed: 3
   slopeLimit: 30
@@ -1674,7 +1674,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dc7121778d445c24bb2d0479d8f40eba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxDistance: 0.98
+  maxDistance: 1
   maxAngle: 60
   targetLayer:
     serializedVersion: 2
@@ -2462,6 +2462,10 @@ PrefabInstance:
       propertyPath: shiftLockPrefab
       value: 
       objectReference: {fileID: 7047156292004137910}
+    - target: {fileID: 3509628425637211841, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
+      propertyPath: rotationSmoothTime
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5176748956025412027, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
