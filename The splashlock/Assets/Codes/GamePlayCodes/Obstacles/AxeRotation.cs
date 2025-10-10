@@ -1,39 +1,51 @@
 using UnityEngine;
 
-public class AxeRotation : MonoBehaviour
+[RequireComponent(typeof(Collider))]
+public class AxeSmash : MonoBehaviour
 {
-    public Vector3 rotationAxis = Vector3.up;  // As waarover je wilt draaien (bijv. Vector3.up, Vector3.right)
-    public float rotationSpeed = 90f;          // Graden per seconde
-    private bool rotatingForward = true;
-    private float rotatedDegrees = 0f;
+    [Header("Rotation Speed")]
+    public Vector3 rotationSpeed = new Vector3(0f, -50f, 0f);
+
+    [Header("Push Settings")]
+    public float pushForce = 20f;
+
+    private void Awake()
+    {
+        Collider col = GetComponent<Collider>();
+        col.isTrigger = true;
+    }
 
     void Update()
     {
-        float rotationStep = rotationSpeed * Time.deltaTime;
+        transform.Rotate(rotationSpeed * Time.deltaTime);
+    }
 
-        if (rotatingForward)
+    private void ApplyPush(Collider col)
+    {
+        CharacterMovement_Local player = col.GetComponent<CharacterMovement_Local>();
+        if (player != null)
         {
-            // Rotatie vooruit (180 graden)
-            if (rotatedDegrees + rotationStep >= 180f)
-            {
-                rotationStep = 180f - rotatedDegrees;
-                rotatingForward = false;
-            }
+            Vector3 pushDir = (col.transform.position - transform.position);
+            pushDir.y = 0f; // alleen horizontaal pushen
 
-            transform.Rotate(rotationAxis, rotationStep);
-            rotatedDegrees += rotationStep;
-        }
-        else
-        {
-            // Rotatie terug (180 graden)
-            if (rotatedDegrees - rotationStep <= 0f)
-            {
-                rotationStep = rotatedDegrees;
-                rotatingForward = true;
-            }
+            if (pushDir.magnitude < 0.1f)
+                pushDir = transform.forward;
 
-            transform.Rotate(rotationAxis, -rotationStep);
-            rotatedDegrees -= rotationStep;
+            pushDir.Normalize();
+
+            player.AddExternalForce(pushDir * pushForce);
         }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Player"))
+            ApplyPush(other);
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        if (other.CompareTag("Player"))
+            ApplyPush(other);
     }
 }
