@@ -1,7 +1,7 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
 using Unity.Netcode;
-using UnityEngine.SceneManagement;
-using System.Collections.Generic;
 
 public class GamePlayerSpawner : MonoBehaviour
 {
@@ -10,6 +10,15 @@ public class GamePlayerSpawner : MonoBehaviour
 
     [Header("Spawnpoints in Scene")]
     public Transform[] spawnPoints;
+
+    // Lijst van kleuren die gebruikt worden voor spelers
+    private readonly List<Color> allColors = new List<Color>
+    {
+        Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan
+    };
+
+    // Houd bij welke kleuren al zijn toegewezen
+    private readonly Dictionary<ulong, Color> assignedColors = new Dictionary<ulong, Color>();
 
     private Dictionary<ulong, int> clientSpawnIndex = new Dictionary<ulong, int>();
 
@@ -25,7 +34,8 @@ public class GamePlayerSpawner : MonoBehaviour
             NetworkManager.Singleton.SceneManager.OnLoadEventCompleted -= OnLoadEventCompleted;
     }
 
-    private void OnLoadEventCompleted(string sceneName, LoadSceneMode loadSceneMode, List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
+    private void OnLoadEventCompleted(string sceneName, UnityEngine.SceneManagement.LoadSceneMode loadSceneMode,
+                                      List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
     {
         if (!NetworkManager.Singleton.IsServer) return;
         if (sceneName != "GameScene") return;
@@ -49,15 +59,13 @@ public class GamePlayerSpawner : MonoBehaviour
             return;
         }
 
-        // Haal het spawnpoint
+        // Haal spawnpoint
         Transform spawn = spawnPoints.Length > 0 ? spawnPoints[spawnIndex % spawnPoints.Length] : new GameObject("DummySpawn").transform;
-        Vector3 spawnPos = spawn.position;
-        Quaternion spawnRot = spawn.rotation * Quaternion.Euler(0f, 180f, 0f);
 
-        // Instantiate prefab **op de juiste plek voor spawn**
-        GameObject player = Instantiate(playerPrefab, spawnPos, spawnRot);
+        // Instantiate prefab
+        GameObject player = Instantiate(playerPrefab, spawn.position, spawn.rotation * Quaternion.Euler(0f, 180f, 0f));
 
-        // NetworkObject spawnen
+        // Spawn NetworkObject
         NetworkObject netObj = player.GetComponent<NetworkObject>();
         if (netObj != null)
         {
@@ -68,19 +76,31 @@ public class GamePlayerSpawner : MonoBehaviour
             Debug.LogError("Player prefab mist NetworkObject component!");
         }
 
-        // Camera setup
-        CameraMovement cam = player.GetComponentInChildren<CameraMovement>();
-        if (cam != null)
-            cam.SetOwnerCamera(clientId == NetworkManager.Singleton.LocalClientId);
+        // Kleur toewijzen via Renderer, niet via lobby Player script
+        Renderer renderer = player.GetComponentInChildren<Renderer>();
+        if (renderer != null)
+        {
+            Color playerColor = GetNextUniqueColor(clientId);
+            renderer.material.color = playerColor;
+        }
+    }
 
-        // Zet cameraTransform in CharacterMovement
-        CharacterMovement cm = player.GetComponent<CharacterMovement>();
-        if (cm != null && cam != null)
-            cm.SetCamera(cam.transform);
+    private Color GetNextUniqueColor(ulong clientId)
+    {
+        var usedColors = assignedColors.Values.ToList();
+        var availableColors = allColors.Except(usedColors).ToList();
 
-        // **Spawn protection & position instellen** in Die script
-        Die dieScript = player.GetComponent<Die>();
-        if (dieScript != null)
-            dieScript.SetSpawnProtection(spawnPos);
+        Color color;
+        if (availableColors.Count == 0)
+        {
+            color = Random.ColorHSV(); // fallback
+        }
+        else
+        {
+            color = availableColors[0];
+        }
+
+        assignedColors[clientId] = color;
+        return color;
     }
 }
