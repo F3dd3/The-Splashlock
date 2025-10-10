@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
 public class TemporaryRagdollTrigger : MonoBehaviour
@@ -10,8 +10,24 @@ public class TemporaryRagdollTrigger : MonoBehaviour
     private bool ragdollEnabled = false;
     private float timer = 0f;
 
+    private Transform myRoot;
+    private RagdollActivatorNetworked selfRagdoll;
+
+    void Start()
+    {
+        myRoot = transform.root;
+        selfRagdoll = myRoot.GetComponent<RagdollActivatorNetworked>();
+    }
+
     void Update()
     {
+        // Stop direct als je zelf ragdolled
+        if (selfRagdoll != null && selfRagdoll.isRagdollActive)
+        {
+            ragdollEnabled = false; // trigger mag niet actief zijn
+            return;
+        }
+
         // Klik om de tijdelijke ragdoll trigger te activeren
         if (Input.GetMouseButtonDown(0))
         {
@@ -35,24 +51,29 @@ public class TemporaryRagdollTrigger : MonoBehaviour
     private void OnCollisionEnter(Collision collision)
     {
         if (!ragdollEnabled) return;
-
         TryEnableRagdoll(collision.collider);
     }
 
     private void OnTriggerEnter(Collider other)
     {
         if (!ragdollEnabled) return;
-
         TryEnableRagdoll(other);
     }
 
     private void TryEnableRagdoll(Collider col)
     {
+        // Negeer jezelf
+        if (col.transform.root == myRoot) return;
+
         // Haal de Networked RagdollActivator
         RagdollActivatorNetworked activator = col.GetComponentInParent<RagdollActivatorNetworked>();
         if (activator != null)
         {
-            activator.EnableRagdoll();
+            // Skip target als die al ragdolled is
+            if (!activator.isRagdollActive)
+            {
+                activator.EnableRagdoll();
+            }
         }
     }
 }
