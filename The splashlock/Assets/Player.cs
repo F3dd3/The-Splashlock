@@ -1,48 +1,61 @@
-using UnityEngine;
+﻿using UnityEngine;
 using Unity.Netcode;
 
 public class Player : NetworkBehaviour
 {
-    [Header("Renderer to color")]
-    public Renderer targetRenderer;
+    [Header("Renderer")]
+    public Renderer playerRenderer;
 
-    public NetworkVariable<Color> playerColor = new NetworkVariable<Color>(
-        Color.clear,
+    public NetworkVariable<Vector3> playerColor = new NetworkVariable<Vector3>(
+        Vector3.zero,
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server
     );
 
     private void Awake()
     {
-        if (targetRenderer == null)
-            targetRenderer = GetComponentInChildren<Renderer>();
-
-        if (targetRenderer != null)
-            targetRenderer.material = new Material(targetRenderer.material);
+        if (playerRenderer == null)
+            playerRenderer = GetComponentInChildren<Renderer>();
     }
 
     public override void OnNetworkSpawn()
     {
-        if (playerColor != null)
-            playerColor.OnValueChanged += OnColorChanged;
+        base.OnNetworkSpawn();
 
-        ApplyColor(playerColor.Value);
+        playerColor.OnValueChanged += OnColorChanged;
+
+        // ✅ direct bij join juiste kleur weergeven
+        if (playerColor.Value != Vector3.zero)
+            ApplyColor(playerColor.Value);
     }
 
     private void OnDestroy()
     {
-        if (playerColor != null)
-            playerColor.OnValueChanged -= OnColorChanged;
+        playerColor.OnValueChanged -= OnColorChanged;
     }
 
-    private void OnColorChanged(Color oldColor, Color newColor)
+    private void OnColorChanged(Vector3 oldColor, Vector3 newColor)
     {
         ApplyColor(newColor);
     }
 
-    private void ApplyColor(Color color)
+    private void ApplyColor(Vector3 colorVec)
     {
-        if (targetRenderer != null && targetRenderer.material != null)
-            targetRenderer.material.color = color;
+        if (playerRenderer == null) return;
+
+        Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
+        playerRenderer.material.color = color;
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void SetColorServerRpc(Vector3 newColor)
+    {
+        playerColor.Value = newColor;
+    }
+
+    [ClientRpc]
+    public void ForceColorClientRpc(Vector3 newColor, ClientRpcParams rpcParams = default)
+    {
+        ApplyColor(newColor);
     }
 }
