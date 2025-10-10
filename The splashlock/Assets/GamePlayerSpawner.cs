@@ -19,7 +19,6 @@ public class GamePlayerSpawner : MonoBehaviour
 
     // Houd bij welke kleuren al zijn toegewezen
     private readonly Dictionary<ulong, Color> assignedColors = new Dictionary<ulong, Color>();
-
     private Dictionary<ulong, int> clientSpawnIndex = new Dictionary<ulong, int>();
 
     private void OnEnable()
@@ -61,7 +60,7 @@ public class GamePlayerSpawner : MonoBehaviour
 
         Transform spawn = spawnPoints.Length > 0 ? spawnPoints[spawnIndex % spawnPoints.Length] : new GameObject("DummySpawn").transform;
 
-        GameObject player = Instantiate(playerPrefab, spawn.position, spawn.rotation * Quaternion.Euler(0f, 180f, 0f));
+        GameObject player = Instantiate(playerPrefab, spawn.position, spawn.rotation);
 
         NetworkObject netObj = player.GetComponent<NetworkObject>();
         if (netObj != null)
@@ -90,7 +89,7 @@ public class GamePlayerSpawner : MonoBehaviour
         Color color;
         if (availableColors.Count == 0)
         {
-            color = Random.ColorHSV(); // fallback
+            color = Random.ColorHSV(); // fallback als alle kleuren gebruikt zijn
         }
         else
         {

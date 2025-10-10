@@ -3,6 +3,7 @@ using Unity.Netcode;
 
 public class GamePlayerColor : NetworkBehaviour
 {
+    [Header("Renderer")]
     public Renderer playerRenderer;
 
     // Networked kleur
@@ -21,16 +22,13 @@ public class GamePlayerColor : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
+
+        // Update kleur als deze verandert
         playerColor.OnValueChanged += OnColorChanged;
 
-        // direct toepassen als waarde al bestaat
+        // Direct toepassen bij join
         if (playerColor.Value != Vector3.zero)
             ApplyColor(playerColor.Value);
-    }
-
-    private void OnDestroy()
-    {
-        playerColor.OnValueChanged -= OnColorChanged;
     }
 
     private void OnColorChanged(Vector3 oldColor, Vector3 newColor)
@@ -44,10 +42,23 @@ public class GamePlayerColor : NetworkBehaviour
         playerRenderer.material.color = new Color(colVec.x, colVec.y, colVec.z);
     }
 
-    // Alleen de server mag dit aanroepen
+    /// <summary>
+    /// Alleen de server mag dit aanroepen
+    /// </summary>
     public void SetColor(Color color)
     {
         if (!IsServer) return;
-        playerColor.Value = new Vector3(color.r, color.g, color.b);
+
+        Vector3 colorVec = new Vector3(color.r, color.g, color.b);
+        playerColor.Value = colorVec;
+
+        // Forceer kleur bij alle clients
+        ForceColorClientRpc(colorVec);
+    }
+
+    [ClientRpc]
+    private void ForceColorClientRpc(Vector3 colorVec)
+    {
+        ApplyColor(colorVec);
     }
 }
