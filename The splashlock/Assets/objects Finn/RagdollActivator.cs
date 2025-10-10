@@ -17,7 +17,7 @@ public class RagdollActivatorNetworked : NetworkBehaviour
     [Header("Immunity")]
     public float ragdollImmunityDuration = 0.5f;
 
-    [HideInInspector] public bool isRagdollActive = false; // publiek voor checks
+    [HideInInspector] public bool isRagdollActive = false;
     private bool ragdollImmune = false;
 
     void Start()
@@ -102,18 +102,16 @@ public class RagdollActivatorNetworked : NetworkBehaviour
             if (s != null) s.enabled = true;
 
         isRagdollActive = false;
-        StartCoroutine(RagdollImmunityTimer());
+        StartTemporaryImmunity(ragdollImmunityDuration);
     }
 
-    private IEnumerator RagdollImmunityTimer()
+    // ✅ Nieuwe veilige methode — roept interne coroutine aan
+    public void StartTemporaryImmunity(float duration)
     {
-        ragdollImmune = true;
-        yield return new WaitForSeconds(ragdollImmunityDuration);
-        ragdollImmune = false;
+        StartCoroutine(TemporaryImmunityCoroutine(duration));
     }
 
-    // Publieke coroutine voor tijdelijke immuniteit
-    public IEnumerator TemporaryImmunity(float duration)
+    private IEnumerator TemporaryImmunityCoroutine(float duration)
     {
         ragdollImmune = true;
         yield return new WaitForSeconds(duration);

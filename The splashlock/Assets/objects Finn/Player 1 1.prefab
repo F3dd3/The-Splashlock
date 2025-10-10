@@ -1294,6 +1294,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   activeDuration: 1.25
+  attackAngle: 90
+  triggerDelay: 0
+  perTargetCooldown: 0.2
 --- !u!4 &3947403958547987570 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}
@@ -1599,7 +1602,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   animator: {fileID: 8372602678987158262}
-  ragdollDuration: 5
+  ragdollDuration: 3.5
   blendDuration: 1
   hipsBone: {fileID: 8309979760839688887}
   ragdollRigidbodies: []
@@ -1667,6 +1670,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
   animator: {fileID: 8372602678987158262}
+  attackTrigger: {fileID: 0}
   attackCooldown: 1
 --- !u!114 &-7915556972754169361
 MonoBehaviour:

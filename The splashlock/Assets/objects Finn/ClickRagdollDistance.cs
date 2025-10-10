@@ -8,15 +8,17 @@ public class ClickRagdollDelayedNetworked : NetworkBehaviour
     [Header("Detectie instellingen")]
     public float maxDistance = 3f;
     public float maxAngle = 60f;
-    public LayerMask targetLayer; // alleen spelerslaag
+    public LayerMask targetLayer; // Alleen spelerslaag
 
     [Header("Tijdinstellingen")]
     public float ragdollCooldown = 0.5f;
     public float ragdollDelay = 0.2f;
+    public float autoCheckRate = 0.1f; // Tijd tussen automatische checks
 
     private readonly System.Collections.Generic.Dictionary<RagdollActivatorNetworked, float> cooldowns = new();
     private Transform myTransform;
     private RagdollActivatorNetworked selfRagdoll;
+    private Coroutine autoAttackCoroutine;
 
     void Start()
     {
@@ -28,11 +30,13 @@ public class ClickRagdollDelayedNetworked : NetworkBehaviour
     {
         if (!IsOwner) return;
 
-        // input
-        if (Input.GetMouseButtonDown(0))
-            TryRagdollInView();
+        // Start auto-attack bij eerste klik
+        if (Input.GetMouseButtonDown(0) && autoAttackCoroutine == null)
+        {
+            autoAttackCoroutine = StartCoroutine(AutoAttackLoop());
+        }
 
-        // update cooldowns
+        // Update cooldowns
         if (cooldowns.Count > 0)
         {
             var keys = new System.Collections.Generic.List<RagdollActivatorNetworked>(cooldowns.Keys);
@@ -41,6 +45,22 @@ public class ClickRagdollDelayedNetworked : NetworkBehaviour
                 cooldowns[key] -= Time.deltaTime;
                 if (cooldowns[key] <= 0f)
                     cooldowns.Remove(key);
+            }
+        }
+    }
+
+    private IEnumerator AutoAttackLoop()
+    {
+        while (true)
+        {
+            TryRagdollInView();
+            yield return new WaitForSeconds(autoCheckRate);
+
+            // Stop als je zelf ragdolled
+            if (selfRagdoll != null && selfRagdoll.isRagdollActive)
+            {
+                autoAttackCoroutine = null;
+                yield break;
             }
         }
     }
@@ -67,10 +87,6 @@ public class ClickRagdollDelayedNetworked : NetworkBehaviour
 
             // voeg target toe aan cooldown
             cooldowns[activator] = ragdollCooldown;
-
-            // ⚡ tijdelijke immuniteit voor jezelf zodat botsingen van target ragdoll jou niet raken
-            if (selfRagdoll != null)
-                StartCoroutine(selfRagdoll.TemporaryImmunity(0.4f));
 
             // start ragdoll bij target
             StartCoroutine(DelayedRagdoll(activator));

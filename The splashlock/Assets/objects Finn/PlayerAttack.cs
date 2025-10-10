@@ -1,10 +1,11 @@
-using UnityEngine;
+﻿using UnityEngine;
 using Unity.Netcode;
 
 [RequireComponent(typeof(Animator))]
 public class PlayerAttackNetworked : NetworkBehaviour
 {
     public Animator animator;
+    public TemporaryRagdollTrigger attackTrigger;
     public float attackCooldown = 1f;
     private bool canAttack = true;
 
@@ -25,7 +26,6 @@ public class PlayerAttackNetworked : NetworkBehaviour
     [ServerRpc]
     void AttackServerRpc(ServerRpcParams rpcParams = default)
     {
-        // Trigger animatie op alle clients
         TriggerAttackClientRpc();
     }
 
@@ -34,5 +34,9 @@ public class PlayerAttackNetworked : NetworkBehaviour
     {
         if (animator != null)
             animator.SetTrigger("Attack");
+
+        // ✅ direct triggeren (werkt ook tijdens lopen)
+        if (attackTrigger != null)
+            attackTrigger.ActivateTrigger();
     }
 }

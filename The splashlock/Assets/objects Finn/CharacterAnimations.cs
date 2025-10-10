@@ -3,10 +3,12 @@ using Unity.Netcode;
 
 [RequireComponent(typeof(Animator))]
 [RequireComponent(typeof(CharacterMovement))]
+[RequireComponent(typeof(RagdollActivatorNetworked))]
 public class PlayerAnimation : NetworkBehaviour
 {
     private Animator animator;
     private CharacterMovement characterMovement;
+    private RagdollActivatorNetworked ragdollActivator;
 
     // --- Netcode variabelen voor synchronisatie ---
     private NetworkVariable<bool> isRunning = new NetworkVariable<bool>(
@@ -22,20 +24,25 @@ public class PlayerAnimation : NetworkBehaviour
     {
         animator = GetComponent<Animator>();
         characterMovement = GetComponent<CharacterMovement>();
+        ragdollActivator = GetComponent<RagdollActivatorNetworked>();
     }
 
     void Update()
     {
-        if (animator == null || characterMovement == null)
+        if (animator == null || characterMovement == null || ragdollActivator == null)
             return;
 
-        if (IsOwner)
+        // Check of ragdoll actief is
+        bool isRagdoll = ragdollActivator.isRagdollActive;
+
+        // --- Alleen input verwerken als niet ragdolled ---
+        if (IsOwner && !isRagdoll)
         {
             HandleLocalAnimation();
         }
 
-        // Sync met de waarden die over het netwerk komen
-        ApplyNetworkedAnimation();
+        // --- Pas animator waarden alleen toe als niet ragdolled ---
+        ApplyNetworkedAnimation(isRagdoll);
     }
 
     // ------------------ Lokale speler berekent animatie ------------------
@@ -59,9 +66,24 @@ public class PlayerAnimation : NetworkBehaviour
     }
 
     // ------------------ Wordt door iedereen uitgevoerd ------------------
-    private void ApplyNetworkedAnimation()
+    private void ApplyNetworkedAnimation(bool isRagdoll)
     {
-        animator.SetBool("isRunning", isRunning.Value);
-        animator.SetBool("isJumping", isJumping.Value);
+        if (animator == null) return;
+
+        if (isRagdoll)
+        {
+            // Als ragdoll actief is, animator uitschakelen
+            if (animator.enabled) animator.enabled = false;
+        }
+        else
+        {
+            // Heractiveer animator en update parameters
+            if (!animator.enabled) animator.enabled = true;
+
+            animator.SetBool("isRunning", isRunning.Value);
+            animator.SetBool("isJumping", isJumping.Value);
+            animator.SetBool("isFalling", isFalling.Value);
+            animator.SetFloat("moveSpeed", moveSpeed.Value);
+        }
     }
 }
