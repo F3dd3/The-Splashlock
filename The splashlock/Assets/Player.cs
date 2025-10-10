@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using Unity.Netcode;
 
 public class Player : NetworkBehaviour
@@ -12,15 +12,21 @@ public class Player : NetworkBehaviour
         NetworkVariableWritePermission.Server
     );
 
-    private void Start()
+    private void Awake()
     {
         if (playerRenderer == null)
             playerRenderer = GetComponentInChildren<Renderer>();
+    }
 
-        ApplyColor(playerColor.Value);
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
 
-        // Realtime update
         playerColor.OnValueChanged += OnColorChanged;
+
+        // ✅ direct bij join juiste kleur weergeven
+        if (playerColor.Value != Vector3.zero)
+            ApplyColor(playerColor.Value);
     }
 
     private void OnDestroy()
@@ -35,14 +41,21 @@ public class Player : NetworkBehaviour
 
     private void ApplyColor(Vector3 colorVec)
     {
+        if (playerRenderer == null) return;
+
         Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
-        if (playerRenderer != null)
-            playerRenderer.material.color = color;
+        playerRenderer.material.color = color;
     }
 
     [ServerRpc(RequireOwnership = false)]
     public void SetColorServerRpc(Vector3 newColor)
     {
         playerColor.Value = newColor;
+    }
+
+    [ClientRpc]
+    public void ForceColorClientRpc(Vector3 newColor, ClientRpcParams rpcParams = default)
+    {
+        ApplyColor(newColor);
     }
 }
