@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using Unity.Netcode;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,12 +13,12 @@ public class PlayerSpawner : MonoBehaviour
     [Header("Spawnpoints")]
     public Transform[] spawnPoints;
 
-    private List<Color> allColors = new List<Color>
+    private readonly List<Color> allColors = new List<Color>
     {
         Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan
     };
 
-    private Dictionary<ulong, Color> playerColors = new Dictionary<ulong, Color>();
+    private readonly Dictionary<ulong, Color> playerColors = new Dictionary<ulong, Color>();
     private int nextSpawnIndex = 0;
 
     private void Awake()
@@ -68,14 +68,14 @@ public class PlayerSpawner : MonoBehaviour
     {
         var usedColors = playerColors.Values.ToList();
         var availableColors = allColors.Except(usedColors).ToList();
-        return availableColors.Count == 0 ? Color.white : availableColors[0];
+        return availableColors.Count == 0 ? Random.ColorHSV() : availableColors[0];
     }
 
     private void SpawnPlayer(ulong clientId)
     {
         if (playerPrefab == null)
         {
-            Debug.LogError("Player prefab niet ingesteld!");
+            Debug.LogError("❌ Player prefab niet ingesteld!");
             return;
         }
 
@@ -86,8 +86,11 @@ public class PlayerSpawner : MonoBehaviour
         Color playerColorValue = GetNextUniqueColor();
         playerColors[clientId] = playerColorValue;
 
+        // Stel kleur in via NetworkVariable zodat iedereen hem ziet
         Player playerScript = player.GetComponent<Player>();
-        if (playerScript != null && NetworkManager.Singleton.IsServer)
-            playerScript.playerColor.Value = playerColorValue;
+        if (playerScript != null)
+        {
+            playerScript.SetColorServerRpc(new Vector3(playerColorValue.r, playerColorValue.g, playerColorValue.b));
+        }
     }
 }

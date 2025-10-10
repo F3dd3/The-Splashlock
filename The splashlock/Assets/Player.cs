@@ -3,46 +3,46 @@ using Unity.Netcode;
 
 public class Player : NetworkBehaviour
 {
-    [Header("Renderer to color")]
-    public Renderer targetRenderer;
+    [Header("Renderer")]
+    public Renderer playerRenderer;
 
-    public NetworkVariable<Color> playerColor = new NetworkVariable<Color>(
-        Color.clear,
+    public NetworkVariable<Vector3> playerColor = new NetworkVariable<Vector3>(
+        Vector3.zero,
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server
     );
 
-    private void Awake()
+    private void Start()
     {
-        if (targetRenderer == null)
-            targetRenderer = GetComponentInChildren<Renderer>();
-
-        if (targetRenderer != null)
-            targetRenderer.material = new Material(targetRenderer.material);
-    }
-
-    public override void OnNetworkSpawn()
-    {
-        if (playerColor != null)
-            playerColor.OnValueChanged += OnColorChanged;
+        if (playerRenderer == null)
+            playerRenderer = GetComponentInChildren<Renderer>();
 
         ApplyColor(playerColor.Value);
+
+        // Realtime update
+        playerColor.OnValueChanged += OnColorChanged;
     }
 
     private void OnDestroy()
     {
-        if (playerColor != null)
-            playerColor.OnValueChanged -= OnColorChanged;
+        playerColor.OnValueChanged -= OnColorChanged;
     }
 
-    private void OnColorChanged(Color oldColor, Color newColor)
+    private void OnColorChanged(Vector3 oldColor, Vector3 newColor)
     {
         ApplyColor(newColor);
     }
 
-    private void ApplyColor(Color color)
+    private void ApplyColor(Vector3 colorVec)
     {
-        if (targetRenderer != null && targetRenderer.material != null)
-            targetRenderer.material.color = color;
+        Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
+        if (playerRenderer != null)
+            playerRenderer.material.color = color;
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void SetColorServerRpc(Vector3 newColor)
+    {
+        playerColor.Value = newColor;
     }
 }
