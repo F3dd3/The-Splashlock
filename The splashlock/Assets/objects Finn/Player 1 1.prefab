@@ -1620,6 +1620,7 @@ MonoBehaviour:
   scriptsToToggle: []
   pushBackForce: {x: 0, y: 0, z: -5}
   ragdollImmunityDuration: 0.5
+  isRagdollActive: 0
 --- !u!114 &9091749041603514987
 MonoBehaviour:
   m_ObjectHideFlags: 0

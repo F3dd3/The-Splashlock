@@ -16,7 +16,8 @@ public class RagdollActivatorNetworked : NetworkBehaviour
 
     [Header("Immunity")]
     public float ragdollImmunityDuration = 0.5f;
-    private bool isRagdollActive = false;
+
+    [HideInInspector] public bool isRagdollActive = false; // publiek voor checks
     private bool ragdollImmune = false;
 
     void Start()
@@ -38,12 +39,8 @@ public class RagdollActivatorNetworked : NetworkBehaviour
     public void EnableRagdoll()
     {
         if (isRagdollActive || ragdollImmune) return;
-
-        // Alleen eigenaar mag ServerRpc aanroepen
         if (IsOwner)
-        {
             EnableRagdollServerRpc();
-        }
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -112,6 +109,14 @@ public class RagdollActivatorNetworked : NetworkBehaviour
     {
         ragdollImmune = true;
         yield return new WaitForSeconds(ragdollImmunityDuration);
+        ragdollImmune = false;
+    }
+
+    // Publieke coroutine voor tijdelijke immuniteit
+    public IEnumerator TemporaryImmunity(float duration)
+    {
+        ragdollImmune = true;
+        yield return new WaitForSeconds(duration);
         ragdollImmune = false;
     }
 }
