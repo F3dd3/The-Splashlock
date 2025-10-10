@@ -59,13 +59,10 @@ public class GamePlayerSpawner : MonoBehaviour
             return;
         }
 
-        // Haal spawnpoint
         Transform spawn = spawnPoints.Length > 0 ? spawnPoints[spawnIndex % spawnPoints.Length] : new GameObject("DummySpawn").transform;
 
-        // Instantiate prefab
         GameObject player = Instantiate(playerPrefab, spawn.position, spawn.rotation * Quaternion.Euler(0f, 180f, 0f));
 
-        // Spawn NetworkObject
         NetworkObject netObj = player.GetComponent<NetworkObject>();
         if (netObj != null)
         {
@@ -76,12 +73,12 @@ public class GamePlayerSpawner : MonoBehaviour
             Debug.LogError("Player prefab mist NetworkObject component!");
         }
 
-        // Kleur toewijzen via Renderer, niet via lobby Player script
-        Renderer renderer = player.GetComponentInChildren<Renderer>();
-        if (renderer != null)
+        // Kleur toewijzen via NetworkVariable zodat iedereen het ziet
+        GamePlayerColor colorScript = player.GetComponent<GamePlayerColor>();
+        if (colorScript != null)
         {
             Color playerColor = GetNextUniqueColor(clientId);
-            renderer.material.color = playerColor;
+            colorScript.SetColor(playerColor);
         }
     }
 
