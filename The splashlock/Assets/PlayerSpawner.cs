@@ -48,11 +48,12 @@ public class PlayerSpawner : MonoBehaviour
     private void OnClientConnected(ulong clientId)
     {
         if (!NetworkManager.Singleton.IsServer) return;
-        Debug.Log($"[SERVER] Client {clientId} connected. Spawning...");
 
-        SpawnPlayer(clientId);
+        // Spawn enkel als nog niet gespawned
+        if (!playerRefs.ContainsKey(clientId))
+            SpawnPlayer(clientId);
 
-        // ⬇️ Stuur alle bestaande kleuren opnieuw naar de nieuwe client
+        // Stuur bestaande kleuren naar de nieuwe client
         foreach (var kvp in playerRefs)
         {
             ulong id = kvp.Key;
@@ -65,7 +66,7 @@ public class PlayerSpawner : MonoBehaviour
                 {
                     Send = new ClientRpcSendParams
                     {
-                        TargetClientIds = new[] { clientId } // stuur enkel naar de nieuwe speler
+                        TargetClientIds = new[] { clientId }
                     }
                 });
             }
@@ -97,8 +98,11 @@ public class PlayerSpawner : MonoBehaviour
         return availableColors[0];
     }
 
-    private void SpawnPlayer(ulong clientId)
+    public void SpawnPlayer(ulong clientId)
     {
+        // Controleer of player al bestaat
+        if (playerRefs.ContainsKey(clientId)) return;
+
         if (playerPrefab == null)
         {
             Debug.LogError("❌ Player prefab niet ingesteld!");
@@ -109,15 +113,12 @@ public class PlayerSpawner : MonoBehaviour
         GameObject player = Instantiate(playerPrefab, spawnPos, Quaternion.Euler(0f, 180f, 0f));
         player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
 
-        // Unieke kleur kiezen
         Color playerColorValue = GetNextUniqueColor();
         playerColors[clientId] = playerColorValue;
 
-        // Koppeling bijhouden
         Player playerScript = player.GetComponent<Player>();
         playerRefs[clientId] = playerScript;
 
-        // Stel kleur in (server + clients)
         Vector3 colorVec = new Vector3(playerColorValue.r, playerColorValue.g, playerColorValue.b);
         playerScript.SetColorServerRpc(colorVec);
         playerScript.ForceColorClientRpc(colorVec);

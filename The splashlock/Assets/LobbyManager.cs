@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Unity.Netcode;
@@ -59,11 +59,14 @@ public class LobbyManager : MonoBehaviour
 
     private void Start()
     {
-        hostButton.onClick.AddListener(HostGame);
+        hostButton.onClick.AddListener(OnHostButtonClicked);
         joinButton.onClick.AddListener(JoinGame);
+
+        // ✅ Auto-host bij start
+        AutoHostGame();
     }
 
-    private async void HostGame()
+    private async void AutoHostGame()
     {
         if (!servicesInitialized)
         {
@@ -71,7 +74,7 @@ public class LobbyManager : MonoBehaviour
             return;
         }
 
-        infoText.text = "Hosting game...";
+        infoText.text = "Auto-hosting game...";
         try
         {
             Allocation allocation = await RelayService.Instance.CreateAllocationAsync(4);
@@ -87,13 +90,24 @@ public class LobbyManager : MonoBehaviour
             );
 
             NetworkManager.Singleton.StartHost();
-            infoText.text = $"Game hosted!\nJoin code: {joinCode}";
+            infoText.text = $"Auto-hosted!\nJoin code: {joinCode}";
+
+            // Spawn je eigen player
+            PlayerSpawner.Instance.SpawnPlayer(NetworkManager.Singleton.LocalClientId);
         }
         catch (Exception e)
         {
-            Debug.LogError("Failed to host game: " + e.Message);
-            infoText.text = "Host failed!";
+            Debug.LogError("Auto-host failed: " + e.Message);
+            infoText.text = "Auto-host failed!";
         }
+    }
+
+    // Host button: toont alleen server info
+    private void OnHostButtonClicked()
+    {
+        if (!NetworkManager.Singleton.IsHost) return;
+
+        infoText.text = "You are hosting (server code active).";
     }
 
     private void JoinGame()
