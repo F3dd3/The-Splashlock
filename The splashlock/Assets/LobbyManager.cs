@@ -20,7 +20,7 @@ public class LobbyManager : MonoBehaviour
 
     private bool servicesInitialized = false;
     private string lastJoinCode = "";
-    private bool isAutoHost = false; // ✅ om te weten of het via AutoHost is gebeurd
+    private bool isAutoHost = false;
 
     private async void Awake()
     {
@@ -45,7 +45,7 @@ public class LobbyManager : MonoBehaviour
         hostButton.onClick.AddListener(OnHostButtonClicked);
         joinButton.onClick.AddListener(JoinGame);
 
-        // Start auto-host, maar toon geen code
+        // Auto-host bij opstarten
         WaitUntilReadyAndAutoHost();
     }
 
@@ -59,9 +59,7 @@ public class LobbyManager : MonoBehaviour
             try
             {
                 if (!AuthenticationService.Instance.IsSignedIn)
-                {
                     await AuthenticationService.Instance.SignInAnonymouslyAsync();
-                }
             }
             catch (Exception e)
             {
@@ -71,7 +69,6 @@ public class LobbyManager : MonoBehaviour
             await Task.Yield();
         }
 
-        // ✅ Markeer dat dit een auto-host is
         isAutoHost = true;
         AutoHostGame();
     }
@@ -97,7 +94,7 @@ public class LobbyManager : MonoBehaviour
 
             PlayerSpawner.Instance.SpawnPlayer(NetworkManager.Singleton.LocalClientId);
 
-            // ⚠️ Geen infoText, want dit is auto-host
+            // Auto-host → geen infoText
             Debug.Log($"[AutoHost] Game hosted with code: {joinCode}");
         }
         catch (Exception e)
@@ -108,16 +105,12 @@ public class LobbyManager : MonoBehaviour
 
     private void OnHostButtonClicked()
     {
-        // ✅ Alleen code tonen als dit niet auto-host was
+        // Alleen tonen van code bij handmatig hosten
         if (NetworkManager.Singleton.IsHost && !string.IsNullOrEmpty(lastJoinCode))
         {
-            isAutoHost = false; // handmatig geklikt → reset
+            isAutoHost = false; // markeer als handmatig
             infoText.text = lastJoinCode;
             Debug.Log($"[ManualHost] Showing join code: {lastJoinCode}");
-        }
-        else
-        {
-            Debug.LogWarning("You are not host or no code available yet.");
         }
     }
 
@@ -126,7 +119,7 @@ public class LobbyManager : MonoBehaviour
         string joinCode = joinCodeInput.text.Trim();
         if (string.IsNullOrEmpty(joinCode))
         {
-            Debug.LogWarning("Join code is empty!");
+            infoText.text = "Invalid code!";
             return;
         }
 
@@ -136,12 +129,28 @@ public class LobbyManager : MonoBehaviour
     private async void JoinRelay(string joinCode)
     {
         if (!servicesInitialized)
+            return;
+
+        JoinAllocation allocation = null;
+
+        try
         {
-            Debug.LogWarning("Services not initialized!");
+            allocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
+        }
+        catch (RelayServiceException ex)
+        {
+            Debug.LogWarning("Invalid room code: " + ex.Message);
+            infoText.text = "Invalid code!";
+            return;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError("Failed to join: " + ex.Message);
+            infoText.text = "Invalid code!";
             return;
         }
 
-        // 🧹 Als je zelf host bent, eerst afsluiten
+        // Alleen unhost/local player verwijderen bij geldige join
         if (NetworkManager.Singleton.IsHost)
         {
             try
@@ -159,11 +168,9 @@ public class LobbyManager : MonoBehaviour
             }
         }
 
-        // 🕹️ Daarna joinen
+        // Client starten
         try
         {
-            JoinAllocation allocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
-
             UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
             transport.SetRelayServerData(
                 allocation.RelayServer.IpV4,
@@ -176,13 +183,17 @@ public class LobbyManager : MonoBehaviour
 
             NetworkManager.Singleton.StartClient();
 
-            Debug.Log($"✅ Joined as client using code: {joinCode}");
+            // ✅ Succesvol join → infoText laat zien met roomcode
+            infoText.text = $"Connected to: {joinCode}";
+            Debug.Log($"Joined as CLIENT with join code: {joinCode}");
+
             await Task.Delay(300);
             PlayerBroadcaster.Instance?.ShowLocalJoinMessage("You joined as client!");
         }
         catch (Exception e)
         {
-            Debug.LogError("Failed to join game: " + e.Message);
+            Debug.LogError("Failed to join client: " + e.Message);
+            infoText.text = "Invalid code!";
         }
     }
 
