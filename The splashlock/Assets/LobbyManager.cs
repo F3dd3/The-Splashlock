@@ -51,11 +51,9 @@ public class LobbyManager : MonoBehaviour
 
     private async void WaitUntilReadyAndAutoHost()
     {
-        // Wacht tot Unity Services volledig klaar zijn
         while (!servicesInitialized)
             await Task.Yield();
 
-        // Wacht tot AuthenticationService klaar is en PlayerId beschikbaar
         while (!AuthenticationService.Instance.IsSignedIn || string.IsNullOrEmpty(AuthenticationService.Instance.PlayerId))
         {
             try
@@ -71,10 +69,9 @@ public class LobbyManager : MonoBehaviour
                 Debug.LogWarning("Sign-in failed, retrying: " + e.Message);
             }
 
-            await Task.Yield(); // wacht een frame en probeer opnieuw
+            await Task.Yield();
         }
 
-        // Nu veilig auto-hosten
         AutoHostGame();
     }
 
@@ -99,7 +96,6 @@ public class LobbyManager : MonoBehaviour
             NetworkManager.Singleton.StartHost();
             infoText.text = $"Auto-hosted!\nJoin code: {joinCode}";
 
-            // Spawn direct je eigen player
             PlayerSpawner.Instance.SpawnPlayer(NetworkManager.Singleton.LocalClientId);
         }
         catch (Exception e)
@@ -109,11 +105,9 @@ public class LobbyManager : MonoBehaviour
         }
     }
 
-    // Host button: toont alleen server info, geen extra spawn
     private void OnHostButtonClicked()
     {
         if (!NetworkManager.Singleton.IsHost) return;
-
         infoText.text = "You are hosting (server code active).";
     }
 
@@ -130,6 +124,7 @@ public class LobbyManager : MonoBehaviour
         JoinRelay(joinCode);
     }
 
+    // ✅ Belangrijk: nieuwe JoinRelay logica met auto-unhost
     private async void JoinRelay(string joinCode)
     {
         if (!servicesInitialized)
@@ -138,6 +133,32 @@ public class LobbyManager : MonoBehaviour
             return;
         }
 
+        // 🧹 Als je zelf host bent, eerst netjes afsluiten
+        if (NetworkManager.Singleton.IsHost)
+        {
+            infoText.text = "Closing your current host session...";
+
+            try
+            {
+                // Verwijder lokale player als die nog bestaat
+                var localPlayer = NetworkManager.Singleton.LocalClient?.PlayerObject;
+                if (localPlayer != null)
+                {
+                    Destroy(localPlayer.gameObject);
+                }
+
+                // Stop netwerk
+                NetworkManager.Singleton.Shutdown();
+
+                await Task.Delay(500); // kleine pauze zodat Unity kan opruimen
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("Error cleaning host before joining: " + ex.Message);
+            }
+        }
+
+        // 🕹️ Daarna pas joinen als client
         try
         {
             JoinAllocation allocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
@@ -153,7 +174,11 @@ public class LobbyManager : MonoBehaviour
             );
 
             NetworkManager.Singleton.StartClient();
-            infoText.text = "Joined game!";
+            infoText.text = "✅ Connected as client!";
+            Debug.Log("Now acting as CLIENT on host with join code: " + joinCode);
+
+            await Task.Delay(300);
+            PlayerBroadcaster.Instance?.ShowLocalJoinMessage("You joined as client!");
         }
         catch (Exception e)
         {

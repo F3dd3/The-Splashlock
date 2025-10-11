@@ -66,7 +66,6 @@ public class Back : NetworkBehaviour
         int totalPlayers = NetworkManager.Singleton.ConnectedClients.Count;
         if (readyClients.Count == totalPlayers && totalPlayers > 0)
         {
-            // Alleen server switcht scene via Netcode SceneManager
             NetworkManager.Singleton.SceneManager.LoadScene("GameScene", UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
     }

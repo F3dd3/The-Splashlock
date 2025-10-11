@@ -49,11 +49,9 @@ public class PlayerSpawner : MonoBehaviour
     {
         if (!NetworkManager.Singleton.IsServer) return;
 
-        // Spawn enkel als nog niet gespawned
         if (!playerRefs.ContainsKey(clientId))
             SpawnPlayer(clientId);
 
-        // Stuur bestaande kleuren naar de nieuwe client
         foreach (var kvp in playerRefs)
         {
             ulong id = kvp.Key;
@@ -100,7 +98,6 @@ public class PlayerSpawner : MonoBehaviour
 
     public void SpawnPlayer(ulong clientId)
     {
-        // Controleer of player al bestaat
         if (playerRefs.ContainsKey(clientId)) return;
 
         if (playerPrefab == null)

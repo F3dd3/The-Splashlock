@@ -1,5 +1,5 @@
-﻿using UnityEngine;
-using Unity.Netcode;
+﻿using Unity.Netcode;
+using UnityEngine;
 
 public class Player : NetworkBehaviour
 {
@@ -21,10 +21,8 @@ public class Player : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
-
         playerColor.OnValueChanged += OnColorChanged;
 
-        // ✅ direct bij join juiste kleur weergeven
         if (playerColor.Value != Vector3.zero)
             ApplyColor(playerColor.Value);
     }
