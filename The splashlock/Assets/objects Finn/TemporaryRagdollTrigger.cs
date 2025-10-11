@@ -6,9 +6,6 @@ using System.Collections.Generic;
 public class TemporaryRagdollTrigger : MonoBehaviour
 {
     [Header("Instellingen")]
-    [Tooltip("Hoe lang de ragdoll trigger actief is nadat geactiveerd.")]
-    public float activeDuration = 0.5f;
-
     [Tooltip("Kijkhoek in graden; alleen targets binnen deze cone ragdollen.")]
     [Range(0f, 180f)]
     public float attackAngle = 90f;
@@ -16,25 +13,23 @@ public class TemporaryRagdollTrigger : MonoBehaviour
     [Tooltip("Optionele vertraging voor synchronisatie met animatie.")]
     public float triggerDelay = 0f;
 
-    [Tooltip("Cooldown per target zodat RPC niet meerdere keren per frame wordt gestuurd.")]
-    public float perTargetCooldown = 0.2f;
+    [Tooltip("Naam van de aanvalsaninatie in de Animator.")]
+    public string attackAnimationName = "Attack";
 
     private bool ragdollEnabled = false;
-    private float timer = 0f;
-
+    private Animator animator;
     private Transform myRoot;
     private Transform myTransform;
     private RagdollActivatorNetworked selfRagdoll;
-    private CharacterController characterController;
 
-    private Dictionary<RagdollActivatorNetworked, float> targetCooldowns = new Dictionary<RagdollActivatorNetworked, float>();
+    private readonly Dictionary<RagdollActivatorNetworked, float> targetCooldowns = new();
 
     void Start()
     {
         myTransform = transform;
         myRoot = transform.root;
+        animator = myRoot.GetComponent<Animator>();
         selfRagdoll = myRoot.GetComponent<RagdollActivatorNetworked>();
-        characterController = myRoot.GetComponent<CharacterController>();
     }
 
     void Update()
@@ -45,13 +40,15 @@ public class TemporaryRagdollTrigger : MonoBehaviour
             return;
         }
 
-        if (ragdollEnabled)
+        // Alleen actief zolang de animatie speelt
+        if (ragdollEnabled && animator != null)
         {
-            timer -= Time.deltaTime;
-            if (timer <= 0f)
+            var state = animator.GetCurrentAnimatorStateInfo(0);
+            if (!state.IsName(attackAnimationName) || state.normalizedTime >= 1f)
                 ragdollEnabled = false;
         }
 
+        // Cooldowns afbouwen
         var keys = new List<RagdollActivatorNetworked>(targetCooldowns.Keys);
         foreach (var key in keys)
         {
@@ -61,11 +58,9 @@ public class TemporaryRagdollTrigger : MonoBehaviour
         }
     }
 
-    // Wordt aangeroepen door animatie event of script
     public void ActivateTrigger()
     {
         if (selfRagdoll != null && selfRagdoll.isRagdollActive) return;
-
         if (triggerDelay > 0f)
             StartCoroutine(ActivateAfterDelay(triggerDelay));
         else
@@ -81,11 +76,8 @@ public class TemporaryRagdollTrigger : MonoBehaviour
     private void StartRagdollTrigger()
     {
         ragdollEnabled = true;
-        timer = activeDuration;
-
-        // Immuniteit voor jezelf tijdens de slag
         if (selfRagdoll != null)
-            selfRagdoll.StartTemporaryImmunity(activeDuration);
+            selfRagdoll.StartTemporaryImmunity(0.3f);
     }
 
     private void OnTriggerStay(Collider other)
@@ -98,18 +90,22 @@ public class TemporaryRagdollTrigger : MonoBehaviour
     {
         if (col.transform.root == myRoot) return;
 
-        RagdollActivatorNetworked activator = col.GetComponentInParent<RagdollActivatorNetworked>();
-        if (activator == null) return;
-        if (activator.isRagdollActive) return;
+        var activator = col.GetComponentInParent<RagdollActivatorNetworked>();
+        if (activator == null || activator.isRagdollActive) return;
         if (targetCooldowns.ContainsKey(activator)) return;
 
-        Vector3 directionToTarget = (activator.transform.position - myTransform.position).normalized;
-        float angle = Vector3.Angle(myTransform.forward, directionToTarget);
+        Vector3 dir = (activator.transform.position - myTransform.position).normalized;
+        float angle = Vector3.Angle(myTransform.forward, dir);
         if (angle > attackAngle * 0.5f) return;
 
-        // ✅ forceer hit, ook tijdens lopen
         activator.EnableRagdoll();
-
-        targetCooldowns[activator] = perTargetCooldown;
+        // target cooldown = lengte van de animatie
+        if (animator != null)
+        {
+            var state = animator.GetCurrentAnimatorStateInfo(0);
+            targetCooldowns[activator] = state.length;
+        }
+        else
+            targetCooldowns[activator] = 0.5f;
     }
 }

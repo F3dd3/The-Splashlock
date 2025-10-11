@@ -1,12 +1,15 @@
 ﻿using UnityEngine;
 using Unity.Netcode;
+using System.Collections;
 
 [RequireComponent(typeof(Animator))]
 public class PlayerAttackNetworked : NetworkBehaviour
 {
     public Animator animator;
     public TemporaryRagdollTrigger attackTrigger;
-    public float attackCooldown = 1f;
+    [Tooltip("Fallback cooldown als de animatie niet gevonden wordt.")]
+    public float defaultAttackCooldown = 1f;
+
     private bool canAttack = true;
 
     void Update()
@@ -17,11 +20,27 @@ public class PlayerAttackNetworked : NetworkBehaviour
         {
             canAttack = false;
             AttackServerRpc();
-            Invoke(nameof(ResetAttack), attackCooldown);
+            StartCoroutine(ResetAttackWhenAnimationEnds());
         }
     }
 
-    void ResetAttack() => canAttack = true;
+    private IEnumerator ResetAttackWhenAnimationEnds()
+    {
+        float cooldown = defaultAttackCooldown;
+
+        if (animator != null)
+        {
+            // Wacht even zodat de animator in de attack state komt
+            yield return new WaitForEndOfFrame();
+
+            var state = animator.GetCurrentAnimatorStateInfo(0);
+            if (state.IsName("Attack"))
+                cooldown = state.length;
+        }
+
+        yield return new WaitForSeconds(cooldown);
+        canAttack = true;
+    }
 
     [ServerRpc]
     void AttackServerRpc(ServerRpcParams rpcParams = default)
@@ -35,7 +54,6 @@ public class PlayerAttackNetworked : NetworkBehaviour
         if (animator != null)
             animator.SetTrigger("Attack");
 
-        // ✅ direct triggeren (werkt ook tijdens lopen)
         if (attackTrigger != null)
             attackTrigger.ActivateTrigger();
     }

@@ -1692,6 +1692,7 @@ MonoBehaviour:
     m_Bits: 8
   ragdollCooldown: 0.5
   ragdollDelay: 0.41
+  autoCheckRate: 0.01
 --- !u!114 &-6922734886859466854
 MonoBehaviour:
   m_ObjectHideFlags: 0
