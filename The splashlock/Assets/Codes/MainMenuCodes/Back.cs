@@ -15,22 +15,13 @@ public class Back : NetworkBehaviour
     private void Start()
     {
         readyButton.onClick.AddListener(OnReadyClicked);
-        UpdateButtonText();
         UpdateReadyStatusUI();
-
-        if (NetworkManager.Singleton != null)
-        {
-            NetworkManager.Singleton.OnClientConnectedCallback += OnClientJoined;
-        }
+        UpdateButtonText();
     }
 
     private void OnDestroy()
     {
         readyButton.onClick.RemoveListener(OnReadyClicked);
-        if (NetworkManager.Singleton != null)
-        {
-            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientJoined;
-        }
     }
 
     private void OnReadyClicked()
@@ -80,7 +71,7 @@ public class Back : NetworkBehaviour
     }
 
     [ClientRpc]
-    private void UpdateReadyStatusClientRpc(ulong[] readyClientIds, ClientRpcParams rpcParams = default)
+    private void UpdateReadyStatusClientRpc(ulong[] readyClientIds)
     {
         readyClients = new List<ulong>(readyClientIds);
         UpdateReadyStatusUI();
@@ -88,10 +79,9 @@ public class Back : NetworkBehaviour
 
     private void UpdateReadyStatusUI()
     {
-        // Alleen tonen als er meerdere spelers zijn
-        if (NetworkManager.Singleton.ConnectedClients.Count <= 1)
+        if (NetworkManager.Singleton.ConnectedClientsList.Count < 2)
         {
-            readyStatusText.text = "";
+            readyStatusText.text = ""; // alleen tonen bij meerdere spelers
             return;
         }
 
@@ -102,23 +92,5 @@ public class Back : NetworkBehaviour
             status += $"Player {client.ClientId}: {(isReady ? "Ready" : "Not Ready")}\n";
         }
         readyStatusText.text = status;
-    }
-
-    // Callback bij join van nieuwe client
-    private void OnClientJoined(ulong clientId)
-    {
-        if (!IsServer) return;
-
-        // ✅ Update de host zelf direct
-        UpdateReadyStatusClientRpc(readyClients.ToArray());
-
-        // ✅ Stuur huidige ready-status naar de nieuw joinende client
-        UpdateReadyStatusClientRpc(readyClients.ToArray(), new ClientRpcParams
-        {
-            Send = new ClientRpcSendParams
-            {
-                TargetClientIds = new ulong[] { clientId }
-            }
-        });
     }
 }

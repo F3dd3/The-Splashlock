@@ -1,11 +1,9 @@
-﻿using Unity.Netcode;
-using UnityEngine;
+﻿using UnityEngine;
+using Unity.Netcode;
 
 public class Player : NetworkBehaviour
 {
-    [Header("Renderer")]
     public Renderer playerRenderer;
-
     public NetworkVariable<Vector3> playerColor = new NetworkVariable<Vector3>(
         Vector3.zero,
         NetworkVariableReadPermission.Everyone,
@@ -22,7 +20,6 @@ public class Player : NetworkBehaviour
     {
         base.OnNetworkSpawn();
         playerColor.OnValueChanged += OnColorChanged;
-
         if (playerColor.Value != Vector3.zero)
             ApplyColor(playerColor.Value);
     }
@@ -40,7 +37,6 @@ public class Player : NetworkBehaviour
     private void ApplyColor(Vector3 colorVec)
     {
         if (playerRenderer == null) return;
-
         Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
         playerRenderer.material.color = color;
     }
@@ -52,7 +48,7 @@ public class Player : NetworkBehaviour
     }
 
     [ClientRpc]
-    public void ForceColorClientRpc(Vector3 newColor, ClientRpcParams rpcParams = default)
+    public void ForceColorClientRpc(Vector3 newColor)
     {
         ApplyColor(newColor);
     }

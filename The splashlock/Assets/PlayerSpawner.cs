@@ -7,16 +7,11 @@ public class PlayerSpawner : MonoBehaviour
 {
     public static PlayerSpawner Instance;
 
-    [Header("Player Prefab")]
     public GameObject playerPrefab;
-
-    [Header("Spawnpoints")]
     public Transform[] spawnPoints;
 
     private readonly List<Color> allColors = new List<Color>
-    {
-        Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan
-    };
+    { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan };
 
     private readonly Dictionary<ulong, Color> playerColors = new Dictionary<ulong, Color>();
     private readonly Dictionary<ulong, Player> playerRefs = new Dictionary<ulong, Player>();
@@ -40,7 +35,6 @@ public class PlayerSpawner : MonoBehaviour
     private void OnDestroy()
     {
         if (NetworkManager.Singleton == null) return;
-
         NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
     }
@@ -48,35 +42,14 @@ public class PlayerSpawner : MonoBehaviour
     private void OnClientConnected(ulong clientId)
     {
         if (!NetworkManager.Singleton.IsServer) return;
-
         if (!playerRefs.ContainsKey(clientId))
             SpawnPlayer(clientId);
-
-        foreach (var kvp in playerRefs)
-        {
-            ulong id = kvp.Key;
-            Player p = kvp.Value;
-
-            if (p != null && playerColors.ContainsKey(id))
-            {
-                Vector3 colVec = new Vector3(playerColors[id].r, playerColors[id].g, playerColors[id].b);
-                p.ForceColorClientRpc(colVec, new ClientRpcParams
-                {
-                    Send = new ClientRpcSendParams
-                    {
-                        TargetClientIds = new[] { clientId }
-                    }
-                });
-            }
-        }
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
-        if (playerColors.ContainsKey(clientId))
-            playerColors.Remove(clientId);
-        if (playerRefs.ContainsKey(clientId))
-            playerRefs.Remove(clientId);
+        if (playerColors.ContainsKey(clientId)) playerColors.Remove(clientId);
+        if (playerRefs.ContainsKey(clientId)) playerRefs.Remove(clientId);
     }
 
     private Vector3 GetNextSpawnPosition()
@@ -91,32 +64,25 @@ public class PlayerSpawner : MonoBehaviour
     {
         var usedColors = playerColors.Values.ToList();
         var availableColors = allColors.Except(usedColors).ToList();
-        if (availableColors.Count == 0)
-            return Random.ColorHSV();
-        return availableColors[0];
+        return availableColors.Count > 0 ? availableColors[0] : Random.ColorHSV();
     }
 
     public void SpawnPlayer(ulong clientId)
     {
         if (playerRefs.ContainsKey(clientId)) return;
-
-        if (playerPrefab == null)
-        {
-            Debug.LogError("❌ Player prefab niet ingesteld!");
-            return;
-        }
+        if (playerPrefab == null) return;
 
         Vector3 spawnPos = GetNextSpawnPosition();
-        GameObject player = Instantiate(playerPrefab, spawnPos, Quaternion.Euler(0f, 180f, 0f));
+        GameObject player = Instantiate(playerPrefab, spawnPos, Quaternion.Euler(0, 180, 0));
         player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
 
-        Color playerColorValue = GetNextUniqueColor();
-        playerColors[clientId] = playerColorValue;
+        Color color = GetNextUniqueColor();
+        playerColors[clientId] = color;
 
         Player playerScript = player.GetComponent<Player>();
         playerRefs[clientId] = playerScript;
 
-        Vector3 colorVec = new Vector3(playerColorValue.r, playerColorValue.g, playerColorValue.b);
+        Vector3 colorVec = new Vector3(color.r, color.g, color.b);
         playerScript.SetColorServerRpc(colorVec);
         playerScript.ForceColorClientRpc(colorVec);
     }

@@ -17,6 +17,7 @@ public class LobbyManager : MonoBehaviour
     public Button joinButton;
     public TMP_InputField joinCodeInput;
     public TextMeshProUGUI infoText;
+    public Button leaveLobbyButton;
 
     private bool servicesInitialized = false;
     private string lastJoinCode = "";
@@ -44,9 +45,17 @@ public class LobbyManager : MonoBehaviour
     {
         hostButton.onClick.AddListener(OnHostButtonClicked);
         joinButton.onClick.AddListener(JoinGame);
+        leaveLobbyButton.onClick.AddListener(OnLeaveLobbyClicked);
+        leaveLobbyButton.gameObject.SetActive(false);
 
-        // Auto-host bij opstarten
         WaitUntilReadyAndAutoHost();
+    }
+
+    private void Update()
+    {
+        // Laat Leave Lobby knop alleen zien als er meerdere spelers in dezelfde server zijn
+        bool multiplePlayers = NetworkManager.Singleton.ConnectedClientsList.Count > 1;
+        leaveLobbyButton.gameObject.SetActive(multiplePlayers);
     }
 
     private async void WaitUntilReadyAndAutoHost()
@@ -61,11 +70,10 @@ public class LobbyManager : MonoBehaviour
                 if (!AuthenticationService.Instance.IsSignedIn)
                     await AuthenticationService.Instance.SignInAnonymouslyAsync();
             }
-            catch (Exception e)
+            catch
             {
-                Debug.LogWarning("Sign-in failed, retrying: " + e.Message);
+                await Task.Yield();
             }
-
             await Task.Yield();
         }
 
@@ -91,11 +99,6 @@ public class LobbyManager : MonoBehaviour
             );
 
             NetworkManager.Singleton.StartHost();
-
-            PlayerSpawner.Instance.SpawnPlayer(NetworkManager.Singleton.LocalClientId);
-
-            // Auto-host → geen infoText
-            Debug.Log($"[AutoHost] Game hosted with code: {joinCode}");
         }
         catch (Exception e)
         {
@@ -105,12 +108,10 @@ public class LobbyManager : MonoBehaviour
 
     private void OnHostButtonClicked()
     {
-        // Alleen tonen van code bij handmatig hosten
         if (NetworkManager.Singleton.IsHost && !string.IsNullOrEmpty(lastJoinCode))
         {
-            isAutoHost = false; // markeer als handmatig
+            isAutoHost = false;
             infoText.text = lastJoinCode;
-            Debug.Log($"[ManualHost] Showing join code: {lastJoinCode}");
         }
     }
 
@@ -122,7 +123,6 @@ public class LobbyManager : MonoBehaviour
             infoText.text = "Invalid code!";
             return;
         }
-
         JoinRelay(joinCode);
     }
 
@@ -137,20 +137,12 @@ public class LobbyManager : MonoBehaviour
         {
             allocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
         }
-        catch (RelayServiceException ex)
+        catch
         {
-            Debug.LogWarning("Invalid room code: " + ex.Message);
-            infoText.text = "Invalid code!";
-            return;
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError("Failed to join: " + ex.Message);
             infoText.text = "Invalid code!";
             return;
         }
 
-        // Alleen unhost/local player verwijderen bij geldige join
         if (NetworkManager.Singleton.IsHost)
         {
             try
@@ -162,13 +154,9 @@ public class LobbyManager : MonoBehaviour
                 NetworkManager.Singleton.Shutdown();
                 await Task.Delay(500);
             }
-            catch (Exception ex)
-            {
-                Debug.LogWarning("Error cleaning host before joining: " + ex.Message);
-            }
+            catch { }
         }
 
-        // Client starten
         try
         {
             UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
@@ -182,24 +170,43 @@ public class LobbyManager : MonoBehaviour
             );
 
             NetworkManager.Singleton.StartClient();
-
-            // ✅ Succesvol join → infoText laat zien met roomcode
             infoText.text = $"Connected to: {joinCode}";
-            Debug.Log($"Joined as CLIENT with join code: {joinCode}");
-
-            await Task.Delay(300);
-            PlayerBroadcaster.Instance?.ShowLocalJoinMessage("You joined as client!");
         }
-        catch (Exception e)
+        catch
         {
-            Debug.LogError("Failed to join client: " + e.Message);
             infoText.text = "Invalid code!";
         }
+    }
+
+    private void OnLeaveLobbyClicked()
+    {
+        if (NetworkManager.Singleton.IsHost)
+        {
+            foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+            {
+                if (client.ClientId == NetworkManager.Singleton.LocalClientId) continue;
+                client.PlayerObject?.Despawn(true);
+            }
+
+            NetworkManager.Singleton.Shutdown();
+        }
+        else if (NetworkManager.Singleton.IsClient)
+        {
+            var localPlayer = NetworkManager.Singleton.LocalClient?.PlayerObject;
+            if (localPlayer != null)
+                Destroy(localPlayer.gameObject);
+
+            NetworkManager.Singleton.Shutdown();
+        }
+
+        infoText.text = "";
+        WaitUntilReadyAndAutoHost();
     }
 
     private void OnDestroy()
     {
         hostButton.onClick.RemoveAllListeners();
         joinButton.onClick.RemoveAllListeners();
+        leaveLobbyButton.onClick.RemoveAllListeners();
     }
 }
