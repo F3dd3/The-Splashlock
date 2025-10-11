@@ -7,7 +7,10 @@ public class PlayerSpawner : MonoBehaviour
 {
     public static PlayerSpawner Instance;
 
+    [Header("Player Prefab")]
     public GameObject playerPrefab;
+
+    [Header("Spawnpoints")]
     public Transform[] spawnPoints;
 
     private readonly List<Color> allColors = new List<Color>
@@ -35,6 +38,7 @@ public class PlayerSpawner : MonoBehaviour
     private void OnDestroy()
     {
         if (NetworkManager.Singleton == null) return;
+
         NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
     }
@@ -42,6 +46,8 @@ public class PlayerSpawner : MonoBehaviour
     private void OnClientConnected(ulong clientId)
     {
         if (!NetworkManager.Singleton.IsServer) return;
+
+        // Spawn enkel als nog niet gespawned
         if (!playerRefs.ContainsKey(clientId))
             SpawnPlayer(clientId);
     }
@@ -55,6 +61,7 @@ public class PlayerSpawner : MonoBehaviour
     private Vector3 GetNextSpawnPosition()
     {
         if (spawnPoints.Length == 0) return Vector3.zero;
+
         Vector3 pos = spawnPoints[nextSpawnIndex % spawnPoints.Length].position;
         nextSpawnIndex++;
         return pos;
@@ -85,5 +92,15 @@ public class PlayerSpawner : MonoBehaviour
         Vector3 colorVec = new Vector3(color.r, color.g, color.b);
         playerScript.SetColorServerRpc(colorVec);
         playerScript.ForceColorClientRpc(colorVec);
+    }
+
+    /// <summary>
+    /// Reset de spawnpoint index zodat de volgende player weer bij de eerste spawn spawnt.
+    /// Dit wordt gebruikt bij Leave Lobby of opnieuw autohost.
+    /// </summary>
+    public void ResetSpawnPoints()
+    {
+        nextSpawnIndex = 0;
+        Debug.Log("🔄 Spawnpoints gereset. Volgende spawn is weer de eerste spawnpoint.");
     }
 }

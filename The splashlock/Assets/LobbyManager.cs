@@ -99,6 +99,9 @@ public class LobbyManager : MonoBehaviour
             );
 
             NetworkManager.Singleton.StartHost();
+
+            // Spawn local player bij auto-host
+            PlayerSpawner.Instance.SpawnPlayer(NetworkManager.Singleton.LocalClientId);
         }
         catch (Exception e)
         {
@@ -180,6 +183,7 @@ public class LobbyManager : MonoBehaviour
 
     private void OnLeaveLobbyClicked()
     {
+        // ✅ Host verlaat lobby → disconnect alle clients en reset
         if (NetworkManager.Singleton.IsHost)
         {
             foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
@@ -189,7 +193,15 @@ public class LobbyManager : MonoBehaviour
             }
 
             NetworkManager.Singleton.Shutdown();
+
+            // ✅ Reset spawnpoints
+            if (PlayerSpawner.Instance != null)
+                PlayerSpawner.Instance.ResetSpawnPoints();
+
+            // Start direct opnieuw hosten
+            WaitUntilReadyAndAutoHost();
         }
+        // ✅ Client verlaat lobby → disconnect van host, reset en autohost lokaal
         else if (NetworkManager.Singleton.IsClient)
         {
             var localPlayer = NetworkManager.Singleton.LocalClient?.PlayerObject;
@@ -197,10 +209,16 @@ public class LobbyManager : MonoBehaviour
                 Destroy(localPlayer.gameObject);
 
             NetworkManager.Singleton.Shutdown();
+
+            // ✅ Reset spawnpoints
+            if (PlayerSpawner.Instance != null)
+                PlayerSpawner.Instance.ResetSpawnPoints();
+
+            // Start lokale host opnieuw
+            WaitUntilReadyAndAutoHost();
         }
 
         infoText.text = "";
-        WaitUntilReadyAndAutoHost();
     }
 
     private void OnDestroy()
