@@ -88,6 +88,13 @@ public class Back : NetworkBehaviour
 
     private void UpdateReadyStatusUI()
     {
+        // Alleen tonen als er meerdere spelers zijn
+        if (NetworkManager.Singleton.ConnectedClients.Count <= 1)
+        {
+            readyStatusText.text = "";
+            return;
+        }
+
         string status = "Ready Players:\n";
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
         {
@@ -97,12 +104,15 @@ public class Back : NetworkBehaviour
         readyStatusText.text = status;
     }
 
-    // ✅ Callback bij join van nieuwe client
+    // Callback bij join van nieuwe client
     private void OnClientJoined(ulong clientId)
     {
         if (!IsServer) return;
 
-        // Stuur huidige ready-status naar de nieuwe client
+        // ✅ Update de host zelf direct
+        UpdateReadyStatusClientRpc(readyClients.ToArray());
+
+        // ✅ Stuur huidige ready-status naar de nieuw joinende client
         UpdateReadyStatusClientRpc(readyClients.ToArray(), new ClientRpcParams
         {
             Send = new ClientRpcSendParams
