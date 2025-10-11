@@ -30,25 +30,8 @@ public class LobbyManager : MonoBehaviour
         try
         {
             await UnityServices.InitializeAsync();
-
-            if (!AuthenticationService.Instance.IsSignedIn)
-            {
-                try
-                {
-                    await AuthenticationService.Instance.SignInAnonymouslyAsync();
-                    infoText.text = "Signed in as: " + AuthenticationService.Instance.PlayerId;
-                }
-                catch (Exception e)
-                {
-                    Debug.LogWarning("Sign-in skipped: " + e.Message);
-                }
-            }
-            else
-            {
-                infoText.text = "Already signed in: " + AuthenticationService.Instance.PlayerId;
-            }
-
             servicesInitialized = true;
+            infoText.text = "Unity Services ready!";
         }
         catch (Exception e)
         {
@@ -62,19 +45,43 @@ public class LobbyManager : MonoBehaviour
         hostButton.onClick.AddListener(OnHostButtonClicked);
         joinButton.onClick.AddListener(JoinGame);
 
-        // ✅ Auto-host bij start
+        // ✅ Wacht tot alles klaar is voordat auto-host
+        WaitUntilReadyAndAutoHost();
+    }
+
+    private async void WaitUntilReadyAndAutoHost()
+    {
+        // Wacht tot Unity Services volledig klaar zijn
+        while (!servicesInitialized)
+            await Task.Yield();
+
+        // Wacht tot AuthenticationService klaar is en PlayerId beschikbaar
+        while (!AuthenticationService.Instance.IsSignedIn || string.IsNullOrEmpty(AuthenticationService.Instance.PlayerId))
+        {
+            try
+            {
+                if (!AuthenticationService.Instance.IsSignedIn)
+                {
+                    await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                    infoText.text = "Signed in as: " + AuthenticationService.Instance.PlayerId;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("Sign-in failed, retrying: " + e.Message);
+            }
+
+            await Task.Yield(); // wacht een frame en probeer opnieuw
+        }
+
+        // Nu veilig auto-hosten
         AutoHostGame();
     }
 
     private async void AutoHostGame()
     {
-        if (!servicesInitialized)
-        {
-            infoText.text = "Services not initialized!";
-            return;
-        }
-
         infoText.text = "Auto-hosting game...";
+
         try
         {
             Allocation allocation = await RelayService.Instance.CreateAllocationAsync(4);
@@ -92,7 +99,7 @@ public class LobbyManager : MonoBehaviour
             NetworkManager.Singleton.StartHost();
             infoText.text = $"Auto-hosted!\nJoin code: {joinCode}";
 
-            // Spawn je eigen player
+            // Spawn direct je eigen player
             PlayerSpawner.Instance.SpawnPlayer(NetworkManager.Singleton.LocalClientId);
         }
         catch (Exception e)
@@ -102,7 +109,7 @@ public class LobbyManager : MonoBehaviour
         }
     }
 
-    // Host button: toont alleen server info
+    // Host button: toont alleen server info, geen extra spawn
     private void OnHostButtonClicked()
     {
         if (!NetworkManager.Singleton.IsHost) return;
