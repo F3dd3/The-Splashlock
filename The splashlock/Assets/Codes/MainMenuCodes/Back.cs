@@ -15,13 +15,22 @@ public class Back : NetworkBehaviour
     private void Start()
     {
         readyButton.onClick.AddListener(OnReadyClicked);
-        UpdateReadyStatusUI();
         UpdateButtonText();
+        UpdateReadyStatusUI();
+
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientConnectedCallback += OnClientJoined;
+        }
     }
 
     private void OnDestroy()
     {
         readyButton.onClick.RemoveListener(OnReadyClicked);
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientJoined;
+        }
     }
 
     private void OnReadyClicked()
@@ -71,7 +80,7 @@ public class Back : NetworkBehaviour
     }
 
     [ClientRpc]
-    private void UpdateReadyStatusClientRpc(ulong[] readyClientIds)
+    private void UpdateReadyStatusClientRpc(ulong[] readyClientIds, ClientRpcParams rpcParams = default)
     {
         readyClients = new List<ulong>(readyClientIds);
         UpdateReadyStatusUI();
@@ -86,5 +95,20 @@ public class Back : NetworkBehaviour
             status += $"Player {client.ClientId}: {(isReady ? "Ready" : "Not Ready")}\n";
         }
         readyStatusText.text = status;
+    }
+
+    // ✅ Callback bij join van nieuwe client
+    private void OnClientJoined(ulong clientId)
+    {
+        if (!IsServer) return;
+
+        // Stuur huidige ready-status naar de nieuwe client
+        UpdateReadyStatusClientRpc(readyClients.ToArray(), new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams
+            {
+                TargetClientIds = new ulong[] { clientId }
+            }
+        });
     }
 }
