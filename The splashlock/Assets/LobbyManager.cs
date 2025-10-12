@@ -104,6 +104,7 @@ public class LobbyManager : MonoBehaviour
         {
             isAutoHost = false;
             infoText.text = lastJoinCode;
+            leaveButton.gameObject.SetActive(true); // ✅ Host ziet nu leave-button
         }
     }
 
@@ -122,7 +123,6 @@ public class LobbyManager : MonoBehaviour
     {
         if (!servicesInitialized) return;
 
-        // Probeer joinen
         JoinAllocation allocation = null;
         try
         {
@@ -134,7 +134,6 @@ public class LobbyManager : MonoBehaviour
             return;
         }
 
-        // Disconnect local host (alleen voor deze client)
         if (NetworkManager.Singleton.IsHost)
         {
             var localPlayer = NetworkManager.Singleton.LocalClient?.PlayerObject;
@@ -143,7 +142,6 @@ public class LobbyManager : MonoBehaviour
             await Task.Delay(500);
         }
 
-        // Join client
         try
         {
             UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
@@ -170,7 +168,6 @@ public class LobbyManager : MonoBehaviour
     {
         if (NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsHost)
         {
-            // Client leave
             PlayerSpawner.Instance.ClientLeave(NetworkManager.Singleton.LocalClientId);
             NetworkManager.Singleton.Shutdown();
             PlayerSpawner.Instance.ResetSpawnPoints();
@@ -178,7 +175,6 @@ public class LobbyManager : MonoBehaviour
         }
         else if (NetworkManager.Singleton.IsHost)
         {
-            // Host leave: kick alle clients
             foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
             {
                 if (client.ClientId != NetworkManager.Singleton.LocalClientId)
@@ -193,5 +189,12 @@ public class LobbyManager : MonoBehaviour
 
         leaveButton.gameObject.SetActive(false);
         infoText.text = "";
+    }
+
+    // ✅ Toegevoegd: makkelijke toegang voor andere scripts
+    public void SetLeaveButtonVisible(bool visible)
+    {
+        if (leaveButton != null)
+            leaveButton.gameObject.SetActive(visible);
     }
 }

@@ -23,7 +23,7 @@ public class Back : NetworkBehaviour
     {
         readyButton.onClick.AddListener(OnReadyClicked);
         UpdateButtonText();
-        UpdateReadyStatusClientRpc();
+        SetReadyStatsVisible(false); // standaard onzichtbaar bij start
     }
 
     private void OnDestroy()
@@ -55,7 +55,7 @@ public class Back : NetworkBehaviour
         if (!readyClients.Contains(clientId))
             readyClients.Add(clientId);
 
-        UpdateReadyStatusClientRpc();
+        UpdateReadyStatusClientRpc(readyClients.ToArray());
         CheckAllReady();
     }
 
@@ -65,12 +65,14 @@ public class Back : NetworkBehaviour
         if (readyClients.Contains(clientId))
             readyClients.Remove(clientId);
 
-        UpdateReadyStatusClientRpc();
+        UpdateReadyStatusClientRpc(readyClients.ToArray());
     }
 
     [ClientRpc]
-    private void UpdateReadyStatusClientRpc()
+    private void UpdateReadyStatusClientRpc(ulong[] readyIds)
     {
+        readyClients = new List<ulong>(readyIds);
+
         if (NetworkManager.Singleton.ConnectedClients.Count <= 1)
         {
             readyStatusText.text = "";
@@ -100,6 +102,20 @@ public class Back : NetworkBehaviour
         if (readyClients.Contains(clientId))
             readyClients.Remove(clientId);
 
-        UpdateReadyStatusClientRpc();
+        UpdateReadyStatusClientRpc(readyClients.ToArray());
+    }
+
+    // ✅ Toegevoegd: ready UI zichtbaar/verbergen
+    public void SetReadyStatsVisible(bool visible)
+    {
+        if (readyButton != null)
+            readyButton.gameObject.SetActive(visible);
+
+        if (readyStatusText != null)
+        {
+            readyStatusText.gameObject.SetActive(visible);
+            if (!visible)
+                readyStatusText.text = "";
+        }
     }
 }

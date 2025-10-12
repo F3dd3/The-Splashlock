@@ -10,7 +10,8 @@ public class PlayerSpawner : MonoBehaviour
     public GameObject playerPrefab;
     public Transform[] spawnPoints;
 
-    private readonly List<Color> allColors = new List<Color> { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan };
+    private readonly List<Color> allColors = new List<Color>
+    { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan };
 
     private readonly Dictionary<ulong, Color> playerColors = new Dictionary<ulong, Color>();
     private readonly Dictionary<ulong, Player> playerRefs = new Dictionary<ulong, Player>();
@@ -43,11 +44,26 @@ public class PlayerSpawner : MonoBehaviour
         if (!NetworkManager.Singleton.IsServer) return;
         if (!playerRefs.ContainsKey(clientId))
             SpawnPlayer(clientId);
+
+        UpdateUIVisibility();
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
         RemovePlayer(clientId);
+        UpdateUIVisibility();
+    }
+
+    private void UpdateUIVisibility()
+    {
+        bool multiplePlayers = NetworkManager.Singleton.ConnectedClientsList.Count > 1;
+
+        if (Back.Instance != null)
+            Back.Instance.SetReadyStatsVisible(multiplePlayers);
+
+        var lm = FindObjectOfType<LobbyManager>();
+        if (lm != null)
+            lm.SetLeaveButtonVisible(multiplePlayers);
     }
 
     public void SpawnPlayer(ulong clientId)
@@ -80,8 +96,8 @@ public class PlayerSpawner : MonoBehaviour
     private Color GetNextUniqueColor()
     {
         var usedColors = playerColors.Values.ToList();
-        var available = allColors.Except(usedColors).ToList();
-        return available.Count > 0 ? available[0] : Random.ColorHSV();
+        var availableColors = allColors.Except(usedColors).ToList();
+        return availableColors.Count > 0 ? availableColors[0] : Random.ColorHSV();
     }
 
     public void RemovePlayer(ulong clientId)
@@ -89,8 +105,11 @@ public class PlayerSpawner : MonoBehaviour
         if (playerRefs.ContainsKey(clientId))
         {
             var netObj = playerRefs[clientId].GetComponent<NetworkObject>();
-            if (NetworkManager.Singleton.IsServer || netObj.IsOwner)
-                netObj.Despawn(true);
+            if (netObj != null && netObj.IsSpawned)
+            {
+                if (NetworkManager.Singleton.IsServer || netObj.IsOwner)
+                    netObj.Despawn(true);
+            }
 
             playerRefs.Remove(clientId);
         }
@@ -103,10 +122,7 @@ public class PlayerSpawner : MonoBehaviour
 
     public void ClientLeave(ulong clientId)
     {
-        if (NetworkManager.Singleton.IsServer)
-            RemovePlayer(clientId);
-        else
-            RemovePlayer(clientId); // safe, alleen de server despawnt
+        RemovePlayer(clientId);
     }
 
     public void ResetSpawnPoints()
