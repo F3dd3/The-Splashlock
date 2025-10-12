@@ -15,9 +15,9 @@ public class LobbyManager : MonoBehaviour
     [Header("UI Elements")]
     public Button hostButton;
     public Button joinButton;
+    public Button leaveButton;
     public TMP_InputField joinCodeInput;
     public TextMeshProUGUI infoText;
-    public Button leaveLobbyButton;
 
     private bool servicesInitialized = false;
     private string lastJoinCode = "";
@@ -45,17 +45,10 @@ public class LobbyManager : MonoBehaviour
     {
         hostButton.onClick.AddListener(OnHostButtonClicked);
         joinButton.onClick.AddListener(JoinGame);
-        leaveLobbyButton.onClick.AddListener(OnLeaveLobbyClicked);
-        leaveLobbyButton.gameObject.SetActive(false);
+        leaveButton.onClick.AddListener(LeaveLobby);
+        leaveButton.gameObject.SetActive(false);
 
         WaitUntilReadyAndAutoHost();
-    }
-
-    private void Update()
-    {
-        // Laat Leave Lobby knop alleen zien als er meerdere spelers in dezelfde server zijn
-        bool multiplePlayers = NetworkManager.Singleton.ConnectedClientsList.Count > 1;
-        leaveLobbyButton.gameObject.SetActive(multiplePlayers);
     }
 
     private async void WaitUntilReadyAndAutoHost()
@@ -70,10 +63,7 @@ public class LobbyManager : MonoBehaviour
                 if (!AuthenticationService.Instance.IsSignedIn)
                     await AuthenticationService.Instance.SignInAnonymouslyAsync();
             }
-            catch
-            {
-                await Task.Yield();
-            }
+            catch { }
             await Task.Yield();
         }
 
@@ -99,9 +89,8 @@ public class LobbyManager : MonoBehaviour
             );
 
             NetworkManager.Singleton.StartHost();
-
-            // Spawn local player bij auto-host
             PlayerSpawner.Instance.SpawnPlayer(NetworkManager.Singleton.LocalClientId);
+            Debug.Log($"[AutoHost] Game hosted with code: {joinCode}");
         }
         catch (Exception e)
         {
@@ -131,11 +120,10 @@ public class LobbyManager : MonoBehaviour
 
     private async void JoinRelay(string joinCode)
     {
-        if (!servicesInitialized)
-            return;
+        if (!servicesInitialized) return;
 
+        // Probeer joinen
         JoinAllocation allocation = null;
-
         try
         {
             allocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
@@ -146,20 +134,16 @@ public class LobbyManager : MonoBehaviour
             return;
         }
 
+        // Disconnect local host (alleen voor deze client)
         if (NetworkManager.Singleton.IsHost)
         {
-            try
-            {
-                var localPlayer = NetworkManager.Singleton.LocalClient?.PlayerObject;
-                if (localPlayer != null)
-                    Destroy(localPlayer.gameObject);
-
-                NetworkManager.Singleton.Shutdown();
-                await Task.Delay(500);
-            }
-            catch { }
+            var localPlayer = NetworkManager.Singleton.LocalClient?.PlayerObject;
+            if (localPlayer != null) Destroy(localPlayer.gameObject);
+            NetworkManager.Singleton.Shutdown();
+            await Task.Delay(500);
         }
 
+        // Join client
         try
         {
             UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
@@ -174,6 +158,7 @@ public class LobbyManager : MonoBehaviour
 
             NetworkManager.Singleton.StartClient();
             infoText.text = $"Connected to: {joinCode}";
+            leaveButton.gameObject.SetActive(true);
         }
         catch
         {
@@ -181,50 +166,32 @@ public class LobbyManager : MonoBehaviour
         }
     }
 
-    private void OnLeaveLobbyClicked()
+    private void LeaveLobby()
     {
-        // ✅ Host verlaat lobby → disconnect alle clients en reset
-        if (NetworkManager.Singleton.IsHost)
+        if (NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsHost)
         {
+            // Client leave
+            PlayerSpawner.Instance.ClientLeave(NetworkManager.Singleton.LocalClientId);
+            NetworkManager.Singleton.Shutdown();
+            PlayerSpawner.Instance.ResetSpawnPoints();
+            AutoHostGame();
+        }
+        else if (NetworkManager.Singleton.IsHost)
+        {
+            // Host leave: kick alle clients
             foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
             {
-                if (client.ClientId == NetworkManager.Singleton.LocalClientId) continue;
-                client.PlayerObject?.Despawn(true);
+                if (client.ClientId != NetworkManager.Singleton.LocalClientId)
+                    PlayerSpawner.Instance.RemovePlayer(client.ClientId);
             }
 
+            PlayerSpawner.Instance.RemovePlayer(NetworkManager.Singleton.LocalClientId);
             NetworkManager.Singleton.Shutdown();
-
-            // ✅ Reset spawnpoints
-            if (PlayerSpawner.Instance != null)
-                PlayerSpawner.Instance.ResetSpawnPoints();
-
-            // Start direct opnieuw hosten
-            WaitUntilReadyAndAutoHost();
-        }
-        // ✅ Client verlaat lobby → disconnect van host, reset en autohost lokaal
-        else if (NetworkManager.Singleton.IsClient)
-        {
-            var localPlayer = NetworkManager.Singleton.LocalClient?.PlayerObject;
-            if (localPlayer != null)
-                Destroy(localPlayer.gameObject);
-
-            NetworkManager.Singleton.Shutdown();
-
-            // ✅ Reset spawnpoints
-            if (PlayerSpawner.Instance != null)
-                PlayerSpawner.Instance.ResetSpawnPoints();
-
-            // Start lokale host opnieuw
-            WaitUntilReadyAndAutoHost();
+            PlayerSpawner.Instance.ResetSpawnPoints();
+            AutoHostGame();
         }
 
+        leaveButton.gameObject.SetActive(false);
         infoText.text = "";
-    }
-
-    private void OnDestroy()
-    {
-        hostButton.onClick.RemoveAllListeners();
-        joinButton.onClick.RemoveAllListeners();
-        leaveLobbyButton.onClick.RemoveAllListeners();
     }
 }

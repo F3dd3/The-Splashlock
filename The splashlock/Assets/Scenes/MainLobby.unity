@@ -4396,9 +4396,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hostButton: {fileID: 163278342}
   joinButton: {fileID: 655866929}
+  leaveButton: {fileID: 218521018}
   joinCodeInput: {fileID: 1026777775}
   infoText: {fileID: 1047873818}
-  leaveLobbyButton: {fileID: 218521018}
 --- !u!4 &1523459682
 Transform:
   m_ObjectHideFlags: 0

@@ -6,17 +6,24 @@ using System.Collections.Generic;
 
 public class Back : NetworkBehaviour
 {
+    public static Back Instance;
+
     public Button readyButton;
     public TextMeshProUGUI readyStatusText;
 
     private List<ulong> readyClients = new List<ulong>();
     private bool isLocalReady = false;
 
+    private void Awake()
+    {
+        Instance = this;
+    }
+
     private void Start()
     {
         readyButton.onClick.AddListener(OnReadyClicked);
-        UpdateReadyStatusUI();
         UpdateButtonText();
+        UpdateReadyStatusClientRpc();
     }
 
     private void OnDestroy()
@@ -48,7 +55,7 @@ public class Back : NetworkBehaviour
         if (!readyClients.Contains(clientId))
             readyClients.Add(clientId);
 
-        UpdateReadyStatusClientRpc(readyClients.ToArray());
+        UpdateReadyStatusClientRpc();
         CheckAllReady();
     }
 
@@ -58,7 +65,25 @@ public class Back : NetworkBehaviour
         if (readyClients.Contains(clientId))
             readyClients.Remove(clientId);
 
-        UpdateReadyStatusClientRpc(readyClients.ToArray());
+        UpdateReadyStatusClientRpc();
+    }
+
+    [ClientRpc]
+    private void UpdateReadyStatusClientRpc()
+    {
+        if (NetworkManager.Singleton.ConnectedClients.Count <= 1)
+        {
+            readyStatusText.text = "";
+            return;
+        }
+
+        string status = "Ready Players:\n";
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        {
+            bool isReady = readyClients.Contains(client.ClientId);
+            status += $"Player {client.ClientId}: {(isReady ? "Ready" : "Not Ready")}\n";
+        }
+        readyStatusText.text = status;
     }
 
     private void CheckAllReady()
@@ -70,27 +95,11 @@ public class Back : NetworkBehaviour
         }
     }
 
-    [ClientRpc]
-    private void UpdateReadyStatusClientRpc(ulong[] readyClientIds)
+    public void RemoveClientReadyStatus(ulong clientId)
     {
-        readyClients = new List<ulong>(readyClientIds);
-        UpdateReadyStatusUI();
-    }
+        if (readyClients.Contains(clientId))
+            readyClients.Remove(clientId);
 
-    private void UpdateReadyStatusUI()
-    {
-        if (NetworkManager.Singleton.ConnectedClientsList.Count < 2)
-        {
-            readyStatusText.text = ""; // alleen tonen bij meerdere spelers
-            return;
-        }
-
-        string status = "Ready Players:\n";
-        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
-        {
-            bool isReady = readyClients.Contains(client.ClientId);
-            status += $"Player {client.ClientId}: {(isReady ? "Ready" : "Not Ready")}\n";
-        }
-        readyStatusText.text = status;
+        UpdateReadyStatusClientRpc();
     }
 }
