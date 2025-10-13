@@ -24,12 +24,12 @@ public class LobbyManager : MonoBehaviour
     private string lastJoinCode = "";
     private bool isAutoHost = false;
 
-    private async void Awake()
+    private void Awake()
     {
-        await InitializeUnityServicesSafe();
+        InitializeUnityServicesSafe();
     }
 
-    private async Task InitializeUnityServicesSafe()
+    private async void InitializeUnityServicesSafe()
     {
         try
         {
@@ -48,6 +48,11 @@ public class LobbyManager : MonoBehaviour
         joinButton.onClick.AddListener(JoinGame);
         leaveButton.onClick.AddListener(LeaveLobby);
         leaveButton.gameObject.SetActive(false);
+
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
+        }
 
         WaitUntilReadyAndAutoHost();
     }
@@ -169,39 +174,92 @@ public class LobbyManager : MonoBehaviour
         }
     }
 
-    public async void LeaveLobby()
+    public void LeaveLobby()
     {
         if (NetworkManager.Singleton == null) return;
 
+        leaveButton.gameObject.SetActive(false);
+
         if (NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsHost)
         {
-            // ✅ Client leave
+            // Cleanup lokale player
             PlayerSpawner.Instance.ClientLeave(NetworkManager.Singleton.LocalClientId);
             Back.Instance?.ResetReadyStatus();
+
+            // Disconnect client en wacht daarna auto-host
+            NetworkManager.Singleton.OnClientDisconnectCallback += OnLocalClientDisconnected;
             NetworkManager.Singleton.Shutdown();
         }
         else if (NetworkManager.Singleton.IsHost)
         {
-            // ✅ Host leave
+            // Cleanup alle clients
             foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
             {
                 PlayerSpawner.Instance.RemovePlayer(client.ClientId);
             }
             Back.Instance?.ResetReadyStatus();
+
+            // Disconnect host en wacht daarna auto-host
+            NetworkManager.Singleton.OnClientDisconnectCallback += OnAllClientsDisconnected;
             NetworkManager.Singleton.Shutdown();
         }
 
-        // Reset lobby state volledig
         ResetLobbyState();
+    }
 
-        // Wacht tot services ready
+    // Callback voor client leave / host-leave
+    private void OnLocalClientDisconnected(ulong clientId)
+    {
+        if (clientId != NetworkManager.Singleton.LocalClientId) return;
+
+        NetworkManager.Singleton.OnClientDisconnectCallback -= OnLocalClientDisconnected;
+
+        // Start auto-host op eigen server
+        _ = AutoHostAfterDelay();
+    }
+
+    private void OnAllClientsDisconnected(ulong clientId)
+    {
+        if (NetworkManager.Singleton.ConnectedClientsList.Count == 0)
+        {
+            NetworkManager.Singleton.OnClientDisconnectCallback -= OnAllClientsDisconnected;
+
+            // Start auto-host
+            _ = AutoHostAfterDelay();
+        }
+    }
+
+    // Detecteer host-leave terwijl je client bent
+    private void OnClientDisconnected(ulong clientId)
+    {
+        if (!NetworkManager.Singleton.IsClient || NetworkManager.Singleton.IsHost) return;
+
+        // Check of host weg is (host is meestal clientId=0)
+        if (!NetworkManager.Singleton.ConnectedClients.ContainsKey(0) ||
+            NetworkManager.Singleton.ConnectedClientsList.Count == 1)
+        {
+            Debug.Log("[LobbyManager] Host disconnected, switching to auto-host...");
+
+            // Cleanup lokale player
+            PlayerSpawner.Instance.ClientLeave(NetworkManager.Singleton.LocalClientId);
+            Back.Instance?.ResetReadyStatus();
+
+            // Disconnect van oude server
+            NetworkManager.Singleton.OnClientDisconnectCallback += OnLocalClientDisconnected;
+            NetworkManager.Singleton.Shutdown();
+        }
+    }
+
+    private async Task AutoHostAfterDelay()
+    {
+        // Wacht Relay / Transport cleanup
+        await Task.Delay(1000);
+
+        // Wacht tot Unity Services ready zijn
         await WaitForServicesReady();
 
-        // Start autohost opnieuw
+        // Start nieuwe host
         AutoHostGame();
-
-        leaveButton.gameObject.SetActive(false);
-        infoText.text = "";
     }
 
     private void ResetLobbyState()
