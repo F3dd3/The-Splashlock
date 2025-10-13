@@ -68,11 +68,13 @@ public class RagdollActivatorNetworked : NetworkBehaviour
     private IEnumerator PushBackNextFrame()
     {
         yield return new WaitForEndOfFrame();
-        if (ragdollController.hipsBone != null)
+
+        // 🔹 aangepast: gebruik mainBone in plaats van hipsBone
+        if (ragdollController.mainBone != null)
         {
-            var hipsRb = ragdollController.hipsBone.GetComponent<Rigidbody>();
-            if (hipsRb != null)
-                hipsRb.AddForce(transform.TransformDirection(pushBackForce), ForceMode.Impulse);
+            var rb = ragdollController.mainBone.GetComponent<Rigidbody>();
+            if (rb != null)
+                rb.AddForce(transform.TransformDirection(pushBackForce), ForceMode.Impulse);
         }
     }
 
@@ -80,9 +82,10 @@ public class RagdollActivatorNetworked : NetworkBehaviour
     {
         yield return new WaitForSeconds(ragdollController.ragdollDuration + ragdollController.blendDuration + 0.1f);
 
-        if (ragdollController.hipsBone != null)
+        // 🔹 aangepast: gebruik mainBone in plaats van hipsBone
+        if (ragdollController.mainBone != null)
         {
-            Vector3 targetPos = ragdollController.hipsBone.position;
+            Vector3 targetPos = ragdollController.mainBone.position;
             Vector3 safePos = targetPos;
 
             if (Physics.Raycast(targetPos + Vector3.up * 0.5f, Vector3.down, out RaycastHit groundHit, 2f))
@@ -105,7 +108,6 @@ public class RagdollActivatorNetworked : NetworkBehaviour
         StartTemporaryImmunity(ragdollImmunityDuration);
     }
 
-    // ✅ Nieuwe veilige methode — roept interne coroutine aan
     public void StartTemporaryImmunity(float duration)
     {
         StartCoroutine(TemporaryImmunityCoroutine(duration));
