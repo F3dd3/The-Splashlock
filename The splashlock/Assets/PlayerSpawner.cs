@@ -18,6 +18,10 @@ public class PlayerSpawner : MonoBehaviour
     public readonly Dictionary<ulong, Color> playerColors = new Dictionary<ulong, Color>();
     [HideInInspector]
     public readonly Dictionary<ulong, Player> playerRefs = new Dictionary<ulong, Player>();
+
+    // Bijhouden welk spawnpoint een client heeft
+    private readonly Dictionary<ulong, int> playerSpawnIndices = new Dictionary<ulong, int>();
+    private readonly List<int> freeSpawnIndices = new List<int>();
     private int nextSpawnIndex = 0;
 
     private void Awake()
@@ -73,9 +77,25 @@ public class PlayerSpawner : MonoBehaviour
     {
         if (playerRefs.ContainsKey(clientId) || playerPrefab == null) return;
 
-        Vector3 spawnPos = GetNextSpawnPosition();
+        // Kies spawnpoint: hergebruik vrije index of nieuwe
+        int spawnIndex;
+        if (freeSpawnIndices.Count > 0)
+        {
+            spawnIndex = freeSpawnIndices[0];
+            freeSpawnIndices.RemoveAt(0);
+        }
+        else
+        {
+            spawnIndex = nextSpawnIndex % spawnPoints.Length;
+            nextSpawnIndex++;
+        }
+
+        Vector3 spawnPos = spawnPoints[spawnIndex].position;
+
         GameObject player = Instantiate(playerPrefab, spawnPos, Quaternion.Euler(0, 180, 0));
         player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
+
+        playerSpawnIndices[clientId] = spawnIndex;
 
         Color color = GetNextUniqueColor();
         playerColors[clientId] = color;
@@ -86,14 +106,6 @@ public class PlayerSpawner : MonoBehaviour
         Vector3 colorVec = new Vector3(color.r, color.g, color.b);
         playerScript.SetColorServerRpc(colorVec);
         playerScript.ForceColorClientRpc(colorVec);
-    }
-
-    private Vector3 GetNextSpawnPosition()
-    {
-        if (spawnPoints.Length == 0) return Vector3.zero;
-        Vector3 pos = spawnPoints[nextSpawnIndex % spawnPoints.Length].position;
-        nextSpawnIndex++;
-        return pos;
     }
 
     private Color GetNextUniqueColor()
@@ -119,6 +131,13 @@ public class PlayerSpawner : MonoBehaviour
         if (playerColors.ContainsKey(clientId))
             playerColors.Remove(clientId);
 
+        // Spawnpoint vrijgeven
+        if (playerSpawnIndices.ContainsKey(clientId))
+        {
+            freeSpawnIndices.Add(playerSpawnIndices[clientId]);
+            playerSpawnIndices.Remove(clientId);
+        }
+
         Back.Instance?.RemoveClientReadyStatus(clientId);
     }
 
@@ -133,5 +152,7 @@ public class PlayerSpawner : MonoBehaviour
         nextSpawnIndex = 0;
         playerColors.Clear();
         playerRefs.Clear();
+        playerSpawnIndices.Clear();
+        freeSpawnIndices.Clear();
     }
 }
