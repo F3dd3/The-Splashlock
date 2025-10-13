@@ -24,13 +24,9 @@ public class Back : NetworkBehaviour
         readyButton.onClick.AddListener(OnReadyClicked);
         UpdateButtonText();
 
-        // ✅ Ready knop is altijd zichtbaar
         readyButton.gameObject.SetActive(true);
-
-        // ✅ Stats alleen zichtbaar bij meerdere spelers
         SetReadyStatsVisible(false);
 
-        // ✅ Direct bij start updaten (ook bij 1 speler)
         InvokeRepeating(nameof(RefreshReadyStatusUI), 0.5f, 1.0f);
     }
 
@@ -84,7 +80,6 @@ public class Back : NetworkBehaviour
         RefreshReadyStatusUI();
     }
 
-    // ✅ Nieuwe methode die altijd de actuele ready-status toont
     private void RefreshReadyStatusUI()
     {
         if (NetworkManager.Singleton == null || NetworkManager.Singleton.ConnectedClientsList == null)
@@ -128,7 +123,14 @@ public class Back : NetworkBehaviour
         UpdateReadyStatusClientRpc(readyClients.ToArray());
     }
 
-    // ✅ Alleen de tekst van de status (lijst) verbergen, knop blijft zichtbaar
+    public void ResetReadyStatus()
+    {
+        readyClients.Clear();
+        isLocalReady = false;
+        UpdateButtonText();
+        SetReadyStatsVisible(false);
+    }
+
     public void SetReadyStatsVisible(bool visible)
     {
         if (readyStatusText != null)
