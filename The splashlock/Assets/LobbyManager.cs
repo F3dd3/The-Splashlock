@@ -9,6 +9,7 @@ using Unity.Services.Relay;
 using Unity.Services.Relay.Models;
 using System;
 using System.Threading.Tasks;
+using System.Linq;
 
 public class LobbyManager : MonoBehaviour
 {
@@ -22,11 +23,6 @@ public class LobbyManager : MonoBehaviour
     private bool servicesInitialized = false;
     private string lastJoinCode = "";
     private bool isAutoHost = false;
-
-    // ✅ Toegevoegd: Audio-instellingen
-    [Header("Audio Settings")]
-    public AudioSource audioSource;
-    public AudioClip playerJoinClip;
 
     private async void Awake()
     {
@@ -54,12 +50,16 @@ public class LobbyManager : MonoBehaviour
         leaveButton.gameObject.SetActive(false);
 
         WaitUntilReadyAndAutoHost();
-
-        // ✅ Toegevoegd: Luisteren naar connecties
-        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
     }
 
     private async void WaitUntilReadyAndAutoHost()
+    {
+        await WaitForServicesReady();
+        isAutoHost = true;
+        AutoHostGame();
+    }
+
+    private async Task WaitForServicesReady()
     {
         while (!servicesInitialized)
             await Task.Yield();
@@ -74,9 +74,6 @@ public class LobbyManager : MonoBehaviour
             catch { }
             await Task.Yield();
         }
-
-        isAutoHost = true;
-        AutoHostGame();
     }
 
     private async void AutoHostGame()
@@ -112,7 +109,7 @@ public class LobbyManager : MonoBehaviour
         {
             isAutoHost = false;
             infoText.text = lastJoinCode;
-            leaveButton.gameObject.SetActive(true); // ✅ Host ziet nu leave-button
+            leaveButton.gameObject.SetActive(true);
         }
     }
 
@@ -172,53 +169,47 @@ public class LobbyManager : MonoBehaviour
         }
     }
 
-    private void LeaveLobby()
+    public async void LeaveLobby()
     {
+        if (NetworkManager.Singleton == null) return;
+
         if (NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsHost)
         {
+            // ✅ Client leave
             PlayerSpawner.Instance.ClientLeave(NetworkManager.Singleton.LocalClientId);
+            Back.Instance?.ResetReadyStatus();
             NetworkManager.Singleton.Shutdown();
-            PlayerSpawner.Instance.ResetSpawnPoints();
-            AutoHostGame();
         }
         else if (NetworkManager.Singleton.IsHost)
         {
-            foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+            // ✅ Host leave
+            foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
             {
-                if (client.ClientId != NetworkManager.Singleton.LocalClientId)
-                    PlayerSpawner.Instance.RemovePlayer(client.ClientId);
+                PlayerSpawner.Instance.RemovePlayer(client.ClientId);
             }
-
-            PlayerSpawner.Instance.RemovePlayer(NetworkManager.Singleton.LocalClientId);
+            Back.Instance?.ResetReadyStatus();
             NetworkManager.Singleton.Shutdown();
-            PlayerSpawner.Instance.ResetSpawnPoints();
-            AutoHostGame();
         }
+
+        // Reset lobby state volledig
+        ResetLobbyState();
+
+        // Wacht tot services ready
+        await WaitForServicesReady();
+
+        // Start autohost opnieuw
+        AutoHostGame();
 
         leaveButton.gameObject.SetActive(false);
         infoText.text = "";
     }
 
-    // ✅ Toegevoegd: wordt aangeroepen als iemand joint
-    private void OnClientConnected(ulong clientId)
+    private void ResetLobbyState()
     {
-        if (NetworkManager.Singleton.IsHost)
-        {
-            PlayJoinSound();
-            Debug.Log($"Client {clientId} joined the lobby!");
-        }
+        PlayerSpawner.Instance.ResetSpawnPoints();
+        Back.Instance?.ResetReadyStatus();
     }
 
-    // ✅ Toegevoegd: speelt het geluid af
-    private void PlayJoinSound()
-    {
-        if (audioSource != null && playerJoinClip != null)
-        {
-            audioSource.PlayOneShot(playerJoinClip);
-        }
-    }
-
-    // ✅ Bestaande functie voor UI
     public void SetLeaveButtonVisible(bool visible)
     {
         if (leaveButton != null)
