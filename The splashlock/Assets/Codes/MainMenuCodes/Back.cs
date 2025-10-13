@@ -105,7 +105,7 @@ public class Back : NetworkBehaviour
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
         {
             bool isReady = readyClients.Contains(client.ClientId);
-            status += $"Player {client.ClientId}: {(isReady ? "✅ Ready" : "❌ Not Ready")}\n";
+            status += $"Player {client.ClientId}: {(isReady ? "Ready" : "Not Ready")}\n";
         }
 
         readyStatusText.text = status;
