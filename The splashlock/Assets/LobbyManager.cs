@@ -23,6 +23,11 @@ public class LobbyManager : MonoBehaviour
     private string lastJoinCode = "";
     private bool isAutoHost = false;
 
+    // ✅ Toegevoegd: Audio-instellingen
+    [Header("Audio Settings")]
+    public AudioSource audioSource;
+    public AudioClip playerJoinClip;
+
     private async void Awake()
     {
         await InitializeUnityServicesSafe();
@@ -49,6 +54,9 @@ public class LobbyManager : MonoBehaviour
         leaveButton.gameObject.SetActive(false);
 
         WaitUntilReadyAndAutoHost();
+
+        // ✅ Toegevoegd: Luisteren naar connecties
+        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
     }
 
     private async void WaitUntilReadyAndAutoHost()
@@ -191,7 +199,26 @@ public class LobbyManager : MonoBehaviour
         infoText.text = "";
     }
 
-    // ✅ Toegevoegd: makkelijke toegang voor andere scripts
+    // ✅ Toegevoegd: wordt aangeroepen als iemand joint
+    private void OnClientConnected(ulong clientId)
+    {
+        if (NetworkManager.Singleton.IsHost)
+        {
+            PlayJoinSound();
+            Debug.Log($"Client {clientId} joined the lobby!");
+        }
+    }
+
+    // ✅ Toegevoegd: speelt het geluid af
+    private void PlayJoinSound()
+    {
+        if (audioSource != null && playerJoinClip != null)
+        {
+            audioSource.PlayOneShot(playerJoinClip);
+        }
+    }
+
+    // ✅ Bestaande functie voor UI
     public void SetLeaveButtonVisible(bool visible)
     {
         if (leaveButton != null)
