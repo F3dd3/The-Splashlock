@@ -7,24 +7,30 @@ public class RagdollControllerSmooth : MonoBehaviour
     [Header("Animator")]
     public Animator animator;
 
-    [Header("Instellingen")]
+    [Header("Ragdoll Settings")]
     public float ragdollDuration = 5f;
     public float blendDuration = 2f;
 
-    [Header("Referenties")]
-    public Transform hipsBone;
+    [Header("Bone Reference (optional)")]
+    public Transform mainBone; // leave empty for auto-detect
+
+    [Header("Smooth Follow Settings")]
+    public bool smoothRootFollow = true;       // root follows ragdoll
+    public float followSpeed = 5f;             // Lerp speed
+    public bool rotateRootWithRagdoll = true;  // root rotates with ragdoll
 
     [HideInInspector] public Rigidbody[] ragdollRigidbodies;
-    private Transform[] bones;
     [HideInInspector] public bool isRagdoll = false;
 
+    private Transform[] bones;
     private Vector3[] savedLocalPositions;
     private Quaternion[] savedLocalRotations;
     private Vector3[] originalLocalPositions;
     private Quaternion[] originalLocalRotations;
-    // we keep originalRootPosition for reference but we won't teleport back to it
+
     private Vector3 originalRootPosition;
     private Quaternion originalRootRotation;
+    private Vector3 boneOffset;
 
     private Rigidbody rootRigidbody;
     private Collider rootCollider;
@@ -36,22 +42,34 @@ public class RagdollControllerSmooth : MonoBehaviour
         for (int i = 0; i < ragdollRigidbodies.Length; i++)
             bones[i] = ragdollRigidbodies[i].transform;
 
-        if (animator != null && hipsBone == null && animator.isHuman)
-            hipsBone = animator.GetBoneTransform(HumanBodyBones.Hips);
+        if (mainBone == null)
+            mainBone = FindCentralBone();
 
         rootRigidbody = GetComponent<Rigidbody>();
         rootCollider = GetComponent<Collider>();
 
+        if (mainBone != null)
+            boneOffset = transform.position - mainBone.position;
+
         SetRagdoll(false);
     }
 
-    void Update() { /* leeg: activatie extern */ }
+    void Update()
+    {
+        if (isRagdoll && mainBone != null && smoothRootFollow)
+        {
+            Vector3 targetPos = mainBone.position + boneOffset;
+            transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * followSpeed);
+
+            if (rotateRootWithRagdoll)
+                transform.rotation = Quaternion.Slerp(transform.rotation, mainBone.rotation, Time.deltaTime * followSpeed);
+        }
+    }
 
     public void ActivateRagdoll()
     {
-        if (animator == null || hipsBone == null) return;
+        if (animator == null || mainBone == null) return;
 
-        // Sla pre-ragdoll pose op (bones lokaal)
         originalRootPosition = transform.position;
         originalRootRotation = transform.rotation;
 
@@ -65,6 +83,9 @@ public class RagdollControllerSmooth : MonoBehaviour
 
         isRagdoll = true;
         SetRagdoll(true);
+
+        boneOffset = transform.position - mainBone.position;
+
         StartCoroutine(ReturnToAnimationAfterDelay(ragdollDuration));
     }
 
@@ -77,7 +98,7 @@ public class RagdollControllerSmooth : MonoBehaviour
 
     private IEnumerator BlendBackToOriginalPose()
     {
-        // 1) sla ragdoll lokaal op
+        // 1) Save current ragdoll pose
         savedLocalPositions = new Vector3[bones.Length];
         savedLocalRotations = new Quaternion[bones.Length];
         for (int i = 0; i < bones.Length; i++)
@@ -86,35 +107,47 @@ public class RagdollControllerSmooth : MonoBehaviour
             savedLocalRotations[i] = bones[i].localRotation;
         }
 
-        // 2) zet animator en non-ragdoll state aan (child rigidbodies kinematic)
+        // 2) Disable ragdoll temporarily
         SetRagdoll(false);
         animator.Rebind();
         animator.Update(0f);
 
-        // 3) sla huidige ragdoll root positie op (waar de player moet opstaan)
-        Vector3 ragdollRootPosition = transform.position;
-        Quaternion ragdollRootRotation = transform.rotation;
+        // 3) Calculate ragdoll end position
+        Vector3 ragdollEndPos = mainBone.position + boneOffset;
+        Quaternion ragdollEndRot = transform.rotation;
 
-        // 4) blend lokaal de bone poses terug naar originele pre-ragdoll pose
         float timer = 0f;
         while (timer < blendDuration)
         {
             float t = timer / blendDuration;
+
             for (int i = 0; i < bones.Length; i++)
             {
                 bones[i].localPosition = Vector3.Lerp(savedLocalPositions[i], originalLocalPositions[i], t);
                 bones[i].localRotation = Quaternion.Slerp(savedLocalRotations[i], originalLocalRotations[i], t);
             }
 
-            // houd de rootpositie op de ragdoll-locatie tijdens blend
-            transform.position = ragdollRootPosition;
-            transform.rotation = ragdollRootRotation;
+            // Smooth root follow with small Y-offset to prevent ground glitch
+            float groundOffset = 0.1f;
+            Vector3 targetRoot = new Vector3(ragdollEndPos.x, ragdollEndPos.y + groundOffset, ragdollEndPos.z);
+            if (smoothRootFollow)
+                transform.position = Vector3.Lerp(transform.position, targetRoot, t);
+
+            if (rotateRootWithRagdoll)
+                transform.rotation = Quaternion.Slerp(transform.rotation, ragdollEndRot, t);
 
             timer += Time.deltaTime;
             yield return null;
         }
 
-        // 5) forceer animatie pose en zet vlag terug
+        // 4) Enable CharacterController safely
+        CharacterController cc = GetComponent<CharacterController>();
+        if (cc != null)
+        {
+            cc.enabled = true;
+            cc.Move(Vector3.down * 0.05f); // triggers ground detection
+        }
+
         animator.Rebind();
         yield return null;
         animator.Update(Time.deltaTime);
@@ -124,13 +157,12 @@ public class RagdollControllerSmooth : MonoBehaviour
 
     public void SetRagdoll(bool active)
     {
-        if (animator != null) animator.enabled = !active;
+        if (animator != null)
+            animator.enabled = !active;
 
-        // root rigidbody blijft kinematic (CharacterController gebruikt)
         if (rootRigidbody != null)
             rootRigidbody.isKinematic = true;
 
-        // keep root collider disabled — child colliders handle physics during ragdoll
         if (rootCollider != null)
             rootCollider.enabled = false;
 
@@ -142,5 +174,26 @@ public class RagdollControllerSmooth : MonoBehaviour
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
         }
+    }
+
+    private Transform FindCentralBone()
+    {
+        if (ragdollRigidbodies == null || ragdollRigidbodies.Length == 0)
+            return transform;
+
+        Transform best = null;
+        int bestCount = -1;
+
+        foreach (var rb in ragdollRigidbodies)
+        {
+            int count = rb.GetComponentsInChildren<Rigidbody>().Length;
+            if (count > bestCount)
+            {
+                best = rb.transform;
+                bestCount = count;
+            }
+        }
+
+        return best;
     }
 }
