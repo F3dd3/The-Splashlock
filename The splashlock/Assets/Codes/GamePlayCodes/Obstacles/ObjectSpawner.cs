@@ -10,9 +10,11 @@ public class ObjectSpawner : MonoBehaviour
     public Transform spawnPoint;
 
     [Header("Spawn instellingen")]
-    public int aantalOmTeSpawnen = 5;            // Hoeveel objecten in totaal
     public float minTijdTussenSpawns = 0.5f;     // Minimale tijd tussen spawns
     public float maxTijdTussenSpawns = 2f;       // Maximale tijd tussen spawns
+
+    [Header("Object levensduur")]
+    public float levensduurObject = 5f;          // Tijd waarna object verdwijnt
 
     private void Start()
     {
@@ -21,7 +23,8 @@ public class ObjectSpawner : MonoBehaviour
 
     private IEnumerator SpawnObjectsRoutine()
     {
-        for (int i = 0; i < aantalOmTeSpawnen; i++)
+        // Oneindige lus
+        while (true)
         {
             SpawnObject();
 
@@ -34,7 +37,10 @@ public class ObjectSpawner : MonoBehaviour
     {
         if (objectToSpawn != null && spawnPoint != null)
         {
-            Instantiate(objectToSpawn, spawnPoint.position, spawnPoint.rotation);
+            GameObject nieuwObject = Instantiate(objectToSpawn, spawnPoint.position, spawnPoint.rotation);
+
+            // Vernietig het object na de ingestelde levensduur
+            Destroy(nieuwObject, levensduurObject);
         }
         else
         {
