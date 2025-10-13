@@ -11,7 +11,7 @@ using System;
 using System.Threading.Tasks;
 using System.Linq;
 
-public class LobbyManager : MonoBehaviour
+public class LobbyManager : NetworkBehaviour
 {
     [Header("UI Elements")]
     public Button hostButton;
@@ -23,6 +23,7 @@ public class LobbyManager : MonoBehaviour
     private bool servicesInitialized = false;
     private string lastJoinCode = "";
     private bool isAutoHost = false;
+    private bool autoHostPending = false;
 
     private void Awake()
     {
@@ -50,21 +51,19 @@ public class LobbyManager : MonoBehaviour
         leaveButton.gameObject.SetActive(false);
 
         if (NetworkManager.Singleton != null)
-        {
             NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
-        }
 
         WaitUntilReadyAndAutoHost();
     }
 
     private async void WaitUntilReadyAndAutoHost()
     {
-        await WaitForServicesReady();
+        await WaitForServicesReadyAsync();
         isAutoHost = true;
         AutoHostGame();
     }
 
-    private async Task WaitForServicesReady()
+    private async Task WaitForServicesReadyAsync()
     {
         while (!servicesInitialized)
             await Task.Yield();
@@ -180,86 +179,88 @@ public class LobbyManager : MonoBehaviour
 
         leaveButton.gameObject.SetActive(false);
 
-        if (NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsHost)
+        if (NetworkManager.Singleton.IsHost)
         {
-            // Cleanup lokale player
-            PlayerSpawner.Instance.ClientLeave(NetworkManager.Singleton.LocalClientId);
-            Back.Instance?.ResetReadyStatus();
-
-            // Disconnect client en wacht daarna auto-host
-            NetworkManager.Singleton.OnClientDisconnectCallback += OnLocalClientDisconnected;
-            NetworkManager.Singleton.Shutdown();
+            Debug.Log("[LobbyManager] Host leaving, notifying clients...");
+            NotifyClientsToLeaveClientRpc();
+            _ = HostLeaveFlowAsync();
         }
-        else if (NetworkManager.Singleton.IsHost)
+        else if (NetworkManager.Singleton.IsClient)
         {
-            // Cleanup alle clients
-            foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
-            {
-                PlayerSpawner.Instance.RemovePlayer(client.ClientId);
-            }
-            Back.Instance?.ResetReadyStatus();
-
-            // Disconnect host en wacht daarna auto-host
-            NetworkManager.Singleton.OnClientDisconnectCallback += OnAllClientsDisconnected;
-            NetworkManager.Singleton.Shutdown();
+            _ = ClientLeaveFlowAsync();
         }
+    }
 
+    [ClientRpc]
+    private void NotifyClientsToLeaveClientRpc(ClientRpcParams rpcParams = default)
+    {
+        if (IsHost) return;
+        Debug.Log("[LobbyManager] Host leave received, client leaving & auto-hosting...");
+        _ = ClientLeaveFlowAsync();
+    }
+
+    private async Task ClientLeaveFlowAsync()
+    {
+        if (autoHostPending) return;
+        autoHostPending = true;
+
+        // Cleanup lokaal
+        PlayerSpawner.Instance.ClientLeave(NetworkManager.Singleton.LocalClientId);
+        Back.Instance?.ResetReadyStatus();
         ResetLobbyState();
+
+        // Disconnect client
+        NetworkManager.Singleton.Shutdown();
+
+        // Wacht tot volledig losgekoppeld
+        await Task.Yield();
+        while (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+            await Task.Yield();
+
+        // Wacht tot services klaar zijn
+        await WaitForServicesReadyAsync();
+
+        // Auto-host
+        AutoHostGame();
+        autoHostPending = false;
     }
 
-    // Callback voor client leave / host-leave
-    private void OnLocalClientDisconnected(ulong clientId)
+    private async Task HostLeaveFlowAsync()
     {
-        if (clientId != NetworkManager.Singleton.LocalClientId) return;
+        // Cleanup alle clients
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
+            PlayerSpawner.Instance.RemovePlayer(client.ClientId);
 
-        NetworkManager.Singleton.OnClientDisconnectCallback -= OnLocalClientDisconnected;
+        Back.Instance?.ResetReadyStatus();
+        ResetLobbyState();
 
-        // Start auto-host op eigen server
-        _ = AutoHostAfterDelay();
+        // Wacht tot clients weg zijn
+        await Task.Yield();
+        while (NetworkManager.Singleton.ConnectedClients.Count > 1)
+            await Task.Yield();
+
+        Debug.Log("[LobbyManager] All clients left, shutting down host & auto-hosting...");
+
+        NetworkManager.Singleton.Shutdown();
+
+        // Wacht tot shutdown klaar
+        await Task.Yield();
+        while (NetworkManager.Singleton.IsListening)
+            await Task.Yield();
+
+        await WaitForServicesReadyAsync();
+
+        AutoHostGame();
     }
 
-    private void OnAllClientsDisconnected(ulong clientId)
-    {
-        if (NetworkManager.Singleton.ConnectedClientsList.Count == 0)
-        {
-            NetworkManager.Singleton.OnClientDisconnectCallback -= OnAllClientsDisconnected;
-
-            // Start auto-host
-            _ = AutoHostAfterDelay();
-        }
-    }
-
-    // Detecteer host-leave terwijl je client bent
     private void OnClientDisconnected(ulong clientId)
     {
-        if (!NetworkManager.Singleton.IsClient || NetworkManager.Singleton.IsHost) return;
-
-        // Check of host weg is (host is meestal clientId=0)
-        if (!NetworkManager.Singleton.ConnectedClients.ContainsKey(0) ||
-            NetworkManager.Singleton.ConnectedClientsList.Count == 1)
+        // fallback voor onverwachte host-leave
+        if (NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsHost && !NetworkManager.Singleton.IsConnectedClient)
         {
-            Debug.Log("[LobbyManager] Host disconnected, switching to auto-host...");
-
-            // Cleanup lokale player
-            PlayerSpawner.Instance.ClientLeave(NetworkManager.Singleton.LocalClientId);
-            Back.Instance?.ResetReadyStatus();
-
-            // Disconnect van oude server
-            NetworkManager.Singleton.OnClientDisconnectCallback += OnLocalClientDisconnected;
-            NetworkManager.Singleton.Shutdown();
+            Debug.Log("[LobbyManager] Host lost unexpectedly, auto-hosting...");
+            _ = ClientLeaveFlowAsync();
         }
-    }
-
-    private async Task AutoHostAfterDelay()
-    {
-        // Wacht Relay / Transport cleanup
-        await Task.Delay(1000);
-
-        // Wacht tot Unity Services ready zijn
-        await WaitForServicesReady();
-
-        // Start nieuwe host
-        AutoHostGame();
     }
 
     private void ResetLobbyState()
