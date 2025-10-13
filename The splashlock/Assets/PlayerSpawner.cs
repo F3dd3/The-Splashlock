@@ -58,12 +58,14 @@ public class PlayerSpawner : MonoBehaviour
     {
         bool multiplePlayers = NetworkManager.Singleton.ConnectedClientsList.Count > 1;
 
+        // ✅ Ready stats pas zichtbaar bij meerdere spelers
         if (Back.Instance != null)
             Back.Instance.SetReadyStatsVisible(multiplePlayers);
 
+        // ✅ Leave-button zichtbaar voor host zodra iemand joint
         var lm = FindObjectOfType<LobbyManager>();
         if (lm != null)
-            lm.SetLeaveButtonVisible(multiplePlayers);
+            lm.SetLeaveButtonVisible(NetworkManager.Singleton.IsHost && multiplePlayers);
     }
 
     public void SpawnPlayer(ulong clientId)
@@ -107,6 +109,7 @@ public class PlayerSpawner : MonoBehaviour
             var netObj = playerRefs[clientId].GetComponent<NetworkObject>();
             if (netObj != null && netObj.IsSpawned)
             {
+                // ✅ Alleen owner of server despawnt
                 if (NetworkManager.Singleton.IsServer || netObj.IsOwner)
                     netObj.Despawn(true);
             }

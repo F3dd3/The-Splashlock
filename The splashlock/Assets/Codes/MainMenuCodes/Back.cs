@@ -23,7 +23,15 @@ public class Back : NetworkBehaviour
     {
         readyButton.onClick.AddListener(OnReadyClicked);
         UpdateButtonText();
-        SetReadyStatsVisible(false); // standaard onzichtbaar bij start
+
+        // ✅ Ready knop is altijd zichtbaar
+        readyButton.gameObject.SetActive(true);
+
+        // ✅ Stats alleen zichtbaar bij meerdere spelers
+        SetReadyStatsVisible(false);
+
+        // ✅ Direct bij start updaten (ook bij 1 speler)
+        InvokeRepeating(nameof(RefreshReadyStatusUI), 0.5f, 1.0f);
     }
 
     private void OnDestroy()
@@ -46,7 +54,8 @@ public class Back : NetworkBehaviour
 
     private void UpdateButtonText()
     {
-        readyButton.GetComponentInChildren<TextMeshProUGUI>().text = isLocalReady ? "Cancel Ready" : "Ready";
+        if (readyButton != null)
+            readyButton.GetComponentInChildren<TextMeshProUGUI>().text = isLocalReady ? "Cancel Ready" : "Ready";
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -72,8 +81,21 @@ public class Back : NetworkBehaviour
     private void UpdateReadyStatusClientRpc(ulong[] readyIds)
     {
         readyClients = new List<ulong>(readyIds);
+        RefreshReadyStatusUI();
+    }
 
-        if (NetworkManager.Singleton.ConnectedClients.Count <= 1)
+    // ✅ Nieuwe methode die altijd de actuele ready-status toont
+    private void RefreshReadyStatusUI()
+    {
+        if (NetworkManager.Singleton == null || NetworkManager.Singleton.ConnectedClientsList == null)
+            return;
+
+        int playerCount = NetworkManager.Singleton.ConnectedClientsList.Count;
+        bool multiplePlayers = playerCount > 1;
+
+        SetReadyStatsVisible(multiplePlayers);
+
+        if (!multiplePlayers)
         {
             readyStatusText.text = "";
             return;
@@ -83,8 +105,9 @@ public class Back : NetworkBehaviour
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
         {
             bool isReady = readyClients.Contains(client.ClientId);
-            status += $"Player {client.ClientId}: {(isReady ? "Ready" : "Not Ready")}\n";
+            status += $"Player {client.ClientId}: {(isReady ? "✅ Ready" : "❌ Not Ready")}\n";
         }
+
         readyStatusText.text = status;
     }
 
@@ -105,12 +128,9 @@ public class Back : NetworkBehaviour
         UpdateReadyStatusClientRpc(readyClients.ToArray());
     }
 
-    // ✅ Toegevoegd: ready UI zichtbaar/verbergen
+    // ✅ Alleen de tekst van de status (lijst) verbergen, knop blijft zichtbaar
     public void SetReadyStatsVisible(bool visible)
     {
-        if (readyButton != null)
-            readyButton.gameObject.SetActive(visible);
-
         if (readyStatusText != null)
         {
             readyStatusText.gameObject.SetActive(visible);
