@@ -20,7 +20,6 @@ public class PlayerSpawner : MonoBehaviour
     public readonly Dictionary<ulong, Player> playerRefs = new Dictionary<ulong, Player>();
 
     private readonly Dictionary<ulong, int> playerSpawnIndices = new Dictionary<ulong, int>();
-    private readonly List<int> freeSpawnIndices = new List<int>();
     private int nextSpawnIndex = 0;
 
     private void Awake()
@@ -48,15 +47,17 @@ public class PlayerSpawner : MonoBehaviour
     private void OnClientConnected(ulong clientId)
     {
         if (!NetworkManager.Singleton.IsServer) return;
-        if (!playerRefs.ContainsKey(clientId))
-            SpawnPlayer(clientId);
 
-        // Stuur alle bestaande kleuren naar de nieuwe client
+        SpawnPlayer(clientId);
+        UpdateUIVisibility();
+
+        // Stuur kleuren van alle bestaande spelers naar de nieuwe client
         foreach (var kvp in playerRefs)
         {
             ulong otherId = kvp.Key;
             Player otherPlayer = kvp.Value;
             Vector3 colorVec = new Vector3(playerColors[otherId].r, playerColors[otherId].g, playerColors[otherId].b);
+
             otherPlayer.ForceColorClientRpc(colorVec, new ClientRpcParams
             {
                 Send = new ClientRpcSendParams
@@ -65,36 +66,64 @@ public class PlayerSpawner : MonoBehaviour
                 }
             });
         }
-
-        UpdateUIVisibility();
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
+        if (!NetworkManager.Singleton.IsServer) return;
+        if (!playerRefs.ContainsKey(clientId)) return;
+
+        int removedIndex = playerSpawnIndices[clientId];
+        Color removedColor = playerColors[clientId];
+
+        // Verwijder de vertrekkende speler
         RemovePlayer(clientId);
-        UpdateUIVisibility();
-    }
 
-    private void UpdateUIVisibility()
-    {
-        bool multiplePlayers = NetworkManager.Singleton != null && NetworkManager.Singleton.ConnectedClientsList.Count > 1;
+        // Vrijgekomen spawnpoint
+        Vector3 freedSpawnPos = spawnPoints[removedIndex].position;
 
-        Back.Instance?.SetReadyStatsVisible(multiplePlayers);
-
-        var lm = FindObjectOfType<LobbyManager>();
-        if (lm != null && NetworkManager.Singleton != null)
+        // Alle hogere-index spelers verschuiven
+        var orderedClients = playerSpawnIndices.OrderBy(kv => kv.Value).ToList();
+        foreach (var kvp in orderedClients)
         {
-            lm.SetLeaveButtonVisible(NetworkManager.Singleton.IsHost && multiplePlayers);
+            ulong id = kvp.Key;
+            int currentIndex = kvp.Value;
+
+            if (currentIndex > removedIndex)
+            {
+                Player player = playerRefs[id];
+                if (player != null)
+                {
+                    // Teleporteer speler via ClientRpc zodat alle clients het zien
+                    player.TeleportClientRpc(freedSpawnPos);
+
+                    // Overneem kleur van de vertrekkende speler
+                    playerColors[id] = removedColor;
+                    Vector3 colorVec = new Vector3(removedColor.r, removedColor.g, removedColor.b);
+                    player.SetColorServerRpc(colorVec);
+                    player.ForceColorClientRpc(colorVec);
+                }
+
+                // Update spawnIndex
+                playerSpawnIndices[id] = removedIndex;
+
+                // Het vrijgekomen punt en kleur voor de volgende speler
+                removedIndex = currentIndex;
+                removedColor = playerColors[id];
+                freedSpawnPos = spawnPoints[removedIndex].position;
+            }
         }
+
+        nextSpawnIndex = playerSpawnIndices.Count;
+        UpdateUIVisibility();
     }
 
     public void SpawnPlayer(ulong clientId)
     {
         if (playerRefs.ContainsKey(clientId) || playerPrefab == null) return;
 
-        int spawnIndex = freeSpawnIndices.Count > 0 ? freeSpawnIndices[0] : nextSpawnIndex % spawnPoints.Length;
-        if (freeSpawnIndices.Count > 0) freeSpawnIndices.RemoveAt(0);
-        else nextSpawnIndex++;
+        int spawnIndex = nextSpawnIndex % spawnPoints.Length;
+        nextSpawnIndex++;
 
         Vector3 spawnPos = spawnPoints[spawnIndex].position;
 
@@ -103,6 +132,7 @@ public class PlayerSpawner : MonoBehaviour
 
         playerSpawnIndices[clientId] = spawnIndex;
 
+        // Kleur
         Color color = GetNextUniqueColor();
         playerColors[clientId] = color;
 
@@ -111,7 +141,7 @@ public class PlayerSpawner : MonoBehaviour
 
         Vector3 colorVec = new Vector3(color.r, color.g, color.b);
         playerScript.SetColorServerRpc(colorVec);
-        playerScript.ForceColorClientRpc(colorVec); // direct naar alle clients
+        playerScript.ForceColorClientRpc(colorVec);
     }
 
     private Color GetNextUniqueColor()
@@ -133,14 +163,22 @@ public class PlayerSpawner : MonoBehaviour
         }
 
         if (playerColors.ContainsKey(clientId)) playerColors.Remove(clientId);
-
-        if (playerSpawnIndices.ContainsKey(clientId))
-        {
-            freeSpawnIndices.Add(playerSpawnIndices[clientId]);
-            playerSpawnIndices.Remove(clientId);
-        }
+        if (playerSpawnIndices.ContainsKey(clientId)) playerSpawnIndices.Remove(clientId);
 
         Back.Instance?.RemoveClientReadyStatus(clientId);
+    }
+
+    private void UpdateUIVisibility()
+    {
+        bool multiplePlayers = NetworkManager.Singleton != null && NetworkManager.Singleton.ConnectedClientsList.Count > 1;
+
+        Back.Instance?.SetReadyStatsVisible(multiplePlayers);
+
+        var lm = FindObjectOfType<LobbyManager>();
+        if (lm != null && NetworkManager.Singleton != null)
+        {
+            lm.SetLeaveButtonVisible(NetworkManager.Singleton.IsHost && multiplePlayers);
+        }
     }
 
     public void ClientLeave(ulong clientId)
@@ -154,6 +192,5 @@ public class PlayerSpawner : MonoBehaviour
         playerColors.Clear();
         playerRefs.Clear();
         playerSpawnIndices.Clear();
-        freeSpawnIndices.Clear();
     }
 }

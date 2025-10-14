@@ -4,6 +4,8 @@ using Unity.Netcode;
 public class Player : NetworkBehaviour
 {
     public Renderer playerRenderer;
+
+    // Kleur als NetworkVariable zodat de server bepaalt en clients syncen
     public NetworkVariable<Vector3> playerColor = new NetworkVariable<Vector3>(
         Vector3.zero,
         NetworkVariableReadPermission.Everyone,
@@ -19,23 +21,10 @@ public class Player : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
-
-        // Voeg callback toe
         playerColor.OnValueChanged += OnColorChanged;
 
-        // Zorg dat ook late joiners de kleur correct zien
         if (playerColor.Value != Vector3.zero)
             ApplyColor(playerColor.Value);
-
-        // Verstuur huidige kleur naar deze client als dit object al een kleur heeft
-        if (IsServer)
-            ForceColorClientRpc(playerColor.Value, new ClientRpcParams
-            {
-                Send = new ClientRpcSendParams
-                {
-                    TargetClientIds = new ulong[] { OwnerClientId }
-                }
-            });
     }
 
     private void OnDestroy()
@@ -55,15 +44,24 @@ public class Player : NetworkBehaviour
         playerRenderer.material.color = color;
     }
 
+    // ServerRpc om kleur vanaf server te updaten
     [ServerRpc(RequireOwnership = false)]
     public void SetColorServerRpc(Vector3 newColor)
     {
         playerColor.Value = newColor;
     }
 
+    // Forceer kleur bij alle clients of specifieke client(s)
     [ClientRpc]
-    public void ForceColorClientRpc(Vector3 newColor, ClientRpcParams rpcParams = default)
+    public void ForceColorClientRpc(Vector3 newColor, ClientRpcParams clientRpcParams = default)
     {
         ApplyColor(newColor);
+    }
+
+    // ClientRpc om speler te teleportereren naar een nieuw spawnpoint
+    [ClientRpc]
+    public void TeleportClientRpc(Vector3 newPos)
+    {
+        transform.position = newPos;
     }
 }
