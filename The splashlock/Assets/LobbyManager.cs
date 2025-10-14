@@ -43,7 +43,6 @@ public class LobbyManager : NetworkBehaviour
 
     private void Start()
     {
-        // Start hidden
         infoText.gameObject.SetActive(false);
         leaveButton.gameObject.SetActive(false);
 
@@ -83,7 +82,6 @@ public class LobbyManager : NetworkBehaviour
     {
         try
         {
-            // Reset lobby state
             PlayerSpawner.Instance?.ResetAll();
             Back.Instance?.ResetReadyStatus();
 
@@ -103,7 +101,6 @@ public class LobbyManager : NetworkBehaviour
             NetworkManager.Singleton.StartHost();
             PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId);
 
-            // Show join code automatically
             infoText.gameObject.SetActive(true);
             infoText.text = $"Join code: {lastJoinCode}";
             leaveButton.gameObject.SetActive(true);
@@ -182,12 +179,15 @@ public class LobbyManager : NetworkBehaviour
     {
         if (NetworkManager.Singleton == null) return;
 
-        leaveButton.gameObject.SetActive(false);
+        // Verberg UI direct
         infoText.gameObject.SetActive(false);
+        leaveButton.gameObject.SetActive(false);
 
         if (NetworkManager.Singleton.IsHost)
         {
-            NotifyClientsToLeaveClientRpc();
+            // Laat alle clients weten dat ze hun leave-knop moeten updaten
+            UpdateLeaveButtonClientRpc(false);
+
             _ = HostLeaveFlowAsync();
         }
         else if (NetworkManager.Singleton.IsClient)
@@ -197,10 +197,10 @@ public class LobbyManager : NetworkBehaviour
     }
 
     [ClientRpc]
-    private void NotifyClientsToLeaveClientRpc(ClientRpcParams rpcParams = default)
+    private void UpdateLeaveButtonClientRpc(bool visible)
     {
-        if (IsHost) return;
-        _ = ClientLeaveFlowAsync();
+        if (leaveButton != null)
+            leaveButton.gameObject.SetActive(visible);
     }
 
     private async Task ClientLeaveFlowAsync()
@@ -212,6 +212,9 @@ public class LobbyManager : NetworkBehaviour
         Back.Instance?.ResetReadyStatus();
 
         NetworkManager.Singleton.Shutdown();
+
+        // Laat client zelf zijn leave-knop verbergen
+        UpdateLeaveButtonClientRpc(false);
 
         await Task.Yield();
         while (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
@@ -229,6 +232,9 @@ public class LobbyManager : NetworkBehaviour
 
         Back.Instance?.ResetReadyStatus();
         PlayerSpawner.Instance?.ResetAll();
+
+        // Update leave-knop voor alle clients
+        UpdateLeaveButtonClientRpc(false);
 
         await Task.Yield();
         while (NetworkManager.Singleton.ConnectedClients.Count > 1)
