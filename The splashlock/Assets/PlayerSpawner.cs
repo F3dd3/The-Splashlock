@@ -15,12 +15,11 @@ public class PlayerSpawner : MonoBehaviour
     { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan };
 
     [HideInInspector]
-    public readonly Dictionary<ulong, Color> playerColors = new Dictionary<ulong, Color>();
+    public readonly Dictionary<string, Color> playerColors = new Dictionary<string, Color>();
     [HideInInspector]
-    public readonly Dictionary<ulong, Player> playerRefs = new Dictionary<ulong, Player>();
+    public readonly Dictionary<string, Player> playerRefs = new Dictionary<string, Player>();
 
-    // Bijhouden welk spawnpoint een client heeft
-    private readonly Dictionary<ulong, int> playerSpawnIndices = new Dictionary<ulong, int>();
+    private readonly Dictionary<string, int> playerIdToSpawnIndex = new Dictionary<string, int>();
     private readonly List<int> freeSpawnIndices = new List<int>();
     private int nextSpawnIndex = 0;
 
@@ -41,23 +40,29 @@ public class PlayerSpawner : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (NetworkManager.Singleton == null) return;
-        NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
-        NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
+        }
     }
 
     private void OnClientConnected(ulong clientId)
     {
         if (!NetworkManager.Singleton.IsServer) return;
-        if (!playerRefs.ContainsKey(clientId))
-            SpawnPlayer(clientId);
+
+        string playerId = LobbyManager.GetPlayerIdFromClientId(clientId);
+
+        if (!playerRefs.ContainsKey(playerId))
+            SpawnPlayerWithPlayerId(clientId, playerId);
 
         UpdateUIVisibility();
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
-        RemovePlayer(clientId);
+        string playerId = LobbyManager.GetPlayerIdFromClientId(clientId);
+        RemovePlayerByPlayerId(playerId);
         UpdateUIVisibility();
     }
 
@@ -65,86 +70,90 @@ public class PlayerSpawner : MonoBehaviour
     {
         bool multiplePlayers = NetworkManager.Singleton.ConnectedClientsList.Count > 1;
 
-        if (Back.Instance != null)
-            Back.Instance.SetReadyStatsVisible(multiplePlayers);
-
         var lm = FindObjectOfType<LobbyManager>();
         if (lm != null)
             lm.SetLeaveButtonVisible(NetworkManager.Singleton.IsHost && multiplePlayers);
     }
 
-    public void SpawnPlayer(ulong clientId)
+    public void SpawnPlayerWithPlayerId(ulong clientId, string playerId)
     {
-        if (playerRefs.ContainsKey(clientId) || playerPrefab == null) return;
+        if (playerRefs.ContainsKey(playerId) || playerPrefab == null) return;
 
-        // Kies spawnpoint: hergebruik vrije index of nieuwe
         int spawnIndex;
-        if (freeSpawnIndices.Count > 0)
+        if (playerIdToSpawnIndex.ContainsKey(playerId))
         {
-            spawnIndex = freeSpawnIndices[0];
-            freeSpawnIndices.RemoveAt(0);
+            spawnIndex = playerIdToSpawnIndex[playerId];
         }
         else
         {
-            spawnIndex = nextSpawnIndex % spawnPoints.Length;
-            nextSpawnIndex++;
+            spawnIndex = GetNextFreeSpawnIndex();
+            playerIdToSpawnIndex[playerId] = spawnIndex;
         }
 
         Vector3 spawnPos = spawnPoints[spawnIndex].position;
-
         GameObject player = Instantiate(playerPrefab, spawnPos, Quaternion.Euler(0, 180, 0));
         player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
 
-        playerSpawnIndices[clientId] = spawnIndex;
-
-        Color color = GetNextUniqueColor();
-        playerColors[clientId] = color;
+        // Kleur
+        Color color = GetNextUniqueColor(playerId);
+        playerColors[playerId] = color;
 
         Player playerScript = player.GetComponent<Player>();
-        playerRefs[clientId] = playerScript;
+        playerRefs[playerId] = playerScript;
 
         Vector3 colorVec = new Vector3(color.r, color.g, color.b);
         playerScript.SetColorServerRpc(colorVec);
         playerScript.ForceColorClientRpc(colorVec);
     }
 
-    private Color GetNextUniqueColor()
+    private int GetNextFreeSpawnIndex()
+    {
+        if (freeSpawnIndices.Count > 0)
+        {
+            int idx = freeSpawnIndices[0];
+            freeSpawnIndices.RemoveAt(0);
+            return idx;
+        }
+        else
+        {
+            int idx = nextSpawnIndex % spawnPoints.Length;
+            nextSpawnIndex++;
+            return idx;
+        }
+    }
+
+    private Color GetNextUniqueColor(string playerId)
     {
         var usedColors = playerColors.Values.ToList();
         var availableColors = allColors.Except(usedColors).ToList();
         return availableColors.Count > 0 ? availableColors[0] : Random.ColorHSV();
     }
 
-    public void RemovePlayer(ulong clientId)
+    public void RemovePlayerByPlayerId(string playerId)
     {
-        if (playerRefs.ContainsKey(clientId))
+        if (!playerRefs.ContainsKey(playerId)) return;
+
+        var netObj = playerRefs[playerId].GetComponent<NetworkObject>();
+        if (netObj != null && netObj.IsSpawned)
         {
-            var netObj = playerRefs[clientId].GetComponent<NetworkObject>();
-            if (netObj != null && netObj.IsSpawned)
-            {
-                if (NetworkManager.Singleton.IsServer || netObj.IsOwner)
-                    netObj.Despawn(true);
-            }
-            playerRefs.Remove(clientId);
+            if (NetworkManager.Singleton.IsServer || netObj.IsOwner)
+                netObj.Despawn(true);
         }
+        playerRefs.Remove(playerId);
 
-        if (playerColors.ContainsKey(clientId))
-            playerColors.Remove(clientId);
+        if (playerColors.ContainsKey(playerId))
+            playerColors.Remove(playerId);
 
-        // Spawnpoint vrijgeven
-        if (playerSpawnIndices.ContainsKey(clientId))
+        if (playerIdToSpawnIndex.ContainsKey(playerId))
         {
-            freeSpawnIndices.Add(playerSpawnIndices[clientId]);
-            playerSpawnIndices.Remove(clientId);
+            freeSpawnIndices.Add(playerIdToSpawnIndex[playerId]);
+            playerIdToSpawnIndex.Remove(playerId);
         }
-
-        Back.Instance?.RemoveClientReadyStatus(clientId);
     }
 
-    public void ClientLeave(ulong clientId)
+    public void ClientLeave(string playerId)
     {
-        RemovePlayer(clientId);
-        ResetSpawnPoints();
+        RemovePlayerByPlayerId(playerId);
     }
 
     public void ResetSpawnPoints()
@@ -152,7 +161,7 @@ public class PlayerSpawner : MonoBehaviour
         nextSpawnIndex = 0;
         playerColors.Clear();
         playerRefs.Clear();
-        playerSpawnIndices.Clear();
+        playerIdToSpawnIndex.Clear();
         freeSpawnIndices.Clear();
     }
 }
