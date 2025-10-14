@@ -10,7 +10,6 @@ using Unity.Services.Relay.Models;
 using System;
 using System.Threading.Tasks;
 using System.Linq;
-using System.Collections.Generic;
 
 public class LobbyManager : NetworkBehaviour
 {
@@ -25,8 +24,6 @@ public class LobbyManager : NetworkBehaviour
     private string lastJoinCode = "";
     private bool isAutoHost = false;
     private bool autoHostPending = false;
-
-    private static readonly Dictionary<ulong, string> clientIdToPlayerId = new Dictionary<ulong, string>();
 
     private void Awake()
     {
@@ -101,11 +98,7 @@ public class LobbyManager : NetworkBehaviour
             );
 
             NetworkManager.Singleton.StartHost();
-
-            string playerId = AuthenticationService.Instance.PlayerId;
-            clientIdToPlayerId[NetworkManager.Singleton.LocalClientId] = playerId;
-            PlayerSpawner.Instance.SpawnPlayerWithPlayerId(NetworkManager.Singleton.LocalClientId, playerId);
-
+            PlayerSpawner.Instance.SpawnPlayer(NetworkManager.Singleton.LocalClientId);
             Debug.Log($"[AutoHost] Game hosted with code: {joinCode}");
         }
         catch (Exception e)
@@ -150,6 +143,14 @@ public class LobbyManager : NetworkBehaviour
             return;
         }
 
+        if (NetworkManager.Singleton.IsHost)
+        {
+            var localPlayer = NetworkManager.Singleton.LocalClient?.PlayerObject;
+            if (localPlayer != null) Destroy(localPlayer.gameObject);
+            NetworkManager.Singleton.Shutdown();
+            await Task.Delay(500);
+        }
+
         try
         {
             UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
@@ -180,6 +181,7 @@ public class LobbyManager : NetworkBehaviour
 
         if (NetworkManager.Singleton.IsHost)
         {
+            Debug.Log("[LobbyManager] Host leaving, notifying clients...");
             NotifyClientsToLeaveClientRpc();
             _ = HostLeaveFlowAsync();
         }
@@ -193,6 +195,7 @@ public class LobbyManager : NetworkBehaviour
     private void NotifyClientsToLeaveClientRpc(ClientRpcParams rpcParams = default)
     {
         if (IsHost) return;
+        Debug.Log("[LobbyManager] Host leave received, client leaving & auto-hosting...");
         _ = ClientLeaveFlowAsync();
     }
 
@@ -201,50 +204,61 @@ public class LobbyManager : NetworkBehaviour
         if (autoHostPending) return;
         autoHostPending = true;
 
-        string playerId = AuthenticationService.Instance.PlayerId;
-        PlayerSpawner.Instance.ClientLeave(playerId);
-
+        // Cleanup lokaal
+        PlayerSpawner.Instance.ClientLeave(NetworkManager.Singleton.LocalClientId);
+        Back.Instance?.ResetReadyStatus();
         ResetLobbyState();
 
+        // Disconnect client
         NetworkManager.Singleton.Shutdown();
 
+        // Wacht tot volledig losgekoppeld
         await Task.Yield();
         while (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
             await Task.Yield();
 
+        // Wacht tot services klaar zijn
         await WaitForServicesReadyAsync();
+
+        // Auto-host
         AutoHostGame();
         autoHostPending = false;
     }
 
     private async Task HostLeaveFlowAsync()
     {
+        // Cleanup alle clients
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
-        {
-            string playerId = clientIdToPlayerId.ContainsKey(client.ClientId) ? clientIdToPlayerId[client.ClientId] : client.ClientId.ToString();
-            PlayerSpawner.Instance.RemovePlayerByPlayerId(playerId);
-        }
+            PlayerSpawner.Instance.RemovePlayer(client.ClientId);
 
+        Back.Instance?.ResetReadyStatus();
         ResetLobbyState();
 
+        // Wacht tot clients weg zijn
         await Task.Yield();
         while (NetworkManager.Singleton.ConnectedClients.Count > 1)
             await Task.Yield();
 
+        Debug.Log("[LobbyManager] All clients left, shutting down host & auto-hosting...");
+
         NetworkManager.Singleton.Shutdown();
 
+        // Wacht tot shutdown klaar
         await Task.Yield();
         while (NetworkManager.Singleton.IsListening)
             await Task.Yield();
 
         await WaitForServicesReadyAsync();
+
         AutoHostGame();
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
+        // fallback voor onverwachte host-leave
         if (NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsHost && !NetworkManager.Singleton.IsConnectedClient)
         {
+            Debug.Log("[LobbyManager] Host lost unexpectedly, auto-hosting...");
             _ = ClientLeaveFlowAsync();
         }
     }
@@ -252,21 +266,12 @@ public class LobbyManager : NetworkBehaviour
     private void ResetLobbyState()
     {
         PlayerSpawner.Instance.ResetSpawnPoints();
+        Back.Instance?.ResetReadyStatus();
     }
 
     public void SetLeaveButtonVisible(bool visible)
     {
         if (leaveButton != null)
             leaveButton.gameObject.SetActive(visible);
-    }
-
-    public static string GetPlayerIdFromClientId(ulong clientId)
-    {
-        if (clientIdToPlayerId.ContainsKey(clientId))
-            return clientIdToPlayerId[clientId];
-
-        string id = Guid.NewGuid().ToString();
-        clientIdToPlayerId[clientId] = id;
-        return id;
     }
 }
