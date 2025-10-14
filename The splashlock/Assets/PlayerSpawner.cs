@@ -19,7 +19,6 @@ public class PlayerSpawner : MonoBehaviour
     [HideInInspector]
     public readonly Dictionary<ulong, Player> playerRefs = new Dictionary<ulong, Player>();
 
-    // Bijhouden welk spawnpoint een client heeft
     private readonly Dictionary<ulong, int> playerSpawnIndices = new Dictionary<ulong, int>();
     private readonly List<int> freeSpawnIndices = new List<int>();
     private int nextSpawnIndex = 0;
@@ -63,32 +62,24 @@ public class PlayerSpawner : MonoBehaviour
 
     private void UpdateUIVisibility()
     {
-        bool multiplePlayers = NetworkManager.Singleton.ConnectedClientsList.Count > 1;
+        bool multiplePlayers = NetworkManager.Singleton != null && NetworkManager.Singleton.ConnectedClientsList.Count > 1;
 
-        if (Back.Instance != null)
-            Back.Instance.SetReadyStatsVisible(multiplePlayers);
+        Back.Instance?.SetReadyStatsVisible(multiplePlayers);
 
         var lm = FindObjectOfType<LobbyManager>();
-        if (lm != null)
+        if (lm != null && NetworkManager.Singleton != null)
+        {
             lm.SetLeaveButtonVisible(NetworkManager.Singleton.IsHost && multiplePlayers);
+        }
     }
 
     public void SpawnPlayer(ulong clientId)
     {
         if (playerRefs.ContainsKey(clientId) || playerPrefab == null) return;
 
-        // Kies spawnpoint: hergebruik vrije index of nieuwe
-        int spawnIndex;
-        if (freeSpawnIndices.Count > 0)
-        {
-            spawnIndex = freeSpawnIndices[0];
-            freeSpawnIndices.RemoveAt(0);
-        }
-        else
-        {
-            spawnIndex = nextSpawnIndex % spawnPoints.Length;
-            nextSpawnIndex++;
-        }
+        int spawnIndex = freeSpawnIndices.Count > 0 ? freeSpawnIndices[0] : nextSpawnIndex % spawnPoints.Length;
+        if (freeSpawnIndices.Count > 0) freeSpawnIndices.RemoveAt(0);
+        else nextSpawnIndex++;
 
         Vector3 spawnPos = spawnPoints[spawnIndex].position;
 
@@ -120,18 +111,14 @@ public class PlayerSpawner : MonoBehaviour
         if (playerRefs.ContainsKey(clientId))
         {
             var netObj = playerRefs[clientId].GetComponent<NetworkObject>();
-            if (netObj != null && netObj.IsSpawned)
-            {
-                if (NetworkManager.Singleton.IsServer || netObj.IsOwner)
-                    netObj.Despawn(true);
-            }
+            if (netObj != null && netObj.IsSpawned && (NetworkManager.Singleton.IsServer || netObj.IsOwner))
+                netObj.Despawn(true);
+
             playerRefs.Remove(clientId);
         }
 
-        if (playerColors.ContainsKey(clientId))
-            playerColors.Remove(clientId);
+        if (playerColors.ContainsKey(clientId)) playerColors.Remove(clientId);
 
-        // Spawnpoint vrijgeven
         if (playerSpawnIndices.ContainsKey(clientId))
         {
             freeSpawnIndices.Add(playerSpawnIndices[clientId]);
@@ -144,10 +131,9 @@ public class PlayerSpawner : MonoBehaviour
     public void ClientLeave(ulong clientId)
     {
         RemovePlayer(clientId);
-        ResetSpawnPoints();
     }
 
-    public void ResetSpawnPoints()
+    public void ResetAll()
     {
         nextSpawnIndex = 0;
         playerColors.Clear();
