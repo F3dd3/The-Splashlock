@@ -14,7 +14,6 @@ using System.Linq;
 public class LobbyManager : NetworkBehaviour
 {
     [Header("UI Elements")]
-    public Button hostButton;
     public Button joinButton;
     public Button leaveButton;
     public TMP_InputField joinCodeInput;
@@ -44,10 +43,10 @@ public class LobbyManager : NetworkBehaviour
 
     private void Start()
     {
+        // Start hidden
         infoText.gameObject.SetActive(false);
         leaveButton.gameObject.SetActive(false);
 
-        hostButton.onClick.AddListener(OnHostButtonClicked);
         joinButton.onClick.AddListener(JoinGame);
         leaveButton.onClick.AddListener(LeaveLobby);
 
@@ -84,7 +83,7 @@ public class LobbyManager : NetworkBehaviour
     {
         try
         {
-            // Reset volledige lobby voor nieuwe auto-host
+            // Reset lobby state
             PlayerSpawner.Instance?.ResetAll();
             Back.Instance?.ResetReadyStatus();
 
@@ -104,7 +103,7 @@ public class LobbyManager : NetworkBehaviour
             NetworkManager.Singleton.StartHost();
             PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId);
 
-            // Toon joincode automatisch
+            // Show join code automatically
             infoText.gameObject.SetActive(true);
             infoText.text = $"Join code: {lastJoinCode}";
             leaveButton.gameObject.SetActive(true);
@@ -119,17 +118,7 @@ public class LobbyManager : NetworkBehaviour
         }
     }
 
-    private void OnHostButtonClicked()
-    {
-        if (NetworkManager.Singleton.IsHost && !string.IsNullOrEmpty(lastJoinCode))
-        {
-            infoText.gameObject.SetActive(true);
-            infoText.text = $"Join code: {lastJoinCode}";
-            leaveButton.gameObject.SetActive(true);
-        }
-    }
-
-    private void JoinGame()
+    public void JoinGame()
     {
         string joinCode = joinCodeInput.text.Trim();
         if (string.IsNullOrEmpty(joinCode))
@@ -261,7 +250,6 @@ public class LobbyManager : NetworkBehaviour
             _ = ClientLeaveFlowAsync();
     }
 
-    // **Belangrijk: Voeg deze toe om SetLeaveButtonVisible te definiëren**
     public void SetLeaveButtonVisible(bool visible)
     {
         if (leaveButton != null)
