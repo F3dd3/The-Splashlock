@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 [RequireComponent(typeof(CharacterController))]
@@ -37,6 +37,11 @@ public class CharacterMovement_Local : MonoBehaviour
     [Header("External Forces")]
     public float externalForceDecay = 5f;
     public Vector3 externalForce = Vector3.zero;
+
+    [Header("Smash Settings")]
+    public float smashForce = 30f;               // kracht van de smash
+    public Vector3 smashDirection = new Vector3(0, 0.5f, -1f); // richting van de smash (instelbaar in Inspector)
+    public bool useCustomSmashDirection = true;  // bepaal of de vaste richting gebruikt wordt
 
     private void Start()
     {
@@ -156,5 +161,28 @@ public class CharacterMovement_Local : MonoBehaviour
     public void AddExternalForce(Vector3 force)
     {
         externalForce += force;
+    }
+
+    private void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        if (hit.collider.CompareTag("Smash"))
+        {
+            Vector3 dir;
+
+            if (useCustomSmashDirection)
+            {
+                // gebruik vaste richting uit inspector
+                dir = smashDirection.normalized;
+            }
+            else
+            {
+                // bereken automatisch richting weg van het object
+                dir = (transform.position - hit.collider.transform.position).normalized;
+                dir.y = 0.5f;
+            }
+
+            AddExternalForce(dir * smashForce);
+            Debug.Log($"SMASH! Speler weggesmashed richting: {dir}");
+        }
     }
 }

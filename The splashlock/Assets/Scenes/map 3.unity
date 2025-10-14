@@ -336,6 +336,34 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8802124419755797470, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8802124419755797470, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8802124419755797470, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9105867165290538417, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: objectToSpawn
+      value: 
+      objectReference: {fileID: 8329597799876335389, guid: 1c9f712dee414af4a800e9865f00bb4e, type: 3}
+    - target: {fileID: 9105867165290538417, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: levensduurObject
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 9105867165290538417, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: maxTijdTussenSpawns
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 9105867165290538417, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: minTijdTussenSpawns
+      value: 3
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -392,6 +420,34 @@ PrefabInstance:
     - target: {fileID: 4185283532013931425, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8802124419755797470, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8802124419755797470, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8802124419755797470, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9105867165290538417, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: objectToSpawn
+      value: 
+      objectReference: {fileID: 8329597799876335389, guid: 1c9f712dee414af4a800e9865f00bb4e, type: 3}
+    - target: {fileID: 9105867165290538417, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: levensduurObject
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 9105867165290538417, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: maxTijdTussenSpawns
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 9105867165290538417, guid: 83346c69d8a1c2f499c3f299d6a545b8, type: 3}
+      propertyPath: minTijdTussenSpawns
+      value: 3
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

@@ -52,6 +52,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: log
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 4a5d59287be65634ea90f19e1726be5e, type: 3}
+      propertyPath: m_TagString
+      value: Smash
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -61,7 +65,10 @@ PrefabInstance:
       addedObject: {fileID: 1651359965234010183}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4a5d59287be65634ea90f19e1726be5e, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 9205021794435237845}
+      addedObject: {fileID: 2617131619349767812}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4a5d59287be65634ea90f19e1726be5e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8812335437585204031}
   m_SourcePrefab: {fileID: 100100000, guid: 4a5d59287be65634ea90f19e1726be5e, type: 3}
 --- !u!1 &8329597799876335389 stripped
 GameObject:
@@ -76,7 +83,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8329597799876335389}
   serializedVersion: 4
-  m_Mass: 1
+  m_Mass: 100000000
   m_Drag: 0
   m_AngularDrag: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -95,8 +102,21 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!136 &9205021794435237845
-CapsuleCollider:
+--- !u!114 &2617131619349767812
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8329597799876335389}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a8a17e2c94af4045a566895fc9f7f8f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  smashForce: 20
+--- !u!65 &8812335437585204031
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -113,8 +133,6 @@ CapsuleCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.3
-  m_Height: 8
-  m_Direction: 2
+  serializedVersion: 3
+  m_Size: {x: 3.0660326, y: 0.66989636, z: 7.2394357}
   m_Center: {x: 0, y: 0, z: 0}

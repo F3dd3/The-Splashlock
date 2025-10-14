@@ -845,6 +845,7 @@ MonoBehaviour:
   onSlowSurface: 0
   externalForceDecay: 5
   externalForce: {x: 0, y: 0, z: 0}
+  smashForce: 20
 --- !u!114 &-2498994183028920293
 MonoBehaviour:
   m_ObjectHideFlags: 0
