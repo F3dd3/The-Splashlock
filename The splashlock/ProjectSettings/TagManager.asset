@@ -12,6 +12,7 @@ TagManager:
   - Smash
   - Helling
   - Bijl
+  - Lazer
   layers:
   - Default
   - TransparentFX
@@ -19,7 +20,7 @@ TagManager:
   - targetLayer
   - Water
   - UI
-  - 
+  - Lazer
   - 
   - 
   - 

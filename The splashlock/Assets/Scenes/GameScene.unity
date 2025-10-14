@@ -4696,6 +4696,63 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 15fb795482ddc3e4793959cc43c74ef4, type: 3}
   m_PrefabInstance: {fileID: 1688682013}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &997380277
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2806331452024136935, guid: 5d45929cdeb901f48868144e9aa386e4, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -23.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2806331452024136935, guid: 5d45929cdeb901f48868144e9aa386e4, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -2.32
+      objectReference: {fileID: 0}
+    - target: {fileID: 2806331452024136935, guid: 5d45929cdeb901f48868144e9aa386e4, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 2.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 2806331452024136935, guid: 5d45929cdeb901f48868144e9aa386e4, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.70587164
+      objectReference: {fileID: 0}
+    - target: {fileID: 2806331452024136935, guid: 5d45929cdeb901f48868144e9aa386e4, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2806331452024136935, guid: 5d45929cdeb901f48868144e9aa386e4, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.7083398
+      objectReference: {fileID: 0}
+    - target: {fileID: 2806331452024136935, guid: 5d45929cdeb901f48868144e9aa386e4, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2806331452024136935, guid: 5d45929cdeb901f48868144e9aa386e4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2806331452024136935, guid: 5d45929cdeb901f48868144e9aa386e4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -90.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2806331452024136935, guid: 5d45929cdeb901f48868144e9aa386e4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3294883658033790557, guid: 5d45929cdeb901f48868144e9aa386e4, type: 3}
+      propertyPath: m_Name
+      value: muur lazer ding met ani
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 5d45929cdeb901f48868144e9aa386e4, type: 3}
 --- !u!1001 &1006481199
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8553,3 +8610,4 @@ SceneRoots:
   - {fileID: 55725667}
   - {fileID: 503370356}
   - {fileID: 1799049799}
+  - {fileID: 997380277}
