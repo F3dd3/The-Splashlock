@@ -51,6 +51,21 @@ public class PlayerSpawner : MonoBehaviour
         if (!playerRefs.ContainsKey(clientId))
             SpawnPlayer(clientId);
 
+        // Stuur alle bestaande kleuren naar de nieuwe client
+        foreach (var kvp in playerRefs)
+        {
+            ulong otherId = kvp.Key;
+            Player otherPlayer = kvp.Value;
+            Vector3 colorVec = new Vector3(playerColors[otherId].r, playerColors[otherId].g, playerColors[otherId].b);
+            otherPlayer.ForceColorClientRpc(colorVec, new ClientRpcParams
+            {
+                Send = new ClientRpcSendParams
+                {
+                    TargetClientIds = new ulong[] { clientId }
+                }
+            });
+        }
+
         UpdateUIVisibility();
     }
 
@@ -96,7 +111,7 @@ public class PlayerSpawner : MonoBehaviour
 
         Vector3 colorVec = new Vector3(color.r, color.g, color.b);
         playerScript.SetColorServerRpc(colorVec);
-        playerScript.ForceColorClientRpc(colorVec);
+        playerScript.ForceColorClientRpc(colorVec); // direct naar alle clients
     }
 
     private Color GetNextUniqueColor()

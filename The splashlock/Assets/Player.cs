@@ -19,9 +19,23 @@ public class Player : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
+
+        // Voeg callback toe
         playerColor.OnValueChanged += OnColorChanged;
+
+        // Zorg dat ook late joiners de kleur correct zien
         if (playerColor.Value != Vector3.zero)
             ApplyColor(playerColor.Value);
+
+        // Verstuur huidige kleur naar deze client als dit object al een kleur heeft
+        if (IsServer)
+            ForceColorClientRpc(playerColor.Value, new ClientRpcParams
+            {
+                Send = new ClientRpcSendParams
+                {
+                    TargetClientIds = new ulong[] { OwnerClientId }
+                }
+            });
     }
 
     private void OnDestroy()
@@ -48,7 +62,7 @@ public class Player : NetworkBehaviour
     }
 
     [ClientRpc]
-    public void ForceColorClientRpc(Vector3 newColor)
+    public void ForceColorClientRpc(Vector3 newColor, ClientRpcParams rpcParams = default)
     {
         ApplyColor(newColor);
     }
