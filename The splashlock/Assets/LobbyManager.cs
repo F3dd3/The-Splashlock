@@ -179,15 +179,12 @@ public class LobbyManager : NetworkBehaviour
     {
         if (NetworkManager.Singleton == null) return;
 
-        // Verberg UI direct
         infoText.gameObject.SetActive(false);
         leaveButton.gameObject.SetActive(false);
 
         if (NetworkManager.Singleton.IsHost)
         {
-            // Laat alle clients weten dat ze hun leave-knop moeten updaten
-            UpdateLeaveButtonClientRpc(false);
-
+            NotifyClientsToShutdownClientRpc();
             _ = HostLeaveFlowAsync();
         }
         else if (NetworkManager.Singleton.IsClient)
@@ -203,6 +200,33 @@ public class LobbyManager : NetworkBehaviour
             leaveButton.gameObject.SetActive(visible);
     }
 
+    [ClientRpc]
+    private void NotifyClientsToShutdownClientRpc()
+    {
+        if (IsHost) return;
+        _ = ClientShutdownFlowAsync();
+    }
+
+    private async Task ClientShutdownFlowAsync()
+    {
+        if (autoHostPending) return;
+        autoHostPending = true;
+
+        PlayerSpawner.Instance?.ClientLeave(NetworkManager.Singleton.LocalClientId);
+        Back.Instance?.ResetReadyStatus();
+
+        NetworkManager.Singleton.Shutdown();
+
+        UpdateLeaveButtonClientRpc(false);
+        infoText.gameObject.SetActive(false);
+
+        // Wacht tot services ready zijn voordat auto-host
+        await WaitForServicesReadyAsync();
+        AutoHostGame();
+
+        autoHostPending = false;
+    }
+
     private async Task ClientLeaveFlowAsync()
     {
         if (autoHostPending) return;
@@ -213,7 +237,6 @@ public class LobbyManager : NetworkBehaviour
 
         NetworkManager.Singleton.Shutdown();
 
-        // Laat client zelf zijn leave-knop verbergen
         UpdateLeaveButtonClientRpc(false);
 
         await Task.Yield();
@@ -222,6 +245,7 @@ public class LobbyManager : NetworkBehaviour
 
         await WaitForServicesReadyAsync();
         AutoHostGame();
+
         autoHostPending = false;
     }
 
@@ -233,7 +257,6 @@ public class LobbyManager : NetworkBehaviour
         Back.Instance?.ResetReadyStatus();
         PlayerSpawner.Instance?.ResetAll();
 
-        // Update leave-knop voor alle clients
         UpdateLeaveButtonClientRpc(false);
 
         await Task.Yield();
