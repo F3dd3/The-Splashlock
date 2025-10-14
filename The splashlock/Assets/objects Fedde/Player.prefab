@@ -757,6 +757,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8064393290333862704}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -4919626763853156016}
   m_SourcePrefab: {fileID: 100100000, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}
 --- !u!1 &6117264215110908726 stripped
 GameObject:
@@ -846,6 +849,8 @@ MonoBehaviour:
   externalForceDecay: 5
   externalForce: {x: 0, y: 0, z: 0}
   smashForce: 20
+  smashDirection: {x: 0, y: 0.5, z: -1}
+  useCustomSmashDirection: 1
 --- !u!114 &-2498994183028920293
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -889,6 +894,21 @@ MonoBehaviour:
   waterLayer:
     serializedVersion: 2
     m_Bits: 16
+  spawnProtectionTime: 0.5
+--- !u!114 &-4919626763853156016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6117264215110908726}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31474168dfe11834681cba675b20e93e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
+  respawnHeight: 2
   spawnProtectionTime: 0.5
 --- !u!4 &6894786488619540876 stripped
 Transform:
