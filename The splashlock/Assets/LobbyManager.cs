@@ -179,16 +179,22 @@ public class LobbyManager : NetworkBehaviour
     {
         if (NetworkManager.Singleton == null) return;
 
+        // Verberg UI meteen
         infoText.gameObject.SetActive(false);
         leaveButton.gameObject.SetActive(false);
 
         if (NetworkManager.Singleton.IsHost)
         {
+            // Verberg leave knop bij alle clients
+            UpdateLeaveButtonClientRpc(false);
+
+            // Laat de clients wissen en shut down de host
             NotifyClientsToShutdownClientRpc();
             _ = HostLeaveFlowAsync();
         }
         else if (NetworkManager.Singleton.IsClient)
         {
+            // Verberg leave knop lokaal en shut down client
             _ = ClientLeaveFlowAsync();
         }
     }
@@ -215,12 +221,17 @@ public class LobbyManager : NetworkBehaviour
         PlayerSpawner.Instance?.ClientLeave(NetworkManager.Singleton.LocalClientId);
         Back.Instance?.ResetReadyStatus();
 
+        // UI verbergen **voor** shutdown
+        infoText.gameObject.SetActive(false);
+        leaveButton.gameObject.SetActive(false);
+
         NetworkManager.Singleton.Shutdown();
 
-        UpdateLeaveButtonClientRpc(false);
-        infoText.gameObject.SetActive(false);
+        // Wacht tot shutdown voltooid
+        await Task.Yield();
+        while (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+            await Task.Yield();
 
-        // Wacht tot services ready zijn voordat auto-host
         await WaitForServicesReadyAsync();
         AutoHostGame();
 
@@ -235,10 +246,13 @@ public class LobbyManager : NetworkBehaviour
         PlayerSpawner.Instance?.ClientLeave(NetworkManager.Singleton.LocalClientId);
         Back.Instance?.ResetReadyStatus();
 
+        // UI verbergen **voor** shutdown
+        infoText.gameObject.SetActive(false);
+        leaveButton.gameObject.SetActive(false);
+
         NetworkManager.Singleton.Shutdown();
 
-        UpdateLeaveButtonClientRpc(false);
-
+        // Wacht tot shutdown voltooid
         await Task.Yield();
         while (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
             await Task.Yield();
