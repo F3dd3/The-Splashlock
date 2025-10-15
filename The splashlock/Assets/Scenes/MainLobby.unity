@@ -3871,7 +3871,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Shop
+  m_text: Controls
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 0046078fb022b974c99b995623f8b73a, type: 2}
   m_sharedMaterial: {fileID: 100208999252133750, guid: 0046078fb022b974c99b995623f8b73a, type: 2}
@@ -4245,7 +4245,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
-  hostButton: {fileID: 0}
   joinButton: {fileID: 655866929}
   leaveButton: {fileID: 218521018}
   joinCodeInput: {fileID: 1026777775}
