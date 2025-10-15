@@ -119,7 +119,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1653714139936601736
 RectTransform:
   m_ObjectHideFlags: 0
@@ -322,6 +322,11 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: -4256190165821319977}
   m_SourcePrefab: {fileID: 100100000, guid: e809394f8206f5f4a82f893664b9bed4, type: 3}
+--- !u!137 &2623765544895576571 stripped
+SkinnedMeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 8417361359673230750, guid: e809394f8206f5f4a82f893664b9bed4, type: 3}
+  m_PrefabInstance: {fileID: 5816686250450812005}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &6283572814603197326 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: e809394f8206f5f4a82f893664b9bed4, type: 3}
@@ -410,8 +415,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
-  playerRenderer: {fileID: 0}
-  nameText: {fileID: 3861805057078645105}
+  playerRenderer: {fileID: 2623765544895576571}
+  nameLabel: {fileID: 3861805057078645105}
 --- !u!114 &7107244613085946979
 MonoBehaviour:
   m_ObjectHideFlags: 0

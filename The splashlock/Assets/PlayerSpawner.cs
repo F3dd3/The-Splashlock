@@ -54,7 +54,7 @@ public class PlayerSpawner : MonoBehaviour
         SpawnPlayer(clientId);
         UpdateUIVisibility();
 
-        // Sync kleuren naar nieuwe client
+        // Sync kleuren naar nieuwe client (exact zoals jouw originele code)
         foreach (var kvp in playerRefs)
         {
             ulong otherId = kvp.Key;
@@ -85,7 +85,7 @@ public class PlayerSpawner : MonoBehaviour
 
     public void SpawnPlayer(ulong clientId, bool forceSpawn = false)
     {
-        // 🔹 voorkom dubbele spawn
+        // voorkom dubbele spawn
         if (!forceSpawn && playerRefs.ContainsKey(clientId)) return;
 
         if (playerPrefab == null) return;
@@ -128,6 +128,13 @@ public class PlayerSpawner : MonoBehaviour
         Vector3 colorVec = new Vector3(color.r, color.g, color.b);
         playerScript.SetColorServerRpc(colorVec);
         playerScript.ForceColorClientRpc(colorVec);
+
+        // 🔹 Voeg alleen het "You" label toe voor de lokale speler
+        if (clientId == NetworkManager.Singleton.LocalClientId)
+        {
+            if (playerScript.nameLabel != null)
+                playerScript.nameLabel.text = "You";
+        }
     }
 
     private Color GetNextUniqueColor()
