@@ -22,6 +22,7 @@ public class LobbyManager : NetworkBehaviour
     private bool servicesInitialized = false;
     private string lastJoinCode = "";
     private bool hasJoinedOnce = false;
+    private bool autoHostPending = false;
 
     private void Awake()
     {
@@ -222,18 +223,38 @@ public class LobbyManager : NetworkBehaviour
 
         NetworkManager.Singleton.Shutdown();
 
-        // Wacht tot shutdown volledig is
         while (NetworkManager.Singleton.IsListening)
             await Task.Yield();
 
         await WaitForServicesReadyAsync();
 
-        // Host start opnieuw autohost
         AutoHostGame();
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
-        // clients doen niks, host regelt alles
+        // Als local client disconnect door host, start client-side autohost flow
+        if (!NetworkManager.Singleton.IsHost && !autoHostPending)
+        {
+            autoHostPending = true;
+            _ = ClientAutohostFlowAsync();
+        }
+    }
+
+    private async Task ClientAutohostFlowAsync()
+    {
+        PlayerSpawner.Instance?.ResetAll();
+        Back.Instance?.ResetReadyStatus();
+
+        infoText.gameObject.SetActive(true);
+        infoText.text = "Host left, starting own server...";
+
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+            NetworkManager.Singleton.Shutdown();
+
+        await WaitForServicesReadyAsync();
+        AutoHostGame();
+
+        autoHostPending = false;
     }
 }
