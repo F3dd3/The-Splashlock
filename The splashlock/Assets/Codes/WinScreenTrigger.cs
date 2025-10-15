@@ -1,47 +1,51 @@
 using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.SceneManagement;
+using Unity.Netcode;
 
 public class WinScreenTrigger : MonoBehaviour
 {
     [Header("Win Screen Canvas")]
-    public GameObject winScreenCanvas; // Het Canvas met jouw Win Screen UI
+    public GameObject winScreenCanvas;
 
     [Header("Speler")]
-    public CharacterMovement playerMovement; // De speler met CharacterMovement script
-
-    [Header("Lobby Scene Name")]
-    public string lobbySceneName = "Lobby"; // Naam van je lobby scene
+    public CharacterMovement playerMovement;
 
     private void Start()
     {
-        // Canvas uit bij start
         if (winScreenCanvas != null)
             winScreenCanvas.SetActive(false);
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        // Check of speler een CharacterController heeft
         if (other.GetComponent<CharacterController>() != null)
         {
-            // Win screen tonen
             if (winScreenCanvas != null)
                 winScreenCanvas.SetActive(true);
 
-            // Spelerbeweging stoppen
             if (playerMovement != null)
                 playerMovement.enabled = false;
 
-            // Cursor zichtbaar maken voor UI
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
     }
 
-    // Functie voor de Quit-knop
-    public void QuitToLobby()
+    public void ReturnToLobby()
     {
-        SceneManager.LoadScene(lobbySceneName);
+        if (winScreenCanvas != null)
+            winScreenCanvas.SetActive(false);
+
+        // Reset spelers naar lobby spawnpunten en kleuren
+        PlayerSpawner.Instance?.ResetForLobby();
+
+        // Reset ready status
+        Back.Instance?.ResetReadyStatus();
+
+        // Lokale speler beweging weer inschakelen
+        if (playerMovement != null)
+            playerMovement.enabled = true;
+
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 }

@@ -23,7 +23,7 @@ public class PlayerSpawner : MonoBehaviour
     private readonly Dictionary<ulong, Color> rejoinColors = new Dictionary<ulong, Color>();
     private readonly HashSet<int> freeSpawnPoints = new HashSet<int>();
 
-    private int nextSpawnIndex = 1; // Host spawnpoint 0, clients vanaf 1
+    private int nextSpawnIndex = 1; // host spawn 0, clients vanaf 1
 
     private void Awake()
     {
@@ -47,24 +47,33 @@ public class PlayerSpawner : MonoBehaviour
         NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
     }
 
+    public int GetSpawnIndex(ulong clientId)
+    {
+        if (playerSpawnIndices.TryGetValue(clientId, out int index))
+            return index;
+        return 0; // fallback host spawn
+    }
+
     private void OnClientConnected(ulong clientId)
     {
         if (!NetworkManager.Singleton.IsServer) return;
 
         SpawnPlayer(clientId);
-        UpdateUIVisibility();
 
-        // Sync kleuren naar nieuwe client (exact zoals jouw originele code)
+        // Sync kleuren naar nieuwe client
         foreach (var kvp in playerRefs)
         {
             ulong otherId = kvp.Key;
             Player otherPlayer = kvp.Value;
-            Vector3 colorVec = new Vector3(playerColors[otherId].r, playerColors[otherId].g, playerColors[otherId].b);
 
-            otherPlayer.ForceColorClientRpc(colorVec, new ClientRpcParams
+            if (playerColors.TryGetValue(otherId, out Color color))
             {
-                Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { clientId } }
-            });
+                Vector3 colorVec = new Vector3(color.r, color.g, color.b);
+                otherPlayer.ForceColorClientRpc(colorVec, new ClientRpcParams
+                {
+                    Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { clientId } }
+                });
+            }
         }
     }
 
@@ -80,14 +89,11 @@ public class PlayerSpawner : MonoBehaviour
             rejoinColors[clientId] = playerColors[clientId];
 
         RemovePlayer(clientId);
-        UpdateUIVisibility();
     }
 
     public void SpawnPlayer(ulong clientId, bool forceSpawn = false)
     {
-        // voorkom dubbele spawn
         if (!forceSpawn && playerRefs.ContainsKey(clientId)) return;
-
         if (playerPrefab == null) return;
 
         if (forceSpawn && playerRefs.ContainsKey(clientId))
@@ -96,7 +102,7 @@ public class PlayerSpawner : MonoBehaviour
         int spawnIndex = 0;
 
         if (NetworkManager.Singleton.IsHost && clientId == NetworkManager.Singleton.LocalClientId)
-            spawnIndex = 0; // host spawn
+            spawnIndex = 0;
         else
         {
             if (freeSpawnPoints.Count > 0)
@@ -112,8 +118,8 @@ public class PlayerSpawner : MonoBehaviour
         }
 
         Vector3 spawnPos = spawnPoints[spawnIndex].position;
-        GameObject player = Instantiate(playerPrefab, spawnPos, Quaternion.Euler(0, 180, 0));
-        player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
+        GameObject playerObj = Instantiate(playerPrefab, spawnPos, Quaternion.Euler(0, 180, 0));
+        playerObj.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
 
         playerSpawnIndices[clientId] = spawnIndex;
 
@@ -122,19 +128,15 @@ public class PlayerSpawner : MonoBehaviour
 
         playerColors[clientId] = color;
 
-        Player playerScript = player.GetComponent<Player>();
+        Player playerScript = playerObj.GetComponent<Player>();
         playerRefs[clientId] = playerScript;
 
         Vector3 colorVec = new Vector3(color.r, color.g, color.b);
         playerScript.SetColorServerRpc(colorVec);
         playerScript.ForceColorClientRpc(colorVec);
 
-        // 🔹 Voeg alleen het "You" label toe voor de lokale speler
-        if (clientId == NetworkManager.Singleton.LocalClientId)
-        {
-            if (playerScript.nameLabel != null)
-                playerScript.nameLabel.text = "You";
-        }
+        if (clientId == NetworkManager.Singleton.LocalClientId && playerScript.nameLabel != null)
+            playerScript.nameLabel.text = "You";
     }
 
     private Color GetNextUniqueColor()
@@ -159,11 +161,6 @@ public class PlayerSpawner : MonoBehaviour
         Back.Instance?.RemoveClientReadyStatus(clientId);
     }
 
-    public void ClientLeave(ulong clientId)
-    {
-        RemovePlayer(clientId);
-    }
-
     public void ResetAll()
     {
         nextSpawnIndex = 1;
@@ -174,17 +171,26 @@ public class PlayerSpawner : MonoBehaviour
         rejoinColors.Clear();
     }
 
-    private void UpdateUIVisibility()
+    // 🔹 Nieuwe functie: reset spelers bij terug naar lobby
+    public void ResetForLobby()
     {
-        if (NetworkManager.Singleton == null) return;
+        foreach (var kvp in playerRefs)
+        {
+            ulong clientId = kvp.Key;
+            Player player = kvp.Value;
 
-        bool showLeaveButton = NetworkManager.Singleton.IsHost &&
-                               NetworkManager.Singleton.ConnectedClientsList.Count > 1;
+            // Spawn terugzetten
+            int spawnIndex = GetSpawnIndex(clientId);
+            player.transform.position = spawnPoints[spawnIndex].position;
+            player.transform.rotation = Quaternion.Euler(0, 180, 0);
 
-        var lm = FindObjectOfType<LobbyManager>();
-        if (lm != null)
-            lm.SetLeaveButtonVisible(showLeaveButton);
-
-        Back.Instance?.SetReadyStatsVisible(NetworkManager.Singleton.ConnectedClientsList.Count > 1);
+            // Kleur opnieuw forceren
+            if (playerColors.TryGetValue(clientId, out Color color))
+            {
+                Vector3 colorVec = new Vector3(color.r, color.g, color.b);
+                player.SetColorServerRpc(colorVec);
+                player.ForceColorClientRpc(colorVec);
+            }
+        }
     }
 }

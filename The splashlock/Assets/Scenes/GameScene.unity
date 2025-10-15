@@ -14186,15 +14186,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 15fb795482ddc3e4793959cc43c74ef4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 91.1812
+      value: 43.64
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 15fb795482ddc3e4793959cc43c74ef4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 48.357758
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 15fb795482ddc3e4793959cc43c74ef4, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -70.2
+      value: -17.38
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 15fb795482ddc3e4793959cc43c74ef4, type: 3}
       propertyPath: m_LocalRotation.w
@@ -14298,7 +14298,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   winScreenCanvas: {fileID: 503370352}
   playerMovement: {fileID: 0}
-  lobbySceneName: Lobby
 --- !u!64 &1688682019
 MeshCollider:
   m_ObjectHideFlags: 0
