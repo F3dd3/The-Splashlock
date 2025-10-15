@@ -1564,7 +1564,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a07e640692a1e5145b0f6c074659f728, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  trampolineForce: 3.5
+  trampolineForce: 5
   raycastLength: 0.6
 --- !u!143 &7090233153647673204
 CharacterController:
