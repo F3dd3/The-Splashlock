@@ -21,10 +21,12 @@ public class LobbyManager : NetworkBehaviour
 
     private bool servicesInitialized = false;
     private string lastJoinCode = "";
-    private bool autoHostPending = false;
     private bool hasJoinedOnce = false;
 
-    private void Awake() => InitializeUnityServicesSafe();
+    private void Awake()
+    {
+        InitializeUnityServicesSafe();
+    }
 
     private async void InitializeUnityServicesSafe()
     {
@@ -43,12 +45,14 @@ public class LobbyManager : NetworkBehaviour
     {
         infoText.gameObject.SetActive(false);
 
-        joinButton.onClick.AddListener(() =>
-        {
-            JoinGameAsync();
-        });
+        joinButton.onClick.AddListener(() => { _ = JoinGameAsync(); });
 
+        // Leave-knop listener altijd toevoegen
+        leaveButton.onClick.AddListener(LeaveLobby);
+
+        // Leave-knop standaard uit voor iedereen (autohost of client)
         leaveButton.gameObject.SetActive(false);
+        leaveButton.interactable = false;
 
         if (NetworkManager.Singleton != null)
             NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
@@ -65,11 +69,17 @@ public class LobbyManager : NetworkBehaviour
 
     private async Task WaitForServicesReadyAsync()
     {
-        while (!servicesInitialized) await Task.Yield();
+        while (!servicesInitialized)
+            await Task.Yield();
 
         while (!AuthenticationService.Instance.IsSignedIn || string.IsNullOrEmpty(AuthenticationService.Instance.PlayerId))
         {
-            try { await AuthenticationService.Instance.SignInAnonymouslyAsync(); } catch { }
+            try
+            {
+                if (!AuthenticationService.Instance.IsSignedIn)
+                    await AuthenticationService.Instance.SignInAnonymouslyAsync();
+            }
+            catch { }
             await Task.Yield();
         }
     }
@@ -95,14 +105,17 @@ public class LobbyManager : NetworkBehaviour
             );
 
             NetworkManager.Singleton.StartHost();
-            PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
+            PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true); // Force spawn
 
             infoText.gameObject.SetActive(true);
             infoText.text = $"Join code: {lastJoinCode}";
 
-            leaveButton.gameObject.SetActive(false); // autohost: knop uit
+            // Leave-knop standaard uit, wordt zichtbaar bij clients
+            UpdateLeaveButtonVisibility();
 
             hasJoinedOnce = true;
+
+            Debug.Log($"[AutoHost] Game hosted with code: {joinCode}");
         }
         catch (Exception e)
         {
@@ -123,6 +136,7 @@ public class LobbyManager : NetworkBehaviour
         }
 
         await WaitForServicesReadyAsync();
+
         await JoinRelayAsync(joinCode);
     }
 
@@ -130,8 +144,11 @@ public class LobbyManager : NetworkBehaviour
     {
         if (!servicesInitialized) return;
 
-        JoinAllocation allocation;
-        try { allocation = await RelayService.Instance.JoinAllocationAsync(joinCode); }
+        JoinAllocation allocation = null;
+        try
+        {
+            allocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
+        }
         catch
         {
             infoText.gameObject.SetActive(true);
@@ -139,6 +156,7 @@ public class LobbyManager : NetworkBehaviour
             return;
         }
 
+        // Force cleanup als client eerder host was
         if (NetworkManager.Singleton.IsHost)
         {
             var localPlayer = NetworkManager.Singleton.LocalClient?.PlayerObject;
@@ -161,6 +179,7 @@ public class LobbyManager : NetworkBehaviour
 
             NetworkManager.Singleton.StartClient();
 
+            // Force spawn na join
             PlayerSpawner.Instance?.ClientLeave(NetworkManager.Singleton.LocalClientId);
             await Task.Delay(100);
             PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
@@ -168,7 +187,10 @@ public class LobbyManager : NetworkBehaviour
             infoText.gameObject.SetActive(true);
             infoText.text = $"Connected to: {joinCode}";
 
-            leaveButton.gameObject.SetActive(false); // client: nooit zichtbaar
+            // Clients zien nooit leave-knop
+            leaveButton.gameObject.SetActive(false);
+            leaveButton.interactable = false;
+
             hasJoinedOnce = true;
         }
         catch
@@ -181,40 +203,67 @@ public class LobbyManager : NetworkBehaviour
     public void LeaveLobby()
     {
         if (NetworkManager.Singleton == null) return;
-        if (!NetworkManager.Singleton.IsHost) return; // alleen host mag leave
 
-        _ = HostLeaveFlowAsync();
+        // Alleen host kan leave
+        if (NetworkManager.Singleton.IsHost)
+        {
+            _ = HostLeaveFlowAsync();
+        }
     }
 
     private async Task HostLeaveFlowAsync()
     {
+        // Disconnect alle clients netjes
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
         {
             if (client.ClientId != NetworkManager.Singleton.LocalClientId)
+            {
                 PlayerSpawner.Instance?.RemovePlayer(client.ClientId);
+            }
         }
 
         Back.Instance?.ResetReadyStatus();
         PlayerSpawner.Instance?.ResetAll();
 
         leaveButton.gameObject.SetActive(false);
+        leaveButton.interactable = false;
         infoText.gameObject.SetActive(false);
 
         NetworkManager.Singleton.Shutdown();
-        while (NetworkManager.Singleton.IsListening) await Task.Yield();
+
+        // Wacht tot shutdown volledig is
+        while (NetworkManager.Singleton.IsListening)
+            await Task.Yield();
 
         await WaitForServicesReadyAsync();
+
+        // Host start opnieuw autohost
         AutoHostGame();
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
-        // Clients doen niks bij disconnect
+        // Clients doen niks bij disconnect, alleen host beheert
+        UpdateLeaveButtonVisibility();
+    }
+
+    private void UpdateLeaveButtonVisibility()
+    {
+        if (NetworkManager.Singleton == null) return;
+
+        bool showLeaveButton = NetworkManager.Singleton.IsHost &&
+                               NetworkManager.Singleton.ConnectedClientsList.Count > 1;
+
+        leaveButton.gameObject.SetActive(showLeaveButton);
+        leaveButton.interactable = showLeaveButton;
     }
 
     public void SetLeaveButtonVisible(bool visible)
     {
         if (leaveButton != null)
+        {
             leaveButton.gameObject.SetActive(visible && NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost);
+            leaveButton.interactable = visible && NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost;
+        }
     }
 }
