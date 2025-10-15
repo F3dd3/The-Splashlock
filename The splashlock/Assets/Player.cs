@@ -1,67 +1,64 @@
 ﻿using UnityEngine;
 using Unity.Netcode;
+using TMPro;
 
 public class Player : NetworkBehaviour
 {
-    public Renderer playerRenderer;
+    [Header("Visuals")]
+    public Renderer playerRenderer;       // Renderer van je player (bijv. body)
+    public TextMeshProUGUI nameText;      // TextMeshPro in de Canvas
 
-    // Kleur als NetworkVariable zodat de server bepaalt en clients syncen
-    public NetworkVariable<Vector3> playerColor = new NetworkVariable<Vector3>(
-        Vector3.zero,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server
-    );
-
-    private void Awake()
+    private void Start()
     {
-        if (playerRenderer == null)
-            playerRenderer = GetComponentInChildren<Renderer>();
+        // Alleen lokale speler ziet "you"
+        if (IsOwner && nameText != null)
+        {
+            nameText.text = "you";
+            nameText.gameObject.SetActive(true);
+        }
+        else if (nameText != null)
+        {
+            // Anderen zien geen tekst boven deze speler
+            nameText.gameObject.SetActive(false);
+        }
     }
 
-    public override void OnNetworkSpawn()
+    private void LateUpdate()
     {
-        base.OnNetworkSpawn();
-        playerColor.OnValueChanged += OnColorChanged;
-
-        if (playerColor.Value != Vector3.zero)
-            ApplyColor(playerColor.Value);
+        // Forceer dat de lokale speler altijd "you" ziet
+        if (IsOwner && nameText != null && !nameText.gameObject.activeSelf)
+        {
+            nameText.gameObject.SetActive(true);
+            nameText.text = "you";
+        }
     }
 
-    private void OnDestroy()
+    // --- Kleuren synchronisatie via ServerRPC & ClientRPC ---
+
+    [ServerRpc(RequireOwnership = false)]
+    public void SetColorServerRpc(Vector3 colorVec)
     {
-        playerColor.OnValueChanged -= OnColorChanged;
+        ForceColorClientRpc(colorVec);
     }
 
-    private void OnColorChanged(Vector3 oldColor, Vector3 newColor)
+    // ClientRpc voor alle clients
+    [ClientRpc]
+    public void ForceColorClientRpc(Vector3 colorVec)
     {
-        ApplyColor(newColor);
+        ApplyColor(colorVec);
     }
 
+    // ClientRpc voor specifieke clients
+    [ClientRpc]
+    public void ForceColorClientRpc(Vector3 colorVec, ClientRpcParams clientRpcParams)
+    {
+        ApplyColor(colorVec);
+    }
+
+    // Helper functie om kleur toe te passen
     private void ApplyColor(Vector3 colorVec)
     {
-        if (playerRenderer == null) return;
-        Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
-        playerRenderer.material.color = color;
-    }
-
-    // ServerRpc om kleur vanaf server te updaten
-    [ServerRpc(RequireOwnership = false)]
-    public void SetColorServerRpc(Vector3 newColor)
-    {
-        playerColor.Value = newColor;
-    }
-
-    // Forceer kleur bij alle clients of specifieke client(s)
-    [ClientRpc]
-    public void ForceColorClientRpc(Vector3 newColor, ClientRpcParams clientRpcParams = default)
-    {
-        ApplyColor(newColor);
-    }
-
-    // ClientRpc om speler te teleportereren naar een nieuw spawnpoint
-    [ClientRpc]
-    public void TeleportClientRpc(Vector3 newPos)
-    {
-        transform.position = newPos;
+        if (playerRenderer != null)
+            playerRenderer.material.color = new Color(colorVec.x, colorVec.y, colorVec.z);
     }
 }
