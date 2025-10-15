@@ -51,9 +51,10 @@ public class PlayerSpawner : MonoBehaviour
     {
         if (!NetworkManager.Singleton.IsServer) return;
 
-        SpawnPlayer(clientId, true);
+        SpawnPlayer(clientId);
         UpdateUIVisibility();
 
+        // Sync kleuren naar nieuwe client
         foreach (var kvp in playerRefs)
         {
             ulong otherId = kvp.Key;
@@ -62,10 +63,7 @@ public class PlayerSpawner : MonoBehaviour
 
             otherPlayer.ForceColorClientRpc(colorVec, new ClientRpcParams
             {
-                Send = new ClientRpcSendParams
-                {
-                    TargetClientIds = new ulong[] { clientId }
-                }
+                Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { clientId } }
             });
         }
     }
@@ -76,8 +74,7 @@ public class PlayerSpawner : MonoBehaviour
         if (!playerSpawnIndices.ContainsKey(clientId)) return;
 
         int freedIndex = playerSpawnIndices[clientId];
-        if (freedIndex != 0) // host blijft op 0
-            freeSpawnPoints.Add(freedIndex);
+        if (freedIndex != 0) freeSpawnPoints.Add(freedIndex);
 
         if (playerColors.ContainsKey(clientId))
             rejoinColors[clientId] = playerColors[clientId];
@@ -88,16 +85,18 @@ public class PlayerSpawner : MonoBehaviour
 
     public void SpawnPlayer(ulong clientId, bool forceSpawn = false)
     {
+        // 🔹 voorkom dubbele spawn
         if (!forceSpawn && playerRefs.ContainsKey(clientId)) return;
+
         if (playerPrefab == null) return;
 
-        if (playerRefs.ContainsKey(clientId))
+        if (forceSpawn && playerRefs.ContainsKey(clientId))
             RemovePlayer(clientId);
 
-        int spawnIndex;
+        int spawnIndex = 0;
 
         if (NetworkManager.Singleton.IsHost && clientId == NetworkManager.Singleton.LocalClientId)
-            spawnIndex = 0;
+            spawnIndex = 0; // host spawn
         else
         {
             if (freeSpawnPoints.Count > 0)
@@ -118,16 +117,8 @@ public class PlayerSpawner : MonoBehaviour
 
         playerSpawnIndices[clientId] = spawnIndex;
 
-        Color color;
-        if (rejoinColors.ContainsKey(clientId))
-        {
-            color = rejoinColors[clientId];
-            rejoinColors.Remove(clientId);
-        }
-        else
-        {
-            color = GetNextUniqueColor();
-        }
+        Color color = rejoinColors.ContainsKey(clientId) ? rejoinColors[clientId] : GetNextUniqueColor();
+        if (rejoinColors.ContainsKey(clientId)) rejoinColors.Remove(clientId);
 
         playerColors[clientId] = color;
 
@@ -137,8 +128,6 @@ public class PlayerSpawner : MonoBehaviour
         Vector3 colorVec = new Vector3(color.r, color.g, color.b);
         playerScript.SetColorServerRpc(colorVec);
         playerScript.ForceColorClientRpc(colorVec);
-
-        UpdateUIVisibility();
     }
 
     private Color GetNextUniqueColor()
@@ -153,9 +142,7 @@ public class PlayerSpawner : MonoBehaviour
         if (playerRefs.ContainsKey(clientId))
         {
             var netObj = playerRefs[clientId].GetComponent<NetworkObject>();
-            if (netObj != null && netObj.IsSpawned)
-                netObj.Despawn(true);
-
+            if (netObj != null && netObj.IsSpawned) netObj.Despawn(true);
             playerRefs.Remove(clientId);
         }
 
@@ -163,7 +150,6 @@ public class PlayerSpawner : MonoBehaviour
         if (playerSpawnIndices.ContainsKey(clientId)) playerSpawnIndices.Remove(clientId);
 
         Back.Instance?.RemoveClientReadyStatus(clientId);
-        UpdateUIVisibility();
     }
 
     public void ClientLeave(ulong clientId)
@@ -184,14 +170,14 @@ public class PlayerSpawner : MonoBehaviour
     private void UpdateUIVisibility()
     {
         if (NetworkManager.Singleton == null) return;
-        if (!NetworkManager.Singleton.IsHost) return;
 
-        bool showLeaveButton = NetworkManager.Singleton.ConnectedClientsList.Count > 1;
-
-        Back.Instance?.SetReadyStatsVisible(showLeaveButton);
+        bool showLeaveButton = NetworkManager.Singleton.IsHost &&
+                               NetworkManager.Singleton.ConnectedClientsList.Count > 1;
 
         var lm = FindObjectOfType<LobbyManager>();
         if (lm != null)
             lm.SetLeaveButtonVisible(showLeaveButton);
+
+        Back.Instance?.SetReadyStatsVisible(NetworkManager.Singleton.ConnectedClientsList.Count > 1);
     }
 }
