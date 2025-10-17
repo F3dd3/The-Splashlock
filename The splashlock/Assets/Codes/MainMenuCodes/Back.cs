@@ -11,6 +11,10 @@ public class Back : NetworkBehaviour
     public Button readyButton;
     public TextMeshProUGUI readyStatusText;
 
+    [Header("Maps Settings")]
+    [Tooltip("Kies hier welke maps mogelijk zijn.")]
+    public List<string> selectableMaps = new List<string>(); // Vul in Inspector, bijv. "GameScene", "Map2"
+
     private List<ulong> readyClients = new List<ulong>();
     private bool isLocalReady = false;
 
@@ -111,7 +115,18 @@ public class Back : NetworkBehaviour
         int totalPlayers = NetworkManager.Singleton.ConnectedClients.Count;
         if (readyClients.Count == totalPlayers && totalPlayers > 0)
         {
-            NetworkManager.Singleton.SceneManager.LoadScene("GameScene", UnityEngine.SceneManagement.LoadSceneMode.Single);
+            // Kies random map
+            string chosenMap = "GameScene"; // fallback
+            if (selectableMaps.Count > 0)
+            {
+                int index = Random.Range(0, selectableMaps.Count); // Random index
+                chosenMap = selectableMaps[index];
+            }
+
+            Debug.Log($"[Server] Alle spelers ready. Laden map: {chosenMap}");
+
+            // Laad de gekozen map
+            NetworkManager.Singleton.SceneManager.LoadScene(chosenMap, UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
     }
 

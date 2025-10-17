@@ -5169,6 +5169,9 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   readyButton: {fileID: 329615585}
   readyStatusText: {fileID: 1075631780}
+  selectableMaps:
+  - GameScene
+  - map2
 --- !u!4 &2092132142
 Transform:
   m_ObjectHideFlags: 0

@@ -11,13 +11,11 @@ public class GamePlayerSpawner : MonoBehaviour
     [Header("Spawnpoints in Scene")]
     public Transform[] spawnPoints;
 
-    // Lijst van kleuren die gebruikt worden voor spelers
     private readonly List<Color> allColors = new List<Color>
     {
         Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan
     };
 
-    // Houd bij welke kleuren al zijn toegewezen
     private readonly Dictionary<ulong, Color> assignedColors = new Dictionary<ulong, Color>();
     private Dictionary<ulong, int> clientSpawnIndex = new Dictionary<ulong, int>();
 
@@ -37,9 +35,24 @@ public class GamePlayerSpawner : MonoBehaviour
                                       List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
     {
         if (!NetworkManager.Singleton.IsServer) return;
-        if (sceneName != "GameScene") return;
 
-        Debug.Log("[Server] Alle clients hebben GameScene geladen. Spawning players...");
+        bool shouldSpawn = false;
+
+        // Spawn voor elke map die in Back.selectableMaps staat
+        if (Back.Instance != null && Back.Instance.selectableMaps.Count > 0)
+        {
+            if (Back.Instance.selectableMaps.Contains(sceneName))
+                shouldSpawn = true;
+        }
+        else
+        {
+            // fallback: spawn altijd als Back.Instance niet bestaat (bijv. GameScene)
+            shouldSpawn = true;
+        }
+
+        if (!shouldSpawn) return;
+
+        Debug.Log($"[Server] Alle clients hebben {sceneName} geladen. Spawning players...");
 
         int spawnCounter = 0;
 
@@ -72,7 +85,6 @@ public class GamePlayerSpawner : MonoBehaviour
             Debug.LogError("Player prefab mist NetworkObject component!");
         }
 
-        // Kleur toewijzen via NetworkVariable zodat iedereen het ziet
         GamePlayerColor colorScript = player.GetComponent<GamePlayerColor>();
         if (colorScript != null)
         {
