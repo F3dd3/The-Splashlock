@@ -11,7 +11,9 @@ public class PlayerSpawner : MonoBehaviour
     public Transform[] spawnPoints;
 
     [HideInInspector]
-    public readonly List<Color> allColors = new List<Color> { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan };
+    public readonly List<Color> allColors = new List<Color>
+    { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan };
+
     [HideInInspector]
     public readonly Dictionary<ulong, Color> playerColors = new Dictionary<ulong, Color>();
     [HideInInspector]
@@ -20,13 +22,13 @@ public class PlayerSpawner : MonoBehaviour
     private readonly Dictionary<ulong, int> playerSpawnIndices = new Dictionary<ulong, int>();
     private readonly Dictionary<ulong, Color> rejoinColors = new Dictionary<ulong, Color>();
     private readonly HashSet<int> freeSpawnPoints = new HashSet<int>();
-    private int nextSpawnIndex = 1;
+
+    private int nextSpawnIndex = 1; // host spawn 0, clients vanaf 1
 
     private void Awake()
     {
         if (Instance == null) Instance = this;
-        else { Destroy(gameObject); return; }
-        DontDestroyOnLoad(gameObject);
+        else Destroy(gameObject);
     }
 
     private void Start()
@@ -49,7 +51,7 @@ public class PlayerSpawner : MonoBehaviour
     {
         if (playerSpawnIndices.TryGetValue(clientId, out int index))
             return index;
-        return 0;
+        return 0; // fallback host spawn
     }
 
     private void OnClientConnected(ulong clientId)
@@ -58,6 +60,7 @@ public class PlayerSpawner : MonoBehaviour
 
         SpawnPlayer(clientId);
 
+        // Sync kleuren naar nieuwe client
         foreach (var kvp in playerRefs)
         {
             ulong otherId = kvp.Key;
@@ -140,7 +143,7 @@ public class PlayerSpawner : MonoBehaviour
     {
         var usedColors = playerColors.Values.ToList();
         var availableColors = allColors.Except(usedColors).ToList();
-        return availableColors.Count > 0 ? availableColors[0] : UnityEngine.Random.ColorHSV();
+        return availableColors.Count > 0 ? availableColors[0] : Random.ColorHSV();
     }
 
     public void RemovePlayer(ulong clientId)
@@ -168,6 +171,7 @@ public class PlayerSpawner : MonoBehaviour
         rejoinColors.Clear();
     }
 
+    // 🔹 Nieuwe functie: reset spelers bij terug naar lobby
     public void ResetForLobby()
     {
         foreach (var kvp in playerRefs)
@@ -175,10 +179,12 @@ public class PlayerSpawner : MonoBehaviour
             ulong clientId = kvp.Key;
             Player player = kvp.Value;
 
+            // Spawn terugzetten
             int spawnIndex = GetSpawnIndex(clientId);
             player.transform.position = spawnPoints[spawnIndex].position;
             player.transform.rotation = Quaternion.Euler(0, 180, 0);
 
+            // Kleur opnieuw forceren
             if (playerColors.TryGetValue(clientId, out Color color))
             {
                 Vector3 colorVec = new Vector3(color.r, color.g, color.b);
