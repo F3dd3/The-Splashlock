@@ -2585,6 +2585,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Shiftlock
       objectReference: {fileID: 0}
+    - target: {fileID: 1012921185805327035, guid: 0da1a9ba937396046857830cab0d54ac, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1181675978676226069, guid: 0da1a9ba937396046857830cab0d54ac, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -2659,7 +2663,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1181675978676226069, guid: 0da1a9ba937396046857830cab0d54ac, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 960
+      value: 875
       objectReference: {fileID: 0}
     - target: {fileID: 1181675978676226069, guid: 0da1a9ba937396046857830cab0d54ac, type: 3}
       propertyPath: m_AnchoredPosition.y

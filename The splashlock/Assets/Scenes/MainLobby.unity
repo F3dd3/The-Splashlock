@@ -5172,6 +5172,7 @@ MonoBehaviour:
   selectableMaps:
   - GameScene
   - map2
+  - map3
 --- !u!4 &2092132142
 Transform:
   m_ObjectHideFlags: 0

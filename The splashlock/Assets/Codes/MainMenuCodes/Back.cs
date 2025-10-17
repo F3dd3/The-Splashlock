@@ -115,11 +115,12 @@ public class Back : NetworkBehaviour
         int totalPlayers = NetworkManager.Singleton.ConnectedClients.Count;
         if (readyClients.Count == totalPlayers && totalPlayers > 0)
         {
-            // Kies random map
             string chosenMap = "GameScene"; // fallback
+
             if (selectableMaps.Count > 0)
             {
-                int index = Random.Range(0, selectableMaps.Count); // Random index
+                // Kies random map uit de selectableMaps lijst
+                int index = Random.Range(0, selectableMaps.Count);
                 chosenMap = selectableMaps[index];
             }
 
