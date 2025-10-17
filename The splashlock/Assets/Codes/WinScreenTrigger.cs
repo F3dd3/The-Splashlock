@@ -1,4 +1,5 @@
-using UnityEngine;
+﻿using UnityEngine;
+using UnityEngine.UI;
 using Unity.Netcode;
 
 public class WinScreenTrigger : MonoBehaviour
@@ -6,13 +7,22 @@ public class WinScreenTrigger : MonoBehaviour
     [Header("Win Screen Canvas")]
     public GameObject winScreenCanvas;
 
-    [Header("Speler")]
+    [Header("Player")]
     public CharacterMovement playerMovement;
+
+    [Header("Back to Lobby Button")]
+    public Button backToLobbyButton;
 
     private void Start()
     {
         if (winScreenCanvas != null)
             winScreenCanvas.SetActive(false);
+
+        if (backToLobbyButton != null)
+        {
+            backToLobbyButton.gameObject.SetActive(NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost);
+            backToLobbyButton.onClick.AddListener(OnBackToLobbyClicked);
+        }
     }
 
     private void OnTriggerEnter(Collider other)
@@ -30,22 +40,29 @@ public class WinScreenTrigger : MonoBehaviour
         }
     }
 
-    public void ReturnToLobby()
+    private void OnBackToLobbyClicked()
     {
-        if (winScreenCanvas != null)
-            winScreenCanvas.SetActive(false);
+        if (!NetworkManager.Singleton.IsHost) return;
 
-        // Reset spelers naar lobby spawnpunten en kleuren
-        PlayerSpawner.Instance?.ResetForLobby();
+        // 1️⃣ Host terug naar lobby
+        LobbyManager.Instance.ReturnToLobbyFromGame();
 
-        // Reset ready status
+        // 2️⃣ Spawn host op zijn plek
+        PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
+
+        // 3️⃣ Stuur clients één voor één terug
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        {
+            if (client.ClientId == NetworkManager.Singleton.LocalClientId) continue;
+            LobbyManager.Instance.SendClientBackToLobbyServerRpc(client.ClientId);
+        }
+
+        // 4️⃣ Reset ready stats na delay
+        Invoke(nameof(ResetReadyAfterClientsBack), 1f);
+    }
+
+    private void ResetReadyAfterClientsBack()
+    {
         Back.Instance?.ResetReadyStatus();
-
-        // Lokale speler beweging weer inschakelen
-        if (playerMovement != null)
-            playerMovement.enabled = true;
-
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
     }
 }

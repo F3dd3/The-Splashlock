@@ -1,16 +1,16 @@
 using UnityEngine;
-using Unity.Netcode;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Unity.Netcode;
 
 public class PauseMenu : MonoBehaviour
 {
     [Header("UI")]
-    public GameObject optionsMenu; // Sleep hier je pauze-menu canvas in
-    public Button leaveButton;     // Sleep hier de "Leave to Lobby" knop in
+    public GameObject optionsMenu;
+    public Button leaveButton;
 
     [Header("Player Control")]
-    public MonoBehaviour playerController; // Sleep je player movement script hier in
+    public MonoBehaviour playerController;
 
     private bool isPaused = false;
 
@@ -30,19 +30,15 @@ public class PauseMenu : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (isPaused)
-                ResumeGame();
-            else
-                PauseGame();
+            if (isPaused) ResumeGame();
+            else PauseGame();
         }
     }
 
     void PauseGame()
     {
         optionsMenu.SetActive(true);
-        if (playerController != null)
-            playerController.enabled = false;
-
+        if (playerController != null) playerController.enabled = false;
         Time.timeScale = 0f;
         isPaused = true;
     }
@@ -50,45 +46,29 @@ public class PauseMenu : MonoBehaviour
     void ResumeGame()
     {
         optionsMenu.SetActive(false);
-        if (playerController != null)
-            playerController.enabled = true;
-
+        if (playerController != null) playerController.enabled = true;
         Time.timeScale = 1f;
         isPaused = false;
     }
 
-    /// <summary>
-    /// Wordt aangeroepen wanneer speler op "Leave to Lobby" drukt.
-    /// </summary>
     private void OnLeaveClicked()
     {
-        ResumeGame(); // zorg dat menu en tijd weer normaal zijn
+        ResumeGame();
 
         if (NetworkManager.Singleton == null)
         {
-            Debug.LogWarning("Geen NetworkManager gevonden!");
             SceneManager.LoadScene("MainLobby");
             return;
         }
 
         if (NetworkManager.Singleton.IsHost)
         {
-            // Host sluit alleen zijn eigen sessie, anderen blijven
-            Debug.Log("Host verlaat game en gaat terug naar lobby.");
-            NetworkManager.Singleton.Shutdown();
-            SceneManager.LoadScene("MainLobby");
+            Debug.Log("[PauseMenu] Host brengt iedereen terug naar lobby...");
+            NetworkManager.Singleton.SceneManager.LoadScene("MainLobby", UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
         else if (NetworkManager.Singleton.IsClient)
         {
-            // Client disconnect zichzelf van de server
-            Debug.Log("Client verlaat game en gaat terug naar lobby.");
-            NetworkManager.Singleton.Shutdown();
-            SceneManager.LoadScene("MainLobby");
-        }
-        else
-        {
-            // Als er geen verbinding actief is
-            SceneManager.LoadScene("MainLobby");
+            Debug.Log("[PauseMenu] Client verlaat lobby via host scene-change.");
         }
     }
 }

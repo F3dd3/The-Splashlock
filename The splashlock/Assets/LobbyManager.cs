@@ -10,12 +10,15 @@ using Unity.Services.Relay.Models;
 using System;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Collections.Generic;
 
 public class LobbyManager : NetworkBehaviour
 {
+    public static LobbyManager Instance;
+
     [Header("UI Elements")]
     public Button joinButton;
-    public Button leaveButton;
+    public Button leaveButton; // Back to Lobby
     public TMP_InputField joinCodeInput;
     public TextMeshProUGUI infoText;
 
@@ -23,9 +26,23 @@ public class LobbyManager : NetworkBehaviour
     private string lastJoinCode = "";
     private bool hasJoinedOnce = false;
     private bool autoHostPending = false;
+    private bool isReturningFromGame = false;
+
+    public NetworkVariable<ulong> HostClientId = new NetworkVariable<ulong>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     private void Awake()
     {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         InitializeUnityServicesSafe();
     }
 
@@ -48,17 +65,15 @@ public class LobbyManager : NetworkBehaviour
 
         joinButton.onClick.AddListener(() => _ = JoinGameAsync());
 
-        // Leave-knop standaard verbergen
-        leaveButton.gameObject.SetActive(false);
-
-        // Leave knop koppelen
         leaveButton.onClick.AddListener(() =>
         {
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost)
             {
-                _ = HostLeaveFlowAsync();
+                ReturnToLobbyFromGame();
             }
         });
+
+        leaveButton.gameObject.SetActive(false);
 
         if (NetworkManager.Singleton != null)
             NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
@@ -69,7 +84,7 @@ public class LobbyManager : NetworkBehaviour
     private async void WaitUntilReadyAndAutoHost()
     {
         await WaitForServicesReadyAsync();
-        if (!hasJoinedOnce)
+        if (!hasJoinedOnce && !isReturningFromGame)
             AutoHostGame();
     }
 
@@ -111,13 +126,14 @@ public class LobbyManager : NetworkBehaviour
             );
 
             NetworkManager.Singleton.StartHost();
+
+            HostClientId.Value = NetworkManager.Singleton.LocalClientId; // Host bijhouden
+
             PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
 
             infoText.gameObject.SetActive(true);
             infoText.text = $"Join code: {lastJoinCode}";
-
-            // Leave knop initieel uitzetten
-            leaveButton.gameObject.SetActive(false);
+            leaveButton.gameObject.SetActive(true);
 
             hasJoinedOnce = true;
         }
@@ -140,7 +156,6 @@ public class LobbyManager : NetworkBehaviour
         }
 
         await WaitForServicesReadyAsync();
-
         await JoinRelayAsync(joinCode);
     }
 
@@ -160,7 +175,6 @@ public class LobbyManager : NetworkBehaviour
             return;
         }
 
-        // Stop eigen host als actief
         if (NetworkManager.Singleton.IsHost)
         {
             var localPlayer = NetworkManager.Singleton.LocalClient?.PlayerObject;
@@ -198,42 +212,55 @@ public class LobbyManager : NetworkBehaviour
         }
     }
 
-    public void SetLeaveButtonVisible(bool visible)
+    // 🔹 Host-only Back to Lobby
+    public void ReturnToLobbyFromGame()
     {
-        if (leaveButton != null)
-            leaveButton.gameObject.SetActive(visible && NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost);
+        if (!NetworkManager.Singleton.IsHost) return;
+
+        isReturningFromGame = true;
+
+        Back.Instance?.ResetReadyStatus();
+        PlayerSpawner.Instance?.ResetForLobby();
+
+        NetworkManager.Singleton.SceneManager.LoadScene("MainLobby", UnityEngine.SceneManagement.LoadSceneMode.Single);
+        NetworkManager.Singleton.SceneManager.OnLoadEventCompleted += OnLobbySceneLoaded;
     }
 
-    private async Task HostLeaveFlowAsync()
+    private void OnLobbySceneLoaded(string sceneName, UnityEngine.SceneManagement.LoadSceneMode loadMode, List<ulong> completedClients, List<ulong> timedOutClients)
     {
-        // Disconnect alle clients
-        foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
+        if (sceneName != "MainLobby") return;
+
+        // Host spawn
+        PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
+
+        // Stuur clients terug via RPC
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
         {
             if (client.ClientId != NetworkManager.Singleton.LocalClientId)
-            {
-                NetworkManager.Singleton.DisconnectClient(client.ClientId);
-            }
+                SendClientBackToLobbyServerRpc(client.ClientId);
         }
 
         Back.Instance?.ResetReadyStatus();
-        PlayerSpawner.Instance?.ResetAll();
+        NetworkManager.Singleton.SceneManager.OnLoadEventCompleted -= OnLobbySceneLoaded;
+    }
 
-        leaveButton.gameObject.SetActive(false);
-        infoText.gameObject.SetActive(false);
+    [ServerRpc(RequireOwnership = false)]
+    public void SendClientBackToLobbyServerRpc(ulong clientId)
+    {
+        SendClientBackToLobbyClientRpc(clientId);
+    }
 
-        NetworkManager.Singleton.Shutdown();
+    [ClientRpc]
+    private void SendClientBackToLobbyClientRpc(ulong clientId)
+    {
+        if (NetworkManager.Singleton.LocalClientId != clientId) return;
 
-        while (NetworkManager.Singleton.IsListening)
-            await Task.Yield();
-
-        await WaitForServicesReadyAsync();
-
-        AutoHostGame();
+        NetworkManager.Singleton.SceneManager.LoadScene("MainLobby", UnityEngine.SceneManagement.LoadSceneMode.Single);
+        PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
-        // Als local client disconnect door host, start client-side autohost flow
         if (!NetworkManager.Singleton.IsHost && !autoHostPending)
         {
             autoHostPending = true;

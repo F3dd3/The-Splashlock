@@ -1639,7 +1639,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4434970658288002760}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cdfa000d5988c98408e1059aae25816e, type: 3}
   m_Name: 
@@ -1660,7 +1660,7 @@ MonoBehaviour:
   shiftLockEnabled: 0
   shiftLockImage: {fileID: 7047156292004137910}
   groundCheckDistance: 1
-  slowCheckDistance: 0.5
+  slowCheckDistance: 2
   slopeSlideSpeed: 3
   slopeLimit: 30
   externalForceDecay: 5

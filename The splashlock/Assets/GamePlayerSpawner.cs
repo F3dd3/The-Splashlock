@@ -11,13 +11,11 @@ public class GamePlayerSpawner : MonoBehaviour
     [Header("Spawnpoints in Scene")]
     public Transform[] spawnPoints;
 
-    // Lijst van kleuren die gebruikt worden voor spelers
     private readonly List<Color> allColors = new List<Color>
     {
         Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan
     };
 
-    // Houd bij welke kleuren al zijn toegewezen
     private readonly Dictionary<ulong, Color> assignedColors = new Dictionary<ulong, Color>();
     private Dictionary<ulong, int> clientSpawnIndex = new Dictionary<ulong, int>();
 
@@ -37,42 +35,47 @@ public class GamePlayerSpawner : MonoBehaviour
                                       List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
     {
         if (!NetworkManager.Singleton.IsServer) return;
-        if (sceneName != "GameScene") return;
 
-        Debug.Log("[Server] Alle clients hebben GameScene geladen. Spawning players...");
-
-        int spawnCounter = 0;
-
-        foreach (ulong clientId in clientsCompleted)
+        if (sceneName == "GameScene")
         {
-            clientSpawnIndex[clientId] = spawnCounter++;
-            SpawnPlayerForClient(clientId, clientSpawnIndex[clientId]);
+            int spawnCounter = 0;
+            foreach (ulong clientId in clientsCompleted)
+            {
+                clientSpawnIndex[clientId] = spawnCounter++;
+                SpawnPlayerForClient(clientId, clientSpawnIndex[clientId]);
+            }
+            return;
+        }
+
+        if (sceneName == "MainLobby")
+        {
+            foreach (var obj in FindObjectsOfType<NetworkObject>())
+            {
+                if (obj.CompareTag("GamePlayer") && obj.IsSpawned)
+                    obj.Despawn(true);
+            }
+
+            Back.Instance?.ResetReadyStatus();
+            PlayerSpawner.Instance?.ResetAll();
+
+            foreach (ulong clientId in NetworkManager.Singleton.ConnectedClientsIds)
+            {
+                PlayerSpawner.Instance?.SpawnPlayer(clientId, true);
+            }
         }
     }
 
     private void SpawnPlayerForClient(ulong clientId, int spawnIndex)
     {
-        if (playerPrefab == null)
-        {
-            Debug.LogError("Player prefab niet ingesteld!");
-            return;
-        }
+        if (playerPrefab == null) return;
 
         Transform spawn = spawnPoints.Length > 0 ? spawnPoints[spawnIndex % spawnPoints.Length] : new GameObject("DummySpawn").transform;
 
         GameObject player = Instantiate(playerPrefab, spawn.position, spawn.rotation);
 
         NetworkObject netObj = player.GetComponent<NetworkObject>();
-        if (netObj != null)
-        {
-            netObj.SpawnAsPlayerObject(clientId, true);
-        }
-        else
-        {
-            Debug.LogError("Player prefab mist NetworkObject component!");
-        }
+        if (netObj != null) netObj.SpawnAsPlayerObject(clientId, true);
 
-        // Kleur toewijzen via NetworkVariable zodat iedereen het ziet
         GamePlayerColor colorScript = player.GetComponent<GamePlayerColor>();
         if (colorScript != null)
         {
@@ -86,16 +89,7 @@ public class GamePlayerSpawner : MonoBehaviour
         var usedColors = assignedColors.Values.ToList();
         var availableColors = allColors.Except(usedColors).ToList();
 
-        Color color;
-        if (availableColors.Count == 0)
-        {
-            color = Random.ColorHSV(); // fallback als alle kleuren gebruikt zijn
-        }
-        else
-        {
-            color = availableColors[0];
-        }
-
+        Color color = availableColors.Count > 0 ? availableColors[0] : Random.ColorHSV();
         assignedColors[clientId] = color;
         return color;
     }
