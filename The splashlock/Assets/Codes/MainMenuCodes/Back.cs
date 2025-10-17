@@ -18,11 +18,17 @@ public class Back : NetworkBehaviour
     private List<ulong> readyClients = new List<ulong>();
     private bool isLocalReady = false;
 
-    private string lastPlayedMap = ""; // Houd bij welke map laatst gespeeld is
+    private Dictionary<string, int> consecutivePlays = new Dictionary<string, int>();
 
     private void Awake()
     {
         Instance = this;
+
+        // Init dictionary
+        foreach (string map in selectableMaps)
+        {
+            consecutivePlays[map] = 0;
+        }
     }
 
     private void Start()
@@ -117,8 +123,16 @@ public class Back : NetworkBehaviour
         int totalPlayers = NetworkManager.Singleton.ConnectedClients.Count;
         if (readyClients.Count == totalPlayers && totalPlayers > 0)
         {
-            string chosenMap = ChooseMapWithDynamicChance();
-            lastPlayedMap = chosenMap;
+            string chosenMap = ChooseMapWithStackedChance();
+
+            // Update consecutive plays
+            foreach (string map in selectableMaps)
+            {
+                if (map == chosenMap)
+                    consecutivePlays[map]++;
+                else
+                    consecutivePlays[map] = 0; // reset andere maps
+            }
 
             Debug.Log($"[Server] Alle spelers ready. Laden map: {chosenMap}");
 
@@ -126,27 +140,24 @@ public class Back : NetworkBehaviour
         }
     }
 
-    private string ChooseMapWithDynamicChance()
+    private string ChooseMapWithStackedChance()
     {
         if (selectableMaps.Count == 0) return "GameScene";
 
-        // Maak een lijst van gewichten
         List<float> weights = new List<float>();
         float totalWeight = 0f;
 
         foreach (string map in selectableMaps)
         {
-            float weight = 1f;
-
-            // Als dit de laatst gespeelde map is, halveer de kans
-            if (map == lastPlayedMap)
-                weight = 0.5f;
+            // Gewicht = 1 / 2^n, waarbij n = aantal keer achter elkaar gespeeld
+            int n = consecutivePlays.ContainsKey(map) ? consecutivePlays[map] : 0;
+            float weight = 1f / Mathf.Pow(2, n);
 
             weights.Add(weight);
             totalWeight += weight;
         }
 
-        // Kies een random getal tussen 0 en totalWeight
+        // Kies random op basis van gewichten
         float randomValue = Random.Range(0f, totalWeight);
         float cumulative = 0f;
 
