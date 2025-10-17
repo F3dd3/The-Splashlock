@@ -1660,7 +1660,7 @@ MonoBehaviour:
   shiftLockEnabled: 0
   shiftLockImage: {fileID: 7047156292004137910}
   groundCheckDistance: 1
-  slowCheckDistance: 0.5
+  slowCheckDistance: 1
   slopeSlideSpeed: 3
   slopeLimit: 30
   externalForceDecay: 5
