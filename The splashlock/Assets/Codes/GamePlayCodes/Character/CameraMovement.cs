@@ -29,10 +29,8 @@ public class CameraMovement : NetworkBehaviour
 
     private CharacterMovement characterMovement;
 
-    // --------------------------- Initialization ---------------------------
     private void Start()
     {
-        // Alleen owner mag camera gebruiken
         if (!IsOwner)
         {
             gameObject.SetActive(false);
@@ -42,12 +40,10 @@ public class CameraMovement : NetworkBehaviour
         if (player == null)
             player = transform.root;
 
-        // Link CharacterMovement
         characterMovement = player.GetComponent<CharacterMovement>();
         if (characterMovement != null)
-            characterMovement.SetCamera(transform); // setter gebruiken!
+            characterMovement.SetCamera(transform);
 
-        // ShiftLock UI instantiëren
         if (shiftLockPrefab != null)
         {
             shiftLockInstance = Instantiate(shiftLockPrefab, transform);
@@ -61,18 +57,25 @@ public class CameraMovement : NetworkBehaviour
         currentRotation = angles;
     }
 
-    // --------------------------- Camera Update ---------------------------
     private void LateUpdate()
     {
         if (!IsOwner || player == null) return;
 
-        bool rotateCamera = (characterMovement != null && characterMovement.shiftLockEnabled) || Input.GetMouseButton(1);
-
-        // ShiftLock UI tonen indien actief
+        // Shiftlock UI tonen/verbergen
         if (shiftLockInstance != null && characterMovement != null)
-            shiftLockInstance.enabled = characterMovement.shiftLockEnabled;
+        {
+            if (CharacterMovement.IsPaused)
+            {
+                shiftLockInstance.enabled = false; // pauze → geen UI
+            }
+            else
+            {
+                shiftLockInstance.enabled = characterMovement.shiftLockEnabled;
+            }
+        }
 
-        // ------------------- Rotatie -------------------
+        // Rotatie alleen als Shiftlock actief of rechter muisknop
+        bool rotateCamera = (characterMovement != null && characterMovement.shiftLockEnabled) || Input.GetMouseButton(1);
         if (rotateCamera)
         {
             yaw += Input.GetAxis("Mouse X") * sensitivity;
@@ -80,7 +83,7 @@ public class CameraMovement : NetworkBehaviour
             pitch = Mathf.Clamp(pitch, -30f, 60f);
         }
 
-        // ------------------- Zoom -------------------
+        // Zoom
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (scroll != 0f)
         {
@@ -90,24 +93,24 @@ public class CameraMovement : NetworkBehaviour
 
         currentDistance = Mathf.SmoothDamp(currentDistance, targetDistance, ref distanceVelocity, zoomSmoothTime);
 
-        // ------------------- Smooth Rotation -------------------
+        // Smooth Rotation
         Vector3 targetRotation = new Vector3(pitch, yaw);
         currentRotation = Vector3.SmoothDamp(currentRotation, targetRotation, ref smoothVelocity, rotationSmoothTime);
         Quaternion rotation = Quaternion.Euler(currentRotation.x, currentRotation.y, 0f);
 
-        // ------------------- Camera Position -------------------
+        // Camera Position
         Vector3 offset = rotation * new Vector3(0, 0, -currentDistance) + new Vector3(0, height, 0);
         transform.position = player.position + offset;
 
-        // Kijk altijd naar hoofd van player (1.5 unit omhoog)
+        // Kijk altijd naar hoofd van player
         transform.LookAt(player.position + Vector3.up * 1.5f);
     }
 
-    // --------------------------- Helper voor andere scripts ---------------------------
+    // Helper om camera actief/inactief te zetten
     public void SetOwnerCamera(bool active)
     {
         if (shiftLockInstance != null)
-            shiftLockInstance.enabled = active;
+            shiftLockInstance.enabled = active && characterMovement != null && characterMovement.shiftLockEnabled;
 
         gameObject.SetActive(active);
     }

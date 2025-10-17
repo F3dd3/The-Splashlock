@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -6,13 +6,14 @@ using UnityEngine.UI;
 public class PauseMenu : MonoBehaviour
 {
     [Header("UI")]
-    public GameObject optionsMenu; // Sleep hier je pauze-menu canvas in
-    public Button leaveButton;     // Sleep hier de "Leave to Lobby" knop in
+    public GameObject optionsMenu;
+    public Button leaveButton;
 
     [Header("Player Control")]
-    public MonoBehaviour playerController; // Sleep je player movement script hier in
+    public MonoBehaviour playerController;
 
-    private bool isPaused = false;
+    public static bool IsPaused = false;
+    public static bool LeavingToLobby = false;
 
     private void Start()
     {
@@ -30,7 +31,7 @@ public class PauseMenu : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (isPaused)
+            if (IsPaused)
                 ResumeGame();
             else
                 PauseGame();
@@ -40,54 +41,58 @@ public class PauseMenu : MonoBehaviour
     void PauseGame()
     {
         optionsMenu.SetActive(true);
+
         if (playerController != null)
             playerController.enabled = false;
 
-        Time.timeScale = 0f;
-        isPaused = true;
+        IsPaused = true;
+
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 
     void ResumeGame()
     {
         optionsMenu.SetActive(false);
+
         if (playerController != null)
             playerController.enabled = true;
 
-        Time.timeScale = 1f;
-        isPaused = false;
+        IsPaused = false;
+
+        CharacterMovement cm = playerController as CharacterMovement;
+
+        // Check: in-game en shiftlock aan → cursor direct verbergen
+        if (!LeavingToLobby && cm != null && cm.shiftLockEnabled)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+        else
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
     }
 
-    /// <summary>
-    /// Wordt aangeroepen wanneer speler op "Leave to Lobby" drukt.
-    /// </summary>
     private void OnLeaveClicked()
     {
-        ResumeGame(); // zorg dat menu en tijd weer normaal zijn
+        LeavingToLobby = true;
+        ResumeGame();
 
         if (NetworkManager.Singleton == null)
         {
-            Debug.LogWarning("Geen NetworkManager gevonden!");
             SceneManager.LoadScene("MainLobby");
             return;
         }
 
-        if (NetworkManager.Singleton.IsHost)
+        if (NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsClient)
         {
-            // Host sluit alleen zijn eigen sessie, anderen blijven
-            Debug.Log("Host verlaat game en gaat terug naar lobby.");
-            NetworkManager.Singleton.Shutdown();
-            SceneManager.LoadScene("MainLobby");
-        }
-        else if (NetworkManager.Singleton.IsClient)
-        {
-            // Client disconnect zichzelf van de server
-            Debug.Log("Client verlaat game en gaat terug naar lobby.");
             NetworkManager.Singleton.Shutdown();
             SceneManager.LoadScene("MainLobby");
         }
         else
         {
-            // Als er geen verbinding actief is
             SceneManager.LoadScene("MainLobby");
         }
     }

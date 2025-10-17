@@ -53,6 +53,9 @@ public class CharacterMovement : NetworkBehaviour
 
     public float VerticalVelocity => velocity.Value.y;
 
+    // -------------------- Paused Flag --------------------
+    public static bool IsPaused = false;
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
@@ -73,18 +76,34 @@ public class CharacterMovement : NetworkBehaviour
 
         HandleShiftLock();
 
-        float moveX = Input.GetAxis("Horizontal");
-        float moveZ = Input.GetAxis("Vertical");
-        bool jump = Input.GetButton("Jump");
+        if (!IsPaused)
+        {
+            float moveX = Input.GetAxis("Horizontal");
+            float moveZ = Input.GetAxis("Vertical");
+            bool jump = Input.GetButton("Jump");
 
-        HandleMovement(moveX, moveZ, jump, shiftLockEnabled);
+            HandleMovement(moveX, moveZ, jump, shiftLockEnabled);
+        }
+    }
+
+    private void LateUpdate()
+    {
+        if (!IsOwner) return;
+
+        // Forceer cursor lock als shiftlock aan is en menu gesloten
+        if (shiftLockEnabled && !PauseMenu.IsPaused && !PauseMenu.LeavingToLobby)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
     }
 
     private void HandleShiftLock()
     {
-        if (Input.GetKeyDown(KeyCode.LeftShift))
+        if (Input.GetKeyDown(KeyCode.LeftShift) && !IsPaused)
         {
             shiftLockEnabled = !shiftLockEnabled;
+
             Cursor.lockState = shiftLockEnabled ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !shiftLockEnabled;
 
@@ -108,14 +127,12 @@ public class CharacterMovement : NetworkBehaviour
         CheckSlowSurfaces();
         CheckSmashHit();
 
-        // Jump
         if (jump && grounded && Time.time - lastJumpTime >= jumpCooldown)
         {
             SetVerticalVelocity(Mathf.Sqrt(jumpHeight * -2f * gravity));
             lastJumpTime = Time.time;
         }
 
-        // Gravity
         if (!grounded)
             velocity.Value += new Vector3(0, gravity * Time.deltaTime, 0);
         else if (velocity.Value.y < 0f)
@@ -124,7 +141,6 @@ public class CharacterMovement : NetworkBehaviour
         float currentSpeed = onSlowSurface ? slowSpeed : moveSpeed;
         Vector3 horizontalMove = moveInput * currentSpeed;
 
-        // Slope sliding
         if (grounded && Physics.Raycast(transform.position, Vector3.down, out RaycastHit slopeHit, 1f))
         {
             float slopeAngle = Vector3.Angle(slopeHit.normal, Vector3.up);
@@ -156,8 +172,7 @@ public class CharacterMovement : NetworkBehaviour
     private void CheckSlowSurfaces()
     {
         onSlowSurface = false;
-
-        if (Time.time - spawnTime < 0.1f) return; // geen slow direct na spawn
+        if (Time.time - spawnTime < 0.1f) return;
 
         Vector3 origin = transform.position + Vector3.up * (controller.height / 2 - controller.radius);
         if (Physics.SphereCast(origin, controller.radius, Vector3.down, out RaycastHit hit, slowCheckDistance))
@@ -169,7 +184,7 @@ public class CharacterMovement : NetworkBehaviour
 
     private void CheckSmashHit()
     {
-        if (Time.time - spawnTime < 0.1f) return; // geen smash direct na spawn
+        if (Time.time - spawnTime < 0.1f) return;
 
         Vector3 origin = transform.position + Vector3.up * (controller.height / 2);
         if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 0.6f))
@@ -184,7 +199,6 @@ public class CharacterMovement : NetworkBehaviour
         }
     }
 
-    // -------------------- PUBLIC METHODS --------------------
     public void SetCamera(Transform camTransform) => cameraTransform = camTransform;
     public void AddExternalForce(Vector3 force) => externalForce += force;
 
