@@ -13,10 +13,12 @@ public class Back : NetworkBehaviour
 
     [Header("Maps Settings")]
     [Tooltip("Kies hier welke maps mogelijk zijn.")]
-    public List<string> selectableMaps = new List<string>(); // Vul in Inspector, bijv. "GameScene", "Map2"
+    public List<string> selectableMaps = new List<string>();
 
     private List<ulong> readyClients = new List<ulong>();
     private bool isLocalReady = false;
+
+    private string lastPlayedMap = ""; // Houd bij welke map laatst gespeeld is
 
     private void Awake()
     {
@@ -115,20 +117,48 @@ public class Back : NetworkBehaviour
         int totalPlayers = NetworkManager.Singleton.ConnectedClients.Count;
         if (readyClients.Count == totalPlayers && totalPlayers > 0)
         {
-            string chosenMap = "GameScene"; // fallback
-
-            if (selectableMaps.Count > 0)
-            {
-                // Kies random map uit de selectableMaps lijst
-                int index = Random.Range(0, selectableMaps.Count);
-                chosenMap = selectableMaps[index];
-            }
+            string chosenMap = ChooseMapWithDynamicChance();
+            lastPlayedMap = chosenMap;
 
             Debug.Log($"[Server] Alle spelers ready. Laden map: {chosenMap}");
 
-            // Laad de gekozen map
             NetworkManager.Singleton.SceneManager.LoadScene(chosenMap, UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
+    }
+
+    private string ChooseMapWithDynamicChance()
+    {
+        if (selectableMaps.Count == 0) return "GameScene";
+
+        // Maak een lijst van gewichten
+        List<float> weights = new List<float>();
+        float totalWeight = 0f;
+
+        foreach (string map in selectableMaps)
+        {
+            float weight = 1f;
+
+            // Als dit de laatst gespeelde map is, halveer de kans
+            if (map == lastPlayedMap)
+                weight = 0.5f;
+
+            weights.Add(weight);
+            totalWeight += weight;
+        }
+
+        // Kies een random getal tussen 0 en totalWeight
+        float randomValue = Random.Range(0f, totalWeight);
+        float cumulative = 0f;
+
+        for (int i = 0; i < selectableMaps.Count; i++)
+        {
+            cumulative += weights[i];
+            if (randomValue <= cumulative)
+                return selectableMaps[i];
+        }
+
+        // fallback
+        return selectableMaps[0];
     }
 
     public void RemoveClientReadyStatus(ulong clientId)
