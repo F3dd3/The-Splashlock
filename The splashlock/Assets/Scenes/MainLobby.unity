@@ -847,6 +847,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33361ea09a7f52e46bb2dc7b14ed2bc8, type: 3}
       insertIndex: -1
       addedObject: {fileID: 291466666}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33361ea09a7f52e46bb2dc7b14ed2bc8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 291466667}
   m_SourcePrefab: {fileID: 100100000, guid: 33361ea09a7f52e46bb2dc7b14ed2bc8, type: 3}
 --- !u!1 &291466661 stripped
 GameObject:
@@ -972,6 +975,14 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!81 &291466667
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 291466661}
+  m_Enabled: 1
 --- !u!1 &297112780
 GameObject:
   m_ObjectHideFlags: 0
@@ -2280,7 +2291,7 @@ Transform:
   m_GameObject: {fileID: 873938019}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 91.06, y: 19, z: -22.448}
+  m_LocalPosition: {x: 91.22, y: 19, z: -22.448}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3550,7 +3561,6 @@ GameObject:
   - component: {fileID: 1163289922}
   - component: {fileID: 1163289921}
   - component: {fileID: 1163289920}
-  - component: {fileID: 1163289924}
   m_Layer: 0
   m_Name: MainCamera
   m_TagString: MainCamera
@@ -3668,14 +3678,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 15, y: 0, z: 0}
---- !u!81 &1163289924
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1163289919}
-  m_Enabled: 1
 --- !u!1 &1234789690
 GameObject:
   m_ObjectHideFlags: 0
