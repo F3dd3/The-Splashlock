@@ -1630,7 +1630,7 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   scriptsToToggle: []
   pushBackForce: {x: 0, y: 0, z: -5}
-  ragdollImmunityDuration: 1.13
+  ragdollImmunityDuration: 5
   isRagdollActive: 0
 --- !u!114 &9091749041603514987
 MonoBehaviour:
@@ -1660,7 +1660,7 @@ MonoBehaviour:
   shiftLockEnabled: 0
   shiftLockImage: {fileID: 7047156292004137910}
   groundCheckDistance: 1
-  slowCheckDistance: 1
+  slowCheckDistance: 2.5
   slopeSlideSpeed: 3
   slopeLimit: 30
   externalForceDecay: 5
