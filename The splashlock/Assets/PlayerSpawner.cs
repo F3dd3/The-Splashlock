@@ -7,23 +7,22 @@ public class PlayerSpawner : MonoBehaviour
 {
     public static PlayerSpawner Instance;
 
+    [Header("Prefabs & Spawn Points")]
     public GameObject playerPrefab;
     public Transform[] spawnPoints;
 
-    [HideInInspector]
+    [Header("Player Colors")]
     public readonly List<Color> allColors = new List<Color>
     { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan };
 
-    [HideInInspector]
     public readonly Dictionary<ulong, Color> playerColors = new Dictionary<ulong, Color>();
-    [HideInInspector]
     public readonly Dictionary<ulong, Player> playerRefs = new Dictionary<ulong, Player>();
 
     private readonly Dictionary<ulong, int> playerSpawnIndices = new Dictionary<ulong, int>();
     private readonly Dictionary<ulong, Color> rejoinColors = new Dictionary<ulong, Color>();
     private readonly HashSet<int> freeSpawnPoints = new HashSet<int>();
 
-    private int nextSpawnIndex = 1; // host spawn 0, clients vanaf 1
+    private int nextSpawnIndex = 1; // Host spawn 0, clients vanaf 1
 
     private void Awake()
     {
@@ -45,13 +44,6 @@ public class PlayerSpawner : MonoBehaviour
         if (NetworkManager.Singleton == null) return;
         NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
-    }
-
-    public int GetSpawnIndex(ulong clientId)
-    {
-        if (playerSpawnIndices.TryGetValue(clientId, out int index))
-            return index;
-        return 0; // fallback host spawn
     }
 
     private void OnClientConnected(ulong clientId)
@@ -93,16 +85,28 @@ public class PlayerSpawner : MonoBehaviour
 
     public void SpawnPlayer(ulong clientId, bool forceSpawn = false)
     {
+        if (!NetworkManager.Singleton.IsListening)
+        {
+            Debug.LogWarning($"NetworkManager niet ready, spawn van {clientId} uitgesteld");
+            return;
+        }
+
         if (!forceSpawn && playerRefs.ContainsKey(clientId)) return;
-        if (playerPrefab == null) return;
+        if (playerPrefab == null)
+        {
+            Debug.LogError("PlayerPrefab niet ingesteld!");
+            return;
+        }
 
         if (forceSpawn && playerRefs.ContainsKey(clientId))
             RemovePlayer(clientId);
 
+        // Bepaal spawn index
         int spawnIndex = 0;
-
         if (NetworkManager.Singleton.IsHost && clientId == NetworkManager.Singleton.LocalClientId)
+        {
             spawnIndex = 0;
+        }
         else
         {
             if (freeSpawnPoints.Count > 0)
@@ -117,17 +121,19 @@ public class PlayerSpawner : MonoBehaviour
             }
         }
 
-        Vector3 spawnPos = spawnPoints[spawnIndex].position;
+        Vector3 spawnPos = spawnPoints[Mathf.Clamp(spawnIndex, 0, spawnPoints.Length - 1)].position;
         GameObject playerObj = Instantiate(playerPrefab, spawnPos, Quaternion.Euler(0, 180, 0));
-        playerObj.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
+        var netObj = playerObj.GetComponent<NetworkObject>();
+        if (netObj != null) netObj.SpawnAsPlayerObject(clientId, true);
 
         playerSpawnIndices[clientId] = spawnIndex;
 
+        // Kleur bepalen
         Color color = rejoinColors.ContainsKey(clientId) ? rejoinColors[clientId] : GetNextUniqueColor();
         if (rejoinColors.ContainsKey(clientId)) rejoinColors.Remove(clientId);
-
         playerColors[clientId] = color;
 
+        // Player component
         Player playerScript = playerObj.GetComponent<Player>();
         playerRefs[clientId] = playerScript;
 
@@ -135,6 +141,7 @@ public class PlayerSpawner : MonoBehaviour
         playerScript.SetColorServerRpc(colorVec);
         playerScript.ForceColorClientRpc(colorVec);
 
+        // Lokale speler naam
         if (clientId == NetworkManager.Singleton.LocalClientId && playerScript.nameLabel != null)
             playerScript.nameLabel.text = "You";
     }
@@ -171,7 +178,6 @@ public class PlayerSpawner : MonoBehaviour
         rejoinColors.Clear();
     }
 
-    // 🔹 Nieuwe functie: reset spelers bij terug naar lobby
     public void ResetForLobby()
     {
         foreach (var kvp in playerRefs)
@@ -179,12 +185,13 @@ public class PlayerSpawner : MonoBehaviour
             ulong clientId = kvp.Key;
             Player player = kvp.Value;
 
-            // Spawn terugzetten
-            int spawnIndex = GetSpawnIndex(clientId);
+            // Veilige spawn index
+            int spawnIndex = playerSpawnIndices.ContainsKey(clientId) ? playerSpawnIndices[clientId] : 0;
+            spawnIndex = Mathf.Clamp(spawnIndex, 0, spawnPoints.Length - 1);
+
             player.transform.position = spawnPoints[spawnIndex].position;
             player.transform.rotation = Quaternion.Euler(0, 180, 0);
 
-            // Kleur opnieuw forceren
             if (playerColors.TryGetValue(clientId, out Color color))
             {
                 Vector3 colorVec = new Vector3(color.r, color.g, color.b);

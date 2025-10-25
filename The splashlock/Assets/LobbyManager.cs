@@ -23,6 +23,7 @@ public class LobbyManager : NetworkBehaviour
     private string lastJoinCode = "";
     private bool hasJoinedOnce = false;
     private bool autoHostPending = false;
+    private bool isShowingInvalidCode = false;
 
     private void Awake()
     {
@@ -44,14 +45,11 @@ public class LobbyManager : NetworkBehaviour
 
     private void Start()
     {
-        infoText.gameObject.SetActive(false);
+        infoText.gameObject.SetActive(true);
 
         joinButton.onClick.AddListener(() => _ = JoinGameAsync());
 
-        // Leave-knop standaard verbergen
         leaveButton.gameObject.SetActive(false);
-
-        // Leave knop koppelen
         leaveButton.onClick.AddListener(() =>
         {
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost)
@@ -113,18 +111,14 @@ public class LobbyManager : NetworkBehaviour
             NetworkManager.Singleton.StartHost();
             PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
 
-            infoText.gameObject.SetActive(true);
             infoText.text = $"Join code: {lastJoinCode}";
 
-            // Leave knop initieel uitzetten
             leaveButton.gameObject.SetActive(false);
-
             hasJoinedOnce = true;
         }
         catch (Exception e)
         {
             Debug.LogError("Auto-host failed: " + e.Message);
-            infoText.gameObject.SetActive(true);
             infoText.text = "Auto-host failed!";
         }
     }
@@ -132,10 +126,13 @@ public class LobbyManager : NetworkBehaviour
     private async Task JoinGameAsync()
     {
         string joinCode = joinCodeInput.text.Trim();
+
+        // Eerst infoText op Trying to connect...
+        infoText.text = "Trying to connect...";
+
         if (string.IsNullOrEmpty(joinCode))
         {
-            infoText.gameObject.SetActive(true);
-            infoText.text = "Invalid code!";
+            await ShowInvalidCodeTemporarily();
             return;
         }
 
@@ -148,15 +145,17 @@ public class LobbyManager : NetworkBehaviour
     {
         if (!servicesInitialized) return;
 
+        infoText.text = "Connecting...";
+
         JoinAllocation allocation = null;
+
         try
         {
             allocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
         }
         catch
         {
-            infoText.gameObject.SetActive(true);
-            infoText.text = "Invalid code!";
+            await ShowInvalidCodeTemporarily();
             return;
         }
 
@@ -183,19 +182,57 @@ public class LobbyManager : NetworkBehaviour
 
             NetworkManager.Singleton.StartClient();
 
+            // ✅ Wacht totdat de client daadwerkelijk gejoined is
+            await WaitUntilClientConnectedAsync();
+
+            // Spawn player **pas nu**
             PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
 
-            infoText.gameObject.SetActive(true);
+            // ✅ Uiteindelijk, na spawn en join
             infoText.text = $"Connected to: {joinCode}";
             leaveButton.gameObject.SetActive(false);
-
             hasJoinedOnce = true;
         }
         catch
         {
-            infoText.gameObject.SetActive(true);
-            infoText.text = "Invalid code!";
+            await ShowInvalidCodeTemporarily();
         }
+    }
+
+    private async Task WaitUntilClientConnectedAsync()
+    {
+        // Wacht tot de client volledig gejoined is
+        while (NetworkManager.Singleton == null ||
+               !NetworkManager.Singleton.IsClient ||
+               NetworkManager.Singleton.LocalClient == null ||
+               NetworkManager.Singleton.LocalClient.PlayerObject == null)
+        {
+            await Task.Yield();
+        }
+    }
+
+    private async Task ShowInvalidCodeTemporarily()
+    {
+        if (isShowingInvalidCode) return;
+        isShowingInvalidCode = true;
+
+        string originalCode = lastJoinCode;
+        infoText.text = "Invalid code!";
+        float timer = 0f;
+        float duration = 2f;
+
+        while (timer < duration)
+        {
+            timer += Time.deltaTime;
+            await Task.Yield();
+
+            // Stop timer als ondertussen succesvol gejoined
+            if (!string.IsNullOrEmpty(infoText.text) && infoText.text.StartsWith("Connected"))
+                break;
+        }
+
+        infoText.text = $"Join code: {originalCode}";
+        isShowingInvalidCode = false;
     }
 
     public void SetLeaveButtonVisible(bool visible)
@@ -206,20 +243,17 @@ public class LobbyManager : NetworkBehaviour
 
     private async Task HostLeaveFlowAsync()
     {
-        // Disconnect alle clients
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
         {
             if (client.ClientId != NetworkManager.Singleton.LocalClientId)
-            {
                 NetworkManager.Singleton.DisconnectClient(client.ClientId);
-            }
         }
 
         Back.Instance?.ResetReadyStatus();
         PlayerSpawner.Instance?.ResetAll();
 
         leaveButton.gameObject.SetActive(false);
-        infoText.gameObject.SetActive(false);
+        infoText.text = $"Join code: {lastJoinCode}";
 
         NetworkManager.Singleton.Shutdown();
 
@@ -227,13 +261,11 @@ public class LobbyManager : NetworkBehaviour
             await Task.Yield();
 
         await WaitForServicesReadyAsync();
-
         AutoHostGame();
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
-        // Als local client disconnect door host, start client-side autohost flow
         if (!NetworkManager.Singleton.IsHost && !autoHostPending)
         {
             autoHostPending = true;
@@ -246,7 +278,6 @@ public class LobbyManager : NetworkBehaviour
         PlayerSpawner.Instance?.ResetAll();
         Back.Instance?.ResetReadyStatus();
 
-        infoText.gameObject.SetActive(true);
         infoText.text = "Host left, starting own server...";
 
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
