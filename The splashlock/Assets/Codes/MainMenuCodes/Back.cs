@@ -11,7 +11,6 @@ public class Back : NetworkBehaviour
     public Button readyButton;
 
     [Header("Maps Settings")]
-    [Tooltip("Kies hier welke maps mogelijk zijn.")]
     public List<string> selectableMaps = new List<string>();
 
     private List<ulong> readyClients = new List<ulong>();
@@ -80,13 +79,6 @@ public class Back : NetworkBehaviour
     private void UpdateReadyStatusClientRpc(ulong[] readyIds)
     {
         readyClients = new List<ulong>(readyIds);
-
-        // Update alle Player prefabs
-        foreach (var player in FindObjectsOfType<Player>())
-        {
-            bool isReady = readyClients.Contains(player.OwnerClientId);
-            player.SetReadyText(isReady);
-        }
     }
 
     private void CheckAllReady()
@@ -104,15 +96,10 @@ public class Back : NetworkBehaviour
                     consecutivePlays[map] = 0;
             }
 
-            Debug.Log($"[Server] Alle spelers ready. Laden map: {chosenMap}");
-
-            // ✅ Toon loading screen met gekozen map
+            // Toon loading screen bij iedereen
             if (LoadingScreenManager.Instance != null)
-            {
                 LoadingScreenManager.Instance.ShowLoadingScreenClientRpc(chosenMap);
-            }
 
-            // ✅ Vervolgens de scene laden
             NetworkManager.Singleton.SceneManager.LoadScene(chosenMap, UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
     }
@@ -149,8 +136,6 @@ public class Back : NetworkBehaviour
     {
         if (readyClients.Contains(clientId))
             readyClients.Remove(clientId);
-
-        UpdateReadyStatusClientRpc(readyClients.ToArray());
     }
 
     public void ResetReadyStatus()

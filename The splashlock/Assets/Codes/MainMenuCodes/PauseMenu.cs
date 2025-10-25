@@ -13,7 +13,6 @@ public class PauseMenu : MonoBehaviour
     public MonoBehaviour playerController;
 
     public static bool IsPaused = false;
-    public static bool LeavingToLobby = false;
 
     private void Start()
     {
@@ -53,7 +52,7 @@ public class PauseMenu : MonoBehaviour
         {
             cm.shiftLockEnabled = false;
             if (cm.shiftLockImage != null)
-                cm.shiftLockImage.enabled = false; // verdwijnt zodra menu opent
+                cm.shiftLockImage.enabled = false;
         }
 
         // Cursor zichtbaar in menu
@@ -70,30 +69,45 @@ public class PauseMenu : MonoBehaviour
 
         IsPaused = false;
 
-        // Cursor zichtbaar houden totdat shift lock wordt ingeschakeld
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
 
     private void OnLeaveClicked()
     {
-        LeavingToLobby = true;
         ResumeGame();
 
-        if (NetworkManager.Singleton == null)
+        // ✅ Toon loading screen
+        if (LoadingScreenManager.Instance != null)
         {
-            SceneManager.LoadScene("MainLobby");
-            return;
+            LoadingScreenManager.Instance.ShowLoadingScreenClientRpc("Lobby");
         }
 
-        if (NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsClient)
+        // Laad de lobby scene met delay
+        StartCoroutine(LoadLobbyScene());
+    }
+
+    private System.Collections.IEnumerator LoadLobbyScene()
+    {
+        // Kleine delay zodat loading screen goed zichtbaar wordt (optioneel)
+        yield return new WaitForSeconds(0.1f);
+
+        if (NetworkManager.Singleton != null)
         {
-            NetworkManager.Singleton.Shutdown();
-            SceneManager.LoadScene("MainLobby");
+            if (NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsClient)
+                NetworkManager.Singleton.Shutdown();
         }
-        else
-        {
-            SceneManager.LoadScene("MainLobby");
-        }
+
+        // Lobby laden
+        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync("MainLobby");
+        asyncLoad.allowSceneActivation = true;
+
+        // Wacht tot de scene geladen is
+        while (!asyncLoad.isDone)
+            yield return null;
+
+        // ✅ Verberg loading screen na delay
+        if (LoadingScreenManager.Instance != null)
+            LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
     }
 }

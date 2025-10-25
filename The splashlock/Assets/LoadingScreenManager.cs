@@ -9,10 +9,10 @@ public class LoadingScreenManager : NetworkBehaviour
     public static LoadingScreenManager Instance;
 
     [Header("UI Elements")]
-    [Tooltip("Sleep hier het Image-object in dat je loading screen afbeeldt (bijv. een volledige PNG).")]
+    [Tooltip("Sleep hier je loading screen image in.")]
     public Image loadingImage;
 
-    [Tooltip("Optionele tekst, bijv. 'Laden...' of de mapnaam.")]
+    [Tooltip("Optionele tekst, bv. 'Loading...'")]
     public TextMeshProUGUI loadingText;
 
     [Header("Timing")]
@@ -24,7 +24,7 @@ public class LoadingScreenManager : NetworkBehaviour
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject); // Blijft bestaan tussen scenes
+            DontDestroyOnLoad(gameObject);
         }
         else
         {
@@ -34,7 +34,6 @@ public class LoadingScreenManager : NetworkBehaviour
 
     private void Start()
     {
-        // Zorg dat image en tekst uit zijn bij start
         SetLoadingScreenActive(false);
     }
 
@@ -48,18 +47,17 @@ public class LoadingScreenManager : NetworkBehaviour
     }
 
     [ClientRpc]
-    public void ShowLoadingScreenClientRpc(string mapName)
+    public void ShowLoadingScreenClientRpc(string sceneName)
     {
         SetLoadingScreenActive(true);
 
         if (loadingText != null)
-            loadingText.text = $"Laden van {mapName}...";
+            loadingText.text = $"Loading {sceneName}...";
     }
 
     [ClientRpc]
     public void HideLoadingScreenClientRpc()
     {
-        // Start coroutine zodat we delay kunnen toepassen
         StartCoroutine(HideAfterDelay());
     }
 
