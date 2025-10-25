@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
 using Unity.Netcode;
+using UnityEngine.UI;
 
 [RequireComponent(typeof(CharacterController))]
 public class CharacterMovement : NetworkBehaviour
@@ -50,11 +50,7 @@ public class CharacterMovement : NetworkBehaviour
     private Vector3 externalForce = Vector3.zero;
 
     private float spawnTime;
-
     public float VerticalVelocity => velocity.Value.y;
-
-    // -------------------- Paused Flag --------------------
-    public static bool IsPaused = false;
 
     private void Awake()
     {
@@ -76,7 +72,7 @@ public class CharacterMovement : NetworkBehaviour
 
         HandleShiftLock();
 
-        if (!IsPaused)
+        if (!PauseMenu.IsPaused)
         {
             float moveX = Input.GetAxis("Horizontal");
             float moveZ = Input.GetAxis("Vertical");
@@ -88,19 +84,12 @@ public class CharacterMovement : NetworkBehaviour
 
     private void LateUpdate()
     {
-        if (!IsOwner) return;
-
-        // Forceer cursor lock als shiftlock aan is en menu gesloten
-        if (shiftLockEnabled && !PauseMenu.IsPaused && !PauseMenu.LeavingToLobby)
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
-        }
+        // Geen cursor logica meer hier; alles via PauseMenu
     }
 
     private void HandleShiftLock()
     {
-        if (Input.GetKeyDown(KeyCode.LeftShift) && !IsPaused)
+        if (Input.GetKeyDown(KeyCode.LeftShift) && !PauseMenu.IsPaused)
         {
             shiftLockEnabled = !shiftLockEnabled;
 
@@ -108,7 +97,7 @@ public class CharacterMovement : NetworkBehaviour
             Cursor.visible = !shiftLockEnabled;
 
             if (shiftLockImage != null)
-                shiftLockImage.enabled = shiftLockEnabled;
+                shiftLockImage.enabled = shiftLockEnabled && !PauseMenu.IsPaused;
         }
     }
 

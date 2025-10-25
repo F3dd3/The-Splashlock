@@ -64,15 +64,10 @@ public class CameraMovement : NetworkBehaviour
         // Shiftlock UI tonen/verbergen
         if (shiftLockInstance != null && characterMovement != null)
         {
-            if (CharacterMovement.IsPaused)
-            {
-                shiftLockInstance.enabled = false; // pauze → geen UI
-            }
-            else
-            {
-                shiftLockInstance.enabled = characterMovement.shiftLockEnabled;
-            }
+            shiftLockInstance.enabled = !PauseMenu.IsPaused && characterMovement.shiftLockEnabled;
         }
+
+        if (PauseMenu.IsPaused) return; // geen rotatie/zoom tijdens menu
 
         // Rotatie alleen als Shiftlock actief of rechter muisknop
         bool rotateCamera = (characterMovement != null && characterMovement.shiftLockEnabled) || Input.GetMouseButton(1);
@@ -102,11 +97,9 @@ public class CameraMovement : NetworkBehaviour
         Vector3 offset = rotation * new Vector3(0, 0, -currentDistance) + new Vector3(0, height, 0);
         transform.position = player.position + offset;
 
-        // Kijk altijd naar hoofd van player
         transform.LookAt(player.position + Vector3.up * 1.5f);
     }
 
-    // Helper om camera actief/inactief te zetten
     public void SetOwnerCamera(bool active)
     {
         if (shiftLockInstance != null)

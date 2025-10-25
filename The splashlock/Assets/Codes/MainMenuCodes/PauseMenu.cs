@@ -47,6 +47,16 @@ public class PauseMenu : MonoBehaviour
 
         IsPaused = true;
 
+        // Forceer shift lock uit en verberg ShiftLock UI
+        CharacterMovement cm = playerController as CharacterMovement;
+        if (cm != null)
+        {
+            cm.shiftLockEnabled = false;
+            if (cm.shiftLockImage != null)
+                cm.shiftLockImage.enabled = false; // verdwijnt zodra menu opent
+        }
+
+        // Cursor zichtbaar in menu
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -60,19 +70,9 @@ public class PauseMenu : MonoBehaviour
 
         IsPaused = false;
 
-        CharacterMovement cm = playerController as CharacterMovement;
-
-        // Check: in-game en shiftlock aan → cursor direct verbergen
-        if (!LeavingToLobby && cm != null && cm.shiftLockEnabled)
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
-        }
-        else
-        {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
+        // Cursor zichtbaar houden totdat shift lock wordt ingeschakeld
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 
     private void OnLeaveClicked()
