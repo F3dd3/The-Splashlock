@@ -452,6 +452,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e809394f8206f5f4a82f893664b9bed4, type: 3}
       insertIndex: -1
       addedObject: {fileID: -9167608128964349830}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e809394f8206f5f4a82f893664b9bed4, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3647638346789029908}
   m_SourcePrefab: {fileID: 100100000, guid: e809394f8206f5f4a82f893664b9bed4, type: 3}
 --- !u!137 &2623765544895576571 stripped
 SkinnedMeshRenderer:
@@ -522,6 +525,8 @@ MonoBehaviour:
   playerRenderer: {fileID: 2623765544895576571}
   nameLabel: {fileID: 3861805057078645105}
   readyLabel: {fileID: 293684413231652612}
+  gravity: -20
+  initialSpawnHeight: 2
 --- !u!114 &7107244613085946979
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -612,3 +617,28 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 0}
+--- !u!143 &3647638346789029908
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6663194955437687092}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 2
+  m_Radius: 0.5
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 1, z: 0}
