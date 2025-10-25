@@ -7,6 +7,7 @@ public class Player : NetworkBehaviour
     [Header("Visuals")]
     public Renderer playerRenderer;
     public TextMeshProUGUI nameLabel;
+    public TextMeshProUGUI readyLabel; // <- voeg dit toe in de inspector
 
     private void Start()
     {
@@ -16,17 +17,24 @@ public class Player : NetworkBehaviour
             if (nameLabel != null)
             {
                 nameLabel.text = "You";
-                nameLabel.gameObject.SetActive(true); // Zorg dat het zichtbaar is
+                nameLabel.gameObject.SetActive(true);
             }
         }
         else
         {
-            // Voor alle andere spelers de tekst verbergen
             if (nameLabel != null)
-            {
                 nameLabel.gameObject.SetActive(false);
-            }
         }
+
+        // Ready tekst is standaard uit
+        if (readyLabel != null)
+            readyLabel.gameObject.SetActive(false);
+    }
+
+    public void SetReadyText(bool isReady)
+    {
+        if (readyLabel != null)
+            readyLabel.gameObject.SetActive(isReady);
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -34,7 +42,6 @@ public class Player : NetworkBehaviour
     {
         Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
         playerRenderer.material.color = color;
-
         ForceColorClientRpc(colorVec);
     }
 
