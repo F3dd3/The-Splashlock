@@ -105,6 +105,14 @@ public class Back : NetworkBehaviour
             }
 
             Debug.Log($"[Server] Alle spelers ready. Laden map: {chosenMap}");
+
+            // ✅ Toon loading screen met gekozen map
+            if (LoadingScreenManager.Instance != null)
+            {
+                LoadingScreenManager.Instance.ShowLoadingScreenClientRpc(chosenMap);
+            }
+
+            // ✅ Vervolgens de scene laden
             NetworkManager.Singleton.SceneManager.LoadScene(chosenMap, UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
     }

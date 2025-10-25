@@ -38,7 +38,6 @@ public class GamePlayerSpawner : MonoBehaviour
 
         bool shouldSpawn = false;
 
-        // Spawn voor elke map die in Back.selectableMaps staat
         if (Back.Instance != null && Back.Instance.selectableMaps.Count > 0)
         {
             if (Back.Instance.selectableMaps.Contains(sceneName))
@@ -46,7 +45,6 @@ public class GamePlayerSpawner : MonoBehaviour
         }
         else
         {
-            // fallback: spawn altijd als Back.Instance niet bestaat (bijv. GameScene)
             shouldSpawn = true;
         }
 
@@ -60,6 +58,12 @@ public class GamePlayerSpawner : MonoBehaviour
         {
             clientSpawnIndex[clientId] = spawnCounter++;
             SpawnPlayerForClient(clientId, clientSpawnIndex[clientId]);
+        }
+
+        // ✅ Verberg loading screen zodra iedereen gespawned is
+        if (LoadingScreenManager.Instance != null)
+        {
+            LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
         }
     }
 
@@ -101,7 +105,7 @@ public class GamePlayerSpawner : MonoBehaviour
         Color color;
         if (availableColors.Count == 0)
         {
-            color = Random.ColorHSV(); // fallback als alle kleuren gebruikt zijn
+            color = Random.ColorHSV();
         }
         else
         {
