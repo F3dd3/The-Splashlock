@@ -15,6 +15,13 @@ public class Player : NetworkBehaviour
     private Vector3 velocity;
     private CharacterController controller;
 
+    // ---------------- READY STATUS ----------------
+    public NetworkVariable<bool> isReady = new NetworkVariable<bool>(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
@@ -35,9 +42,12 @@ public class Player : NetworkBehaviour
             nameLabel.gameObject.SetActive(false);
         }
 
-        // Ready tekst uit
+        // Ready tekst initieel uit
         if (readyLabel != null)
-            readyLabel.gameObject.SetActive(false);
+            readyLabel.gameObject.SetActive(isReady.Value);
+
+        // Subscribe op NetworkVariable verandering
+        isReady.OnValueChanged += OnReadyChanged;
     }
 
     private void Update()
@@ -57,10 +67,17 @@ public class Player : NetworkBehaviour
         controller.Move(velocity * Time.deltaTime);
     }
 
-    public void SetReadyText(bool isReady)
+    private void OnReadyChanged(bool oldValue, bool newValue)
     {
         if (readyLabel != null)
-            readyLabel.gameObject.SetActive(isReady);
+            readyLabel.gameObject.SetActive(newValue);
+    }
+
+    // ---------------- LOKALE FUNCTIE VOOR READY ----------------
+    public void ToggleReady()
+    {
+        if (!IsOwner) return;
+        isReady.Value = !isReady.Value; // Netcode synchronisatie naar iedereen
     }
 
     [ServerRpc(RequireOwnership = false)]

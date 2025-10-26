@@ -145,6 +145,7 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   loadingImage: {fileID: 6730996046850195009}
   loadingText: {fileID: 6255143409045750025}
+  delayAfterSpawn: 0.5
 --- !u!1 &1532425054898331354
 GameObject:
   m_ObjectHideFlags: 0

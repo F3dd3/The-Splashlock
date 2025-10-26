@@ -67,6 +67,9 @@ public class PlayerSpawner : MonoBehaviour
                 });
             }
         }
+
+        // Check of iedereen gespawned is na connectie
+        CheckAllPlayersSpawned();
     }
 
     private void OnClientDisconnected(ulong clientId)
@@ -185,7 +188,6 @@ public class PlayerSpawner : MonoBehaviour
             ulong clientId = kvp.Key;
             Player player = kvp.Value;
 
-            // Veilige spawn index
             int spawnIndex = playerSpawnIndices.ContainsKey(clientId) ? playerSpawnIndices[clientId] : 0;
             spawnIndex = Mathf.Clamp(spawnIndex, 0, spawnPoints.Length - 1);
 
@@ -197,6 +199,24 @@ public class PlayerSpawner : MonoBehaviour
                 Vector3 colorVec = new Vector3(color.r, color.g, color.b);
                 player.SetColorServerRpc(colorVec);
                 player.ForceColorClientRpc(colorVec);
+            }
+        }
+
+        // ✅ Nieuw: controleer of iedereen gespawned is en verberg daarna het loading screen
+        CheckAllPlayersSpawned();
+    }
+
+    private void CheckAllPlayersSpawned()
+    {
+        if (!NetworkManager.Singleton || !NetworkManager.Singleton.IsServer) return;
+
+        int totalPlayers = NetworkManager.Singleton.ConnectedClients.Count;
+        if (playerRefs.Count >= totalPlayers && totalPlayers > 0)
+        {
+            if (LoadingScreenManager.Instance != null)
+            {
+                Debug.Log("[PlayerSpawner] Alle spelers gespawned, verberg loading screen.");
+                LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
             }
         }
     }
