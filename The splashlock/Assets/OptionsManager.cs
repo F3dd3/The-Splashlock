@@ -1,39 +1,37 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 public class OptionsManager : MonoBehaviour
 {
-    [Header("Prefabs & Canvas")]
+    [Header("Prefabs & Camera")]
     public GameObject optionsPlayerPrefab;
     public Canvas lobbyCanvas;
-    public Canvas optionsCanvas; // Het volledige options UI canvas
+
+    [Header("Options UI Canvas")]
+    public Canvas optionsCanvas; // Canvas met exit knop
+    public Button exitButton;    // Sleep hier de exit-knop in
 
     [Header("Spawn Points")]
     public Transform[] optionsSpawnPoints;
 
-    private GameObject spawnedOptionsPlayer;
+    [Header("Lobby Main Camera")]
+    public Camera lobbyMainCamera; // Sleep hier de main lobby camera in
 
-    private Button exitButton; // Wordt automatisch gevonden in het canvas
+    private GameObject spawnedOptionsPlayer;
 
     private void Start()
     {
-        // Zorg dat options canvas initieel uit staat
+        // Lobby canvas initieel aan
+        if (lobbyCanvas != null)
+            lobbyCanvas.gameObject.SetActive(true);
+
+        // Options canvas initieel uit
         if (optionsCanvas != null)
             optionsCanvas.gameObject.SetActive(false);
 
-        // Zoek automatisch de exit knop binnen het options canvas
-        if (optionsCanvas != null)
-        {
-            exitButton = optionsCanvas.GetComponentInChildren<Button>();
-            if (exitButton != null)
-            {
-                exitButton.onClick.AddListener(CloseOptions);
-            }
-            else
-            {
-                Debug.LogWarning("Exit button niet gevonden in optionsCanvas!");
-            }
-        }
+        // Exit knop listener
+        if (exitButton != null)
+            exitButton.onClick.AddListener(CloseOptions);
     }
 
     // ---------------- PUBLIC METHODS ----------------
@@ -50,6 +48,10 @@ public class OptionsManager : MonoBehaviour
         if (optionsCanvas != null)
             optionsCanvas.gameObject.SetActive(true);
 
+        // Lobby main camera uit
+        if (lobbyMainCamera != null)
+            lobbyMainCamera.enabled = false;
+
         SpawnOptionsPlayer();
     }
 
@@ -64,6 +66,10 @@ public class OptionsManager : MonoBehaviour
         // Options canvas uit
         if (optionsCanvas != null)
             optionsCanvas.gameObject.SetActive(false);
+
+        // Lobby main camera weer aan
+        if (lobbyMainCamera != null)
+            lobbyMainCamera.enabled = true;
     }
 
     // ---------------- PRIVATE METHODS ----------------
@@ -86,6 +92,9 @@ public class OptionsManager : MonoBehaviour
         Camera optionsCamera = spawnedOptionsPlayer.GetComponentInChildren<Camera>(true);
         if (optionsCamera != null)
             optionsCamera.enabled = true;
+
+        // Initialiseer kleur bij spawn
+        UpdateOptionsPlayerColor();
     }
 
     private void DespawnOptionsPlayer()
@@ -100,5 +109,37 @@ public class OptionsManager : MonoBehaviour
         }
 
         spawnedOptionsPlayer = null;
+    }
+
+    // ----------------- Update loop -----------------
+    private void Update()
+    {
+        if (spawnedOptionsPlayer == null) return;
+
+        UpdateOptionsPlayerColor();
+    }
+
+    // Haal kleur van eigen LobbyPlayer en zet op OptionsPlayer
+    private void UpdateOptionsPlayerColor()
+    {
+        Player lobbyPlayer = null;
+        ulong clientId = Unity.Netcode.NetworkManager.Singleton.LocalClientId;
+
+        if (PlayerSpawner.Instance != null && PlayerSpawner.Instance.playerRefs.TryGetValue(clientId, out Player lp))
+        {
+            lobbyPlayer = lp;
+        }
+
+        if (lobbyPlayer != null)
+        {
+            Renderer optionsRenderer = spawnedOptionsPlayer.GetComponentInChildren<Renderer>();
+            if (optionsRenderer != null)
+            {
+                if (optionsRenderer.material.color != lobbyPlayer.playerRenderer.material.color)
+                {
+                    optionsRenderer.material.color = lobbyPlayer.playerRenderer.material.color;
+                }
+            }
+        }
     }
 }
