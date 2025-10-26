@@ -1517,7 +1517,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -775, y: 500}
+  m_AnchoredPosition: {x: 775, y: 500}
   m_SizeDelta: {x: 160, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4603369438956071660
@@ -4549,6 +4549,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: da8fda39ab6896b4c9420a143dbf21f5, type: 3}
+--- !u!223 &872420261594912243 stripped
+Canvas:
+  m_CorrespondingSourceObject: {fileID: 4557363447576854945, guid: da8fda39ab6896b4c9420a143dbf21f5, type: 3}
+  m_PrefabInstance: {fileID: 3685198435958182994}
+  m_PrefabAsset: {fileID: 0}
 --- !u!114 &1256448222287268986 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 2471272726363789352, guid: da8fda39ab6896b4c9420a143dbf21f5, type: 3}
@@ -4597,6 +4602,14 @@ PrefabInstance:
       propertyPath: player
       value: 
       objectReference: {fileID: 3947403958547987570}
+    - target: {fileID: 3509628425637211841, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
+      propertyPath: backButton
+      value: 
+      objectReference: {fileID: 3462600702090082009}
+    - target: {fileID: 3509628425637211841, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
+      propertyPath: mainCanvas
+      value: 
+      objectReference: {fileID: 872420261594912243}
     - target: {fileID: 3509628425637211841, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
       propertyPath: optionsCanvas
       value: 

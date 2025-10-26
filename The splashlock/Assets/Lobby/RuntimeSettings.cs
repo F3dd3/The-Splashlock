@@ -1,4 +1,4 @@
-public static class RuntimeSettings
+﻿public static class RuntimeSettings
 {
     public static float NormalSensitivity = 2f;
     public static float ShiftedSensitivity = 2f;

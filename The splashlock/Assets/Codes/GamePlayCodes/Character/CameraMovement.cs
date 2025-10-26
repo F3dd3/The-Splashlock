@@ -28,15 +28,27 @@ public class CameraMovement : NetworkBehaviour
     private RawImage shiftLockInstance;
 
     [Header("Options Canvas")]
-    public Canvas optionsCanvas;           // Canvas op player
-    public Button openOptionsButton;       // Knop in scene
-    public Button closeOptionsButton;      // Knop in canvas
+    public Canvas optionsCanvas;            // Canvas op player
+    public Canvas mainCanvas;               // Andere canvas die verdwijnt bij options
+    public Button openOptionsButton;        // Knop in scene
+    public Button backButton;               // Knop in options canvas
     public Slider normalSensitivitySlider;
     public Slider shiftedSensitivitySlider;
     public TextMeshProUGUI normalSensText;
     public TextMeshProUGUI shiftedSensText;
 
     private CharacterMovement characterMovement;
+
+    private void Awake()
+    {
+        // ❗ Zet default instellingen bij het opstarten van het spel
+        if (!RuntimeSettings.SessionStarted)
+        {
+            RuntimeSettings.NormalSensitivity = 2f;
+            RuntimeSettings.ShiftedSensitivity = 2f;
+            RuntimeSettings.SessionStarted = true;
+        }
+    }
 
     private void Start()
     {
@@ -58,27 +70,36 @@ public class CameraMovement : NetworkBehaviour
             shiftLockInstance.enabled = false;
         }
 
-        // Canvas start gesloten
+        // Canvas startstatus
         if (optionsCanvas != null) optionsCanvas.enabled = false;
+        if (mainCanvas != null) mainCanvas.enabled = true;
 
-        // Button events
+        // Open Options Button
         if (openOptionsButton != null)
+        {
             openOptionsButton.onClick.AddListener(() =>
             {
-                if (optionsCanvas != null)
+                if (optionsCanvas != null && mainCanvas != null)
                 {
-                    bool newState = !optionsCanvas.enabled;
-                    optionsCanvas.enabled = newState;
-                    if (newState) UpdateSlidersAndText();
+                    optionsCanvas.enabled = true;
+                    mainCanvas.enabled = false;
+                    UpdateSlidersAndText();
                 }
             });
+        }
 
-        if (closeOptionsButton != null)
-            closeOptionsButton.onClick.AddListener(() =>
+        // Back Button in Options
+        if (backButton != null)
+        {
+            backButton.onClick.AddListener(() =>
             {
-                if (optionsCanvas != null)
+                if (optionsCanvas != null && mainCanvas != null)
+                {
                     optionsCanvas.enabled = false;
+                    mainCanvas.enabled = true;
+                }
             });
+        }
 
         // Slider setup
         normalSensitivitySlider.minValue = 0.25f;
@@ -89,6 +110,7 @@ public class CameraMovement : NetworkBehaviour
         normalSensitivitySlider.onValueChanged.AddListener(UpdateNormalSensitivity);
         shiftedSensitivitySlider.onValueChanged.AddListener(UpdateShiftedSensitivity);
 
+        // Gebruik instellingen uit RuntimeSettings (sessie) i.p.v. PlayerPrefs
         UpdateSlidersAndText();
 
         currentDistance = targetDistance = distance;
@@ -131,8 +153,6 @@ public class CameraMovement : NetworkBehaviour
         if (shiftLockInstance != null && characterMovement != null)
             shiftLockInstance.enabled = !PauseMenu.IsPaused && characterMovement.shiftLockEnabled;
 
-        if (PauseMenu.IsPaused) return;
-
         float currentSensitivity = (characterMovement != null && characterMovement.shiftLockEnabled)
                                     ? RuntimeSettings.ShiftedSensitivity
                                     : RuntimeSettings.NormalSensitivity;
@@ -163,3 +183,6 @@ public class CameraMovement : NetworkBehaviour
         transform.LookAt(player.position + Vector3.up * 1.5f);
     }
 }
+
+// Voeg dit toe als aparte class (zelfde als OptionsCameraMovement)
+
