@@ -127,7 +127,6 @@ public class LobbyManager : NetworkBehaviour
     {
         string joinCode = joinCodeInput.text.Trim();
 
-        // Eerst infoText op Trying to connect...
         infoText.text = "Trying to connect...";
 
         if (string.IsNullOrEmpty(joinCode))
@@ -159,7 +158,6 @@ public class LobbyManager : NetworkBehaviour
             return;
         }
 
-        // Stop eigen host als actief
         if (NetworkManager.Singleton.IsHost)
         {
             var localPlayer = NetworkManager.Singleton.LocalClient?.PlayerObject;
@@ -182,13 +180,10 @@ public class LobbyManager : NetworkBehaviour
 
             NetworkManager.Singleton.StartClient();
 
-            // ✅ Wacht totdat de client daadwerkelijk gejoined is
             await WaitUntilClientConnectedAsync();
 
-            // Spawn player **pas nu**
             PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
 
-            // ✅ Uiteindelijk, na spawn en join
             infoText.text = $"Connected to: {joinCode}";
             leaveButton.gameObject.SetActive(false);
             hasJoinedOnce = true;
@@ -201,7 +196,6 @@ public class LobbyManager : NetworkBehaviour
 
     private async Task WaitUntilClientConnectedAsync()
     {
-        // Wacht tot de client volledig gejoined is
         while (NetworkManager.Singleton == null ||
                !NetworkManager.Singleton.IsClient ||
                NetworkManager.Singleton.LocalClient == null ||
@@ -226,7 +220,6 @@ public class LobbyManager : NetworkBehaviour
             timer += Time.deltaTime;
             await Task.Yield();
 
-            // Stop timer als ondertussen succesvol gejoined
             if (!string.IsNullOrEmpty(infoText.text) && infoText.text.StartsWith("Connected"))
                 break;
         }

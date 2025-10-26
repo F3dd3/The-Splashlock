@@ -11,7 +11,7 @@ public class Player : NetworkBehaviour
     public TextMeshProUGUI readyLabel;
 
     [Header("Movement")]
-    public float gravity = -9.81f; // valkracht
+    public float gravity = -9.81f;
     private Vector3 velocity;
     private CharacterController controller;
 
@@ -19,7 +19,7 @@ public class Player : NetworkBehaviour
     public NetworkVariable<bool> isReady = new NetworkVariable<bool>(
         false,
         NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
+        NetworkVariableWritePermission.Server // alleen server mag schrijven
     );
 
     private void Awake()
@@ -42,7 +42,7 @@ public class Player : NetworkBehaviour
             nameLabel.gameObject.SetActive(false);
         }
 
-        // Ready tekst initieel uit
+        // Ready label initieel
         if (readyLabel != null)
             readyLabel.gameObject.SetActive(isReady.Value);
 
@@ -58,11 +58,8 @@ public class Player : NetworkBehaviour
     private void ApplyGravity()
     {
         if (controller.isGrounded && velocity.y < 0)
-        {
-            velocity.y = 0f; // reset verticale snelheid bij landing
-        }
+            velocity.y = 0f;
 
-        // gravity toepassen
         velocity.y += gravity * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);
     }
@@ -73,13 +70,31 @@ public class Player : NetworkBehaviour
             readyLabel.gameObject.SetActive(newValue);
     }
 
-    // ---------------- LOKALE FUNCTIE VOOR READY ----------------
-    public void ToggleReady()
+    // ---------------- SERVER RPC VOOR READY TOGGLE ----------------
+    [ServerRpc(RequireOwnership = false)]
+    public void RequestToggleReadyServerRpc(ulong clientId)
     {
-        if (!IsOwner) return;
-        isReady.Value = !isReady.Value; // Netcode synchronisatie naar iedereen
+        if (!IsServer) return;
+
+        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client))
+        {
+            Player player = client.PlayerObject.GetComponent<Player>();
+            if (player != null)
+            {
+                // server togglet de NetworkVariable
+                player.isReady.Value = !player.isReady.Value;
+            }
+        }
     }
 
+    // ---------------- FORCE READY VOOR LATE JOINERS ----------------
+    [ClientRpc]
+    public void ForceReadyClientRpc(bool ready, ClientRpcParams clientRpcParams = default)
+    {
+        isReady.Value = ready; // triggert OnValueChanged, readyLabel update automatisch
+    }
+
+    // ---------------- OPTIONAL: COLOR ----------------
     [ServerRpc(RequireOwnership = false)]
     public void SetColorServerRpc(Vector3 colorVec)
     {

@@ -35,9 +35,6 @@ public class WinScreenTrigger : MonoBehaviour
         if (winScreenCanvas != null)
             winScreenCanvas.SetActive(false);
 
-        // Reset spelers naar lobby spawnpunten en kleuren
-        PlayerSpawner.Instance?.ResetForLobby();
-
         // Reset ready status
         Back.Instance?.ResetReadyStatus();
 

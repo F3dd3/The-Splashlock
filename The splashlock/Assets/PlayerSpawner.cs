@@ -68,7 +68,16 @@ public class PlayerSpawner : MonoBehaviour
             }
         }
 
-        // Check of iedereen gespawned is na connectie
+        // ✅ Sync ready status van bestaande spelers naar nieuwe client
+        foreach (var kvp in playerRefs)
+        {
+            Player existingPlayer = kvp.Value;
+            existingPlayer.ForceReadyClientRpc(existingPlayer.isReady.Value, new ClientRpcParams
+            {
+                Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { clientId } }
+            });
+        }
+
         CheckAllPlayersSpawned();
     }
 
@@ -104,7 +113,6 @@ public class PlayerSpawner : MonoBehaviour
         if (forceSpawn && playerRefs.ContainsKey(clientId))
             RemovePlayer(clientId);
 
-        // Bepaal spawn index
         int spawnIndex = 0;
         if (NetworkManager.Singleton.IsHost && clientId == NetworkManager.Singleton.LocalClientId)
         {
@@ -131,12 +139,10 @@ public class PlayerSpawner : MonoBehaviour
 
         playerSpawnIndices[clientId] = spawnIndex;
 
-        // Kleur bepalen
         Color color = rejoinColors.ContainsKey(clientId) ? rejoinColors[clientId] : GetNextUniqueColor();
         if (rejoinColors.ContainsKey(clientId)) rejoinColors.Remove(clientId);
         playerColors[clientId] = color;
 
-        // Player component
         Player playerScript = playerObj.GetComponent<Player>();
         playerRefs[clientId] = playerScript;
 
@@ -144,7 +150,6 @@ public class PlayerSpawner : MonoBehaviour
         playerScript.SetColorServerRpc(colorVec);
         playerScript.ForceColorClientRpc(colorVec);
 
-        // Lokale speler naam
         if (clientId == NetworkManager.Singleton.LocalClientId && playerScript.nameLabel != null)
             playerScript.nameLabel.text = "You";
     }
@@ -202,7 +207,6 @@ public class PlayerSpawner : MonoBehaviour
             }
         }
 
-        // ✅ Nieuw: controleer of iedereen gespawned is en verberg daarna het loading screen
         CheckAllPlayersSpawned();
     }
 
@@ -215,7 +219,6 @@ public class PlayerSpawner : MonoBehaviour
         {
             if (LoadingScreenManager.Instance != null)
             {
-                Debug.Log("[PlayerSpawner] Alle spelers gespawned, verberg loading screen.");
                 LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
             }
         }

@@ -44,6 +44,10 @@ public class Back : NetworkBehaviour
         isLocalReady = !isLocalReady;
         UpdateButtonText();
 
+        // ✅ Client vraagt server om toggle
+        RequestToggleReadyServerRpc(NetworkManager.Singleton.LocalClientId);
+
+        // Behoud lijst voor map start
         if (isLocalReady)
             SetReadyServerRpc(NetworkManager.Singleton.LocalClientId);
         else
@@ -54,6 +58,17 @@ public class Back : NetworkBehaviour
     {
         if (readyButton != null)
             readyButton.GetComponentInChildren<TextMeshProUGUI>().text = isLocalReady ? "Cancel Ready" : "Ready";
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void RequestToggleReadyServerRpc(ulong clientId)
+    {
+        if (!IsServer) return;
+
+        if (PlayerSpawner.Instance.playerRefs.TryGetValue(clientId, out Player player))
+        {
+            player.isReady.Value = !player.isReady.Value; // ✅ Server schrijft hier
+        }
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -96,7 +111,6 @@ public class Back : NetworkBehaviour
                     consecutivePlays[map] = 0;
             }
 
-            // Toon loading screen bij iedereen
             if (LoadingScreenManager.Instance != null)
                 LoadingScreenManager.Instance.ShowLoadingScreenClientRpc(chosenMap);
 
