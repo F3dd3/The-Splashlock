@@ -10,7 +10,6 @@ public class CameraMovement : NetworkBehaviour
     public float height = 2f;
 
     [Header("Rotation Settings")]
-    public float sensitivity = 2f;
     public float rotationSmoothTime = 0.1f;
     private float yaw, pitch;
     private Vector3 currentRotation;
@@ -37,8 +36,7 @@ public class CameraMovement : NetworkBehaviour
             return;
         }
 
-        if (player == null)
-            player = transform.root;
+        if (player == null) player = transform.root;
 
         characterMovement = player.GetComponent<CharacterMovement>();
         if (characterMovement != null)
@@ -50,35 +48,35 @@ public class CameraMovement : NetworkBehaviour
             shiftLockInstance.enabled = false;
         }
 
-        Vector3 angles = transform.eulerAngles;
-        yaw = angles.y;
-        pitch = angles.x;
+        // Startwaarden
         currentDistance = targetDistance = distance;
-        currentRotation = angles;
+        currentRotation = transform.eulerAngles;
+        yaw = currentRotation.y;
+        pitch = currentRotation.x;
     }
 
     private void LateUpdate()
     {
         if (!IsOwner || player == null) return;
 
-        // Shiftlock UI tonen/verbergen
         if (shiftLockInstance != null && characterMovement != null)
-        {
             shiftLockInstance.enabled = !PauseMenu.IsPaused && characterMovement.shiftLockEnabled;
-        }
 
-        if (PauseMenu.IsPaused) return; // geen rotatie/zoom tijdens menu
+        if (PauseMenu.IsPaused) return;
 
-        // Rotatie alleen als Shiftlock actief of rechter muisknop
+        // Lees sensitivities van runtime settings (alleen lezen)
+        float currentSensitivity = (characterMovement != null && characterMovement.shiftLockEnabled)
+                                    ? RuntimeSettings.ShiftedSensitivity
+                                    : RuntimeSettings.NormalSensitivity;
+
         bool rotateCamera = (characterMovement != null && characterMovement.shiftLockEnabled) || Input.GetMouseButton(1);
         if (rotateCamera)
         {
-            yaw += Input.GetAxis("Mouse X") * sensitivity;
-            pitch -= Input.GetAxis("Mouse Y") * sensitivity;
+            yaw += Input.GetAxis("Mouse X") * currentSensitivity;
+            pitch -= Input.GetAxis("Mouse Y") * currentSensitivity;
             pitch = Mathf.Clamp(pitch, -30f, 60f);
         }
 
-        // Zoom
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (scroll != 0f)
         {
@@ -88,23 +86,12 @@ public class CameraMovement : NetworkBehaviour
 
         currentDistance = Mathf.SmoothDamp(currentDistance, targetDistance, ref distanceVelocity, zoomSmoothTime);
 
-        // Smooth Rotation
         Vector3 targetRotation = new Vector3(pitch, yaw);
         currentRotation = Vector3.SmoothDamp(currentRotation, targetRotation, ref smoothVelocity, rotationSmoothTime);
         Quaternion rotation = Quaternion.Euler(currentRotation.x, currentRotation.y, 0f);
 
-        // Camera Position
         Vector3 offset = rotation * new Vector3(0, 0, -currentDistance) + new Vector3(0, height, 0);
         transform.position = player.position + offset;
-
         transform.LookAt(player.position + Vector3.up * 1.5f);
-    }
-
-    public void SetOwnerCamera(bool active)
-    {
-        if (shiftLockInstance != null)
-            shiftLockInstance.enabled = active && characterMovement != null && characterMovement.shiftLockEnabled;
-
-        gameObject.SetActive(active);
     }
 }
