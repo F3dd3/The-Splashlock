@@ -19,7 +19,7 @@ public class Player : NetworkBehaviour
     public NetworkVariable<bool> isReady = new NetworkVariable<bool>(
         false,
         NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server // alleen server mag schrijven
+        NetworkVariableWritePermission.Server
     );
 
     private void Awake()
@@ -31,7 +31,6 @@ public class Player : NetworkBehaviour
 
     private void Start()
     {
-        // "You" label
         if (IsOwner && nameLabel != null)
         {
             nameLabel.text = "You";
@@ -42,11 +41,9 @@ public class Player : NetworkBehaviour
             nameLabel.gameObject.SetActive(false);
         }
 
-        // Ready label initieel
         if (readyLabel != null)
             readyLabel.gameObject.SetActive(isReady.Value);
 
-        // Subscribe op NetworkVariable verandering
         isReady.OnValueChanged += OnReadyChanged;
     }
 
@@ -70,6 +67,12 @@ public class Player : NetworkBehaviour
             readyLabel.gameObject.SetActive(newValue);
     }
 
+    public void SetReadyText(bool ready)
+    {
+        if (readyLabel != null)
+            readyLabel.gameObject.SetActive(ready);
+    }
+
     // ---------------- SERVER RPC VOOR READY TOGGLE ----------------
     [ServerRpc(RequireOwnership = false)]
     public void RequestToggleReadyServerRpc(ulong clientId)
@@ -81,17 +84,25 @@ public class Player : NetworkBehaviour
             Player player = client.PlayerObject.GetComponent<Player>();
             if (player != null)
             {
-                // server togglet de NetworkVariable
+                // Server togglet ready status
                 player.isReady.Value = !player.isReady.Value;
+
+                // Forceer UI update naar requesting client
+                player.ForceReadyClientRpc(player.isReady.Value, new ClientRpcParams
+                {
+                    Send = new ClientRpcSendParams
+                    {
+                        TargetClientIds = new ulong[] { clientId }
+                    }
+                });
             }
         }
     }
 
-    // ---------------- FORCE READY VOOR LATE JOINERS ----------------
     [ClientRpc]
     public void ForceReadyClientRpc(bool ready, ClientRpcParams clientRpcParams = default)
     {
-        isReady.Value = ready; // triggert OnValueChanged, readyLabel update automatisch
+        isReady.Value = ready; // triggert OnValueChanged
     }
 
     // ---------------- OPTIONAL: COLOR ----------------

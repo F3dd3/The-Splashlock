@@ -41,13 +41,18 @@ public class Back : NetworkBehaviour
     {
         if (!IsClient) return;
 
+        // Toggle alleen lokale button tekst
         isLocalReady = !isLocalReady;
         UpdateButtonText();
 
-        // ✅ Client vraagt server om toggle
-        RequestToggleReadyServerRpc(NetworkManager.Singleton.LocalClientId);
+        // Vraag server om ready status te togglen
+        Player localPlayer = NetworkManager.Singleton.LocalClient.PlayerObject.GetComponent<Player>();
+        if (localPlayer != null)
+        {
+            localPlayer.RequestToggleReadyServerRpc(NetworkManager.Singleton.LocalClientId);
+        }
 
-        // Behoud lijst voor map start
+        // Server lijst voor map start bijwerken
         if (isLocalReady)
             SetReadyServerRpc(NetworkManager.Singleton.LocalClientId);
         else
@@ -61,24 +66,12 @@ public class Back : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void RequestToggleReadyServerRpc(ulong clientId)
-    {
-        if (!IsServer) return;
-
-        if (PlayerSpawner.Instance.playerRefs.TryGetValue(clientId, out Player player))
-        {
-            player.isReady.Value = !player.isReady.Value; // ✅ Server schrijft hier
-        }
-    }
-
-    [ServerRpc(RequireOwnership = false)]
     private void SetReadyServerRpc(ulong clientId)
     {
         if (!readyClients.Contains(clientId))
             readyClients.Add(clientId);
 
         UpdateReadyStatusClientRpc(readyClients.ToArray());
-        CheckAllReady();
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -94,62 +87,21 @@ public class Back : NetworkBehaviour
     private void UpdateReadyStatusClientRpc(ulong[] readyIds)
     {
         readyClients = new List<ulong>(readyIds);
-    }
 
-    private void CheckAllReady()
-    {
-        int totalPlayers = NetworkManager.Singleton.ConnectedClients.Count;
-        if (readyClients.Count == totalPlayers && totalPlayers > 0)
+        // Update alle Player prefabs
+        foreach (var player in FindObjectsOfType<Player>())
         {
-            string chosenMap = ChooseMapWithStackedChance();
-
-            foreach (string map in selectableMaps)
-            {
-                if (map == chosenMap)
-                    consecutivePlays[map]++;
-                else
-                    consecutivePlays[map] = 0;
-            }
-
-            if (LoadingScreenManager.Instance != null)
-                LoadingScreenManager.Instance.ShowLoadingScreenClientRpc(chosenMap);
-
-            NetworkManager.Singleton.SceneManager.LoadScene(chosenMap, UnityEngine.SceneManagement.LoadSceneMode.Single);
+            bool isReady = readyClients.Contains(player.OwnerClientId);
+            player.SetReadyText(isReady);
         }
-    }
-
-    private string ChooseMapWithStackedChance()
-    {
-        if (selectableMaps.Count == 0) return "GameScene";
-
-        List<float> weights = new List<float>();
-        float totalWeight = 0f;
-
-        foreach (string map in selectableMaps)
-        {
-            int n = consecutivePlays.ContainsKey(map) ? consecutivePlays[map] : 0;
-            float weight = 1f / Mathf.Pow(2, n);
-            weights.Add(weight);
-            totalWeight += weight;
-        }
-
-        float randomValue = Random.Range(0f, totalWeight);
-        float cumulative = 0f;
-
-        for (int i = 0; i < selectableMaps.Count; i++)
-        {
-            cumulative += weights[i];
-            if (randomValue <= cumulative)
-                return selectableMaps[i];
-        }
-
-        return selectableMaps[0];
     }
 
     public void RemoveClientReadyStatus(ulong clientId)
     {
         if (readyClients.Contains(clientId))
             readyClients.Remove(clientId);
+
+        UpdateReadyStatusClientRpc(readyClients.ToArray());
     }
 
     public void ResetReadyStatus()
