@@ -3,31 +3,41 @@ using UnityEngine.UI;
 
 public class OptionsManager : MonoBehaviour
 {
-    [Header("Prefabs & Camera")]
+    [Header("Prefabs & Canvas")]
     public GameObject optionsPlayerPrefab;
     public Canvas lobbyCanvas;
+    public Canvas optionsCanvas; // Het volledige options UI canvas
 
     [Header("Spawn Points")]
     public Transform[] optionsSpawnPoints;
 
-    [Header("UI Buttons")]
-    public Button exitButton; // De knop die terug gaat naar lobby
-
     private GameObject spawnedOptionsPlayer;
+
+    private Button exitButton; // Wordt automatisch gevonden in het canvas
 
     private void Start()
     {
-        // Zorg dat exit knop initieel onzichtbaar is
-        if (exitButton != null)
+        // Zorg dat options canvas initieel uit staat
+        if (optionsCanvas != null)
+            optionsCanvas.gameObject.SetActive(false);
+
+        // Zoek automatisch de exit knop binnen het options canvas
+        if (optionsCanvas != null)
         {
-            exitButton.gameObject.SetActive(false);
-            exitButton.onClick.AddListener(CloseOptions);
+            exitButton = optionsCanvas.GetComponentInChildren<Button>();
+            if (exitButton != null)
+            {
+                exitButton.onClick.AddListener(CloseOptions);
+            }
+            else
+            {
+                Debug.LogWarning("Exit button niet gevonden in optionsCanvas!");
+            }
         }
     }
 
     // ---------------- PUBLIC METHODS ----------------
 
-    // Alleen openen van options (Controls knop)
     public void OpenOptions()
     {
         if (spawnedOptionsPlayer != null) return;
@@ -36,14 +46,13 @@ public class OptionsManager : MonoBehaviour
         if (lobbyCanvas != null)
             lobbyCanvas.gameObject.SetActive(false);
 
-        SpawnOptionsPlayer();
+        // Options canvas aan
+        if (optionsCanvas != null)
+            optionsCanvas.gameObject.SetActive(true);
 
-        // Exit knop zichtbaar maken
-        if (exitButton != null)
-            exitButton.gameObject.SetActive(true);
+        SpawnOptionsPlayer();
     }
 
-    // Sluit options en gaat terug naar lobby
     public void CloseOptions()
     {
         DespawnOptionsPlayer();
@@ -52,9 +61,9 @@ public class OptionsManager : MonoBehaviour
         if (lobbyCanvas != null)
             lobbyCanvas.gameObject.SetActive(true);
 
-        // Exit knop weer verbergen
-        if (exitButton != null)
-            exitButton.gameObject.SetActive(false);
+        // Options canvas uit
+        if (optionsCanvas != null)
+            optionsCanvas.gameObject.SetActive(false);
     }
 
     // ---------------- PRIVATE METHODS ----------------
