@@ -41,18 +41,11 @@ public class Back : NetworkBehaviour
     {
         if (!IsClient) return;
 
-        // Toggle alleen lokale button tekst
+        // Toggle lokale ready status
         isLocalReady = !isLocalReady;
         UpdateButtonText();
 
-        // Vraag server om ready status te togglen
-        Player localPlayer = NetworkManager.Singleton.LocalClient.PlayerObject.GetComponent<Player>();
-        if (localPlayer != null)
-        {
-            localPlayer.RequestToggleReadyServerRpc(NetworkManager.Singleton.LocalClientId);
-        }
-
-        // Server lijst voor map start bijwerken
+        // ServerRpc om ready status bij te werken
         if (isLocalReady)
             SetReadyServerRpc(NetworkManager.Singleton.LocalClientId);
         else
@@ -65,6 +58,7 @@ public class Back : NetworkBehaviour
             readyButton.GetComponentInChildren<TextMeshProUGUI>().text = isLocalReady ? "Cancel Ready" : "Ready";
     }
 
+    // ----------------- Server RPCs -----------------
     [ServerRpc(RequireOwnership = false)]
     private void SetReadyServerRpc(ulong clientId)
     {
@@ -72,6 +66,12 @@ public class Back : NetworkBehaviour
             readyClients.Add(clientId);
 
         UpdateReadyStatusClientRpc(readyClients.ToArray());
+
+        // Check of alle connected clients ready zijn
+        if (readyClients.Count == NetworkManager.Singleton.ConnectedClients.Count)
+        {
+            StartGame(); // Server-only logica
+        }
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -83,12 +83,12 @@ public class Back : NetworkBehaviour
         UpdateReadyStatusClientRpc(readyClients.ToArray());
     }
 
+    // ----------------- Client RPC -----------------
     [ClientRpc]
     private void UpdateReadyStatusClientRpc(ulong[] readyIds)
     {
         readyClients = new List<ulong>(readyIds);
 
-        // Update alle Player prefabs
         foreach (var player in FindObjectsOfType<Player>())
         {
             bool isReady = readyClients.Contains(player.OwnerClientId);
@@ -96,6 +96,7 @@ public class Back : NetworkBehaviour
         }
     }
 
+    // ----------------- Helpers -----------------
     public void RemoveClientReadyStatus(ulong clientId)
     {
         if (readyClients.Contains(clientId))
@@ -109,5 +110,28 @@ public class Back : NetworkBehaviour
         readyClients.Clear();
         isLocalReady = false;
         UpdateButtonText();
+    }
+
+    // ----------------- Start Game & Load Map -----------------
+    private void StartGame()
+    {
+        if (selectableMaps.Count == 0)
+        {
+            Debug.LogWarning("Geen maps beschikbaar om te laden!");
+            return;
+        }
+
+        // Kies een map (random keuze hier, kan later met consecutivePlays logica)
+        string selectedMap = selectableMaps[Random.Range(0, selectableMaps.Count)];
+        Debug.Log("Geselecteerde map: " + selectedMap);
+
+        // Laad de scene via Netcode SceneManager, zodat host en clients synchroon gaan
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.SceneManager.LoadScene(
+                selectedMap,
+                UnityEngine.SceneManagement.LoadSceneMode.Single
+            );
+        }
     }
 }
