@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using Unity.Netcode;
+using TMPro;
 
 public class CameraMovement : NetworkBehaviour
 {
@@ -26,6 +27,15 @@ public class CameraMovement : NetworkBehaviour
     public RawImage shiftLockPrefab;
     private RawImage shiftLockInstance;
 
+    [Header("Options Canvas")]
+    public Canvas optionsCanvas;           // Canvas op player
+    public Button openOptionsButton;       // Knop in scene
+    public Button closeOptionsButton;      // Knop in canvas
+    public Slider normalSensitivitySlider;
+    public Slider shiftedSensitivitySlider;
+    public TextMeshProUGUI normalSensText;
+    public TextMeshProUGUI shiftedSensText;
+
     private CharacterMovement characterMovement;
 
     private void Start()
@@ -48,11 +58,70 @@ public class CameraMovement : NetworkBehaviour
             shiftLockInstance.enabled = false;
         }
 
-        // Startwaarden
+        // Canvas start gesloten
+        if (optionsCanvas != null) optionsCanvas.enabled = false;
+
+        // Button events
+        if (openOptionsButton != null)
+            openOptionsButton.onClick.AddListener(() =>
+            {
+                if (optionsCanvas != null)
+                {
+                    bool newState = !optionsCanvas.enabled;
+                    optionsCanvas.enabled = newState;
+                    if (newState) UpdateSlidersAndText();
+                }
+            });
+
+        if (closeOptionsButton != null)
+            closeOptionsButton.onClick.AddListener(() =>
+            {
+                if (optionsCanvas != null)
+                    optionsCanvas.enabled = false;
+            });
+
+        // Slider setup
+        normalSensitivitySlider.minValue = 0.25f;
+        normalSensitivitySlider.maxValue = 25f;
+        shiftedSensitivitySlider.minValue = 0.25f;
+        shiftedSensitivitySlider.maxValue = 25f;
+
+        normalSensitivitySlider.onValueChanged.AddListener(UpdateNormalSensitivity);
+        shiftedSensitivitySlider.onValueChanged.AddListener(UpdateShiftedSensitivity);
+
+        UpdateSlidersAndText();
+
         currentDistance = targetDistance = distance;
         currentRotation = transform.eulerAngles;
         yaw = currentRotation.y;
         pitch = currentRotation.x;
+    }
+
+    private void UpdateSlidersAndText()
+    {
+        if (normalSensitivitySlider != null)
+            normalSensitivitySlider.value = RuntimeSettings.NormalSensitivity;
+        if (shiftedSensitivitySlider != null)
+            shiftedSensitivitySlider.value = RuntimeSettings.ShiftedSensitivity;
+
+        if (normalSensText != null)
+            normalSensText.text = $"Normal Sens: {RuntimeSettings.NormalSensitivity:F2}";
+        if (shiftedSensText != null)
+            shiftedSensText.text = $"Shifted Sens: {RuntimeSettings.ShiftedSensitivity:F2}";
+    }
+
+    private void UpdateNormalSensitivity(float value)
+    {
+        RuntimeSettings.NormalSensitivity = value;
+        if (normalSensText != null)
+            normalSensText.text = $"Normal Sens: {value:F2}";
+    }
+
+    private void UpdateShiftedSensitivity(float value)
+    {
+        RuntimeSettings.ShiftedSensitivity = value;
+        if (shiftedSensText != null)
+            shiftedSensText.text = $"Shifted Sens: {value:F2}";
     }
 
     private void LateUpdate()
@@ -64,7 +133,6 @@ public class CameraMovement : NetworkBehaviour
 
         if (PauseMenu.IsPaused) return;
 
-        // Lees sensitivities van runtime settings (alleen lezen)
         float currentSensitivity = (characterMovement != null && characterMovement.shiftLockEnabled)
                                     ? RuntimeSettings.ShiftedSensitivity
                                     : RuntimeSettings.NormalSensitivity;

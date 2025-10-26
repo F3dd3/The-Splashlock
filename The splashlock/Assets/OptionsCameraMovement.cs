@@ -20,6 +20,16 @@ public class OptionsCameraMovement : MonoBehaviour
     public TextMeshProUGUI normalSensText;
     public TextMeshProUGUI shiftedSensText;
 
+    private void Awake()
+    {
+        if (!RuntimeSettings.SessionStarted)
+        {
+            RuntimeSettings.NormalSensitivity = 2f;
+            RuntimeSettings.ShiftedSensitivity = 2f;
+            RuntimeSettings.SessionStarted = true;
+        }
+    }
+
     private void Start()
     {
         if (player == null) player = transform.root;
@@ -34,22 +44,17 @@ public class OptionsCameraMovement : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        // Slider limits instellen
-        if (normalSensitivitySlider != null)
-        {
-            normalSensitivitySlider.minValue = 0.25f;
-            normalSensitivitySlider.maxValue = 25f;
-            normalSensitivitySlider.value = RuntimeSettings.NormalSensitivity;
-            normalSensitivitySlider.onValueChanged.AddListener(UpdateNormalSensitivity);
-        }
+        // Sliders instellen
+        normalSensitivitySlider.minValue = 0.25f;
+        normalSensitivitySlider.maxValue = 25f;
+        shiftedSensitivitySlider.minValue = 0.25f;
+        shiftedSensitivitySlider.maxValue = 25f;
 
-        if (shiftedSensitivitySlider != null)
-        {
-            shiftedSensitivitySlider.minValue = 0.25f;
-            shiftedSensitivitySlider.maxValue = 25f;
-            shiftedSensitivitySlider.value = RuntimeSettings.ShiftedSensitivity;
-            shiftedSensitivitySlider.onValueChanged.AddListener(UpdateShiftedSensitivity);
-        }
+        normalSensitivitySlider.value = RuntimeSettings.NormalSensitivity;
+        shiftedSensitivitySlider.value = RuntimeSettings.ShiftedSensitivity;
+
+        normalSensitivitySlider.onValueChanged.AddListener(UpdateNormalSensitivity);
+        shiftedSensitivitySlider.onValueChanged.AddListener(UpdateShiftedSensitivity);
 
         UpdateUIText();
     }
@@ -61,7 +66,9 @@ public class OptionsCameraMovement : MonoBehaviour
             shiftLockEnabled = !shiftLockEnabled;
             Cursor.lockState = shiftLockEnabled ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !shiftLockEnabled;
-            if (shiftLockInstance != null) shiftLockInstance.enabled = shiftLockEnabled;
+
+            if (shiftLockInstance != null)
+                shiftLockInstance.enabled = shiftLockEnabled;
         }
 
         UpdateUIText();
@@ -70,16 +77,25 @@ public class OptionsCameraMovement : MonoBehaviour
     private void LateUpdate()
     {
         if (player == null) return;
-        if (shiftLockInstance != null) shiftLockInstance.enabled = shiftLockEnabled;
+
+        if (shiftLockInstance != null)
+            shiftLockInstance.enabled = shiftLockEnabled;
 
         float currentSensitivity = shiftLockEnabled ? RuntimeSettings.ShiftedSensitivity : RuntimeSettings.NormalSensitivity;
-        bool rotateCamera = shiftLockEnabled || Input.GetMouseButton(1);
 
+        bool rotateCamera = shiftLockEnabled || Input.GetMouseButton(1);
         if (rotateCamera)
         {
             yaw += Input.GetAxis("Mouse X") * currentSensitivity;
             pitch -= Input.GetAxis("Mouse Y") * currentSensitivity;
             pitch = Mathf.Clamp(pitch, -30f, 60f);
+        }
+
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        if (scroll != 0f)
+        {
+            distance -= scroll * 5f;
+            distance = Mathf.Clamp(distance, 2f, 10f);
         }
 
         Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
@@ -91,11 +107,13 @@ public class OptionsCameraMovement : MonoBehaviour
     private void UpdateNormalSensitivity(float value)
     {
         RuntimeSettings.NormalSensitivity = value;
+        UpdateUIText();
     }
 
     private void UpdateShiftedSensitivity(float value)
     {
         RuntimeSettings.ShiftedSensitivity = value;
+        UpdateUIText();
     }
 
     private void UpdateUIText()

@@ -141,11 +141,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1f55da2968607d742858266f558ac073, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  player: {fileID: 0}
+  player: {fileID: 6283572814603197326, guid: 3a4b351608974e34ea58ee10b4e54db9, type: 3}
   distance: 5
   height: 2
-  normalSensitivity: 2
-  shiftedSensitivity: 2
   shiftLockEnabled: 0
   normalSensitivitySlider: {fileID: 0}
   shiftedSensitivitySlider: {fileID: 0}
