@@ -3476,7 +3476,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
   respawnHeight: 5
-  checkDistance: 2
+  checkDistance: 1
   waterLayer:
     serializedVersion: 2
     m_Bits: 16
