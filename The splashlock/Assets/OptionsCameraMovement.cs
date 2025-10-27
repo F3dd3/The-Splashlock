@@ -45,9 +45,9 @@ public class OptionsCameraMovement : MonoBehaviour
         Cursor.visible = true;
 
         // Sliders instellen
-        normalSensitivitySlider.minValue = 0.25f;
+        normalSensitivitySlider.minValue = 1f;
         normalSensitivitySlider.maxValue = 25f;
-        shiftedSensitivitySlider.minValue = 0.25f;
+        shiftedSensitivitySlider.minValue = 1f;
         shiftedSensitivitySlider.maxValue = 25f;
 
         normalSensitivitySlider.value = RuntimeSettings.NormalSensitivity;
@@ -119,8 +119,8 @@ public class OptionsCameraMovement : MonoBehaviour
     private void UpdateUIText()
     {
         if (normalSensText != null)
-            normalSensText.text = $"Normal Sens: {RuntimeSettings.NormalSensitivity:F2}";
+            normalSensText.text = $"{RuntimeSettings.NormalSensitivity:F2}";
         if (shiftedSensText != null)
-            shiftedSensText.text = $"Shifted Sens: {RuntimeSettings.ShiftedSensitivity:F2}";
+            shiftedSensText.text = $"{RuntimeSettings.ShiftedSensitivity:F2}";
     }
 }
