@@ -53,7 +53,7 @@ public class CharacterMovement : NetworkBehaviour
     public float VerticalVelocity => velocity.Value.y;
 
     [Header("Pause Menu")]
-    public PauseMenu pauseMenu; // lokale reference naar PauseMenu
+    public PauseMenu pauseMenu;
 
     private void Awake()
     {
@@ -61,7 +61,7 @@ public class CharacterMovement : NetworkBehaviour
         velocity.Value = new Vector3(0f, -2f, 0);
 
         if (shiftLockImage != null)
-            shiftLockImage.enabled = shiftLockEnabled; // toon altijd als actief
+            shiftLockImage.enabled = shiftLockEnabled;
 
         if (pauseMenu == null)
             pauseMenu = GetComponentInChildren<PauseMenu>();
@@ -76,17 +76,26 @@ public class CharacterMovement : NetworkBehaviour
     {
         if (!IsOwner) return;
 
-        // Shift lock & camera togglen altijd (niet alleen in optionsCanvas)
-        HandleShiftLock();
+        // Input actief in gameplay of optionsMenu
+        bool canUseShiftLock = (pauseMenu != null && !pauseMenu.IsPaused) ||
+                               (pauseMenu != null && pauseMenu.IsPaused && pauseMenu.optionsMenu != null && pauseMenu.optionsMenu.activeSelf);
 
-        // Character bewegen alleen als spel niet gepauzeerd is
+        if (canUseShiftLock)
+            HandleShiftLock();
+
+        // Beweging alleen in gameplay
         if (pauseMenu != null && !pauseMenu.IsPaused)
         {
             float moveX = Input.GetAxis("Horizontal");
             float moveZ = Input.GetAxis("Vertical");
             bool jump = Input.GetButton("Jump");
 
-            HandleMovement(moveX, moveZ, jump, shiftLockEnabled);
+            HandleMovement(moveX, moveZ, jump, shiftLockEnabled, canUseShiftLock);
+        }
+        else if (canUseShiftLock)
+        {
+            // Geen beweging, maar wel rotatie toepassen als shift lock actief is in options
+            HandleMovement(0f, 0f, false, shiftLockEnabled, canUseShiftLock);
         }
     }
 
@@ -102,17 +111,9 @@ public class CharacterMovement : NetworkBehaviour
             if (shiftLockImage != null)
                 shiftLockImage.enabled = shiftLockEnabled;
         }
-
-        // Character volgt camera alleen bij shift lock
-        if (shiftLockEnabled && cameraTransform != null)
-        {
-            Vector3 euler = transform.rotation.eulerAngles;
-            euler.y = cameraTransform.eulerAngles.y;
-            transform.rotation = Quaternion.Euler(euler);
-        }
     }
 
-    private void HandleMovement(float moveX, float moveZ, bool jump, bool shiftLock)
+    private void HandleMovement(float moveX, float moveZ, bool jump, bool shiftLock, bool allowRotation)
     {
         Vector3 forward = cameraTransform != null ? cameraTransform.forward : transform.forward;
         Vector3 right = cameraTransform != null ? cameraTransform.right : transform.right;
@@ -124,36 +125,46 @@ public class CharacterMovement : NetworkBehaviour
 
         grounded = controller.isGrounded;
 
-        CheckSlowSurfaces();
-        CheckSmashHit();
-
-        if (jump && grounded && Time.time - lastJumpTime >= jumpCooldown)
+        if (pauseMenu != null && !pauseMenu.IsPaused)
         {
-            SetVerticalVelocity(Mathf.Sqrt(jumpHeight * -2f * gravity));
-            lastJumpTime = Time.time;
-        }
+            CheckSlowSurfaces();
+            CheckSmashHit();
 
-        if (!grounded)
-            velocity.Value += new Vector3(0, gravity * Time.deltaTime, 0);
-        else if (velocity.Value.y < 0f)
-            velocity.Value = new Vector3(velocity.Value.x, -2f, velocity.Value.z);
-
-        float currentSpeed = onSlowSurface ? slowSpeed : moveSpeed;
-        Vector3 horizontalMove = moveInput * currentSpeed;
-
-        if (grounded && Physics.Raycast(transform.position, Vector3.down, out RaycastHit slopeHit, 1f))
-        {
-            float slopeAngle = Vector3.Angle(slopeHit.normal, Vector3.up);
-            if (slopeAngle > slopeLimit)
+            if (jump && grounded && Time.time - lastJumpTime >= jumpCooldown)
             {
-                Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, slopeHit.normal).normalized;
-                horizontalMove = slideDir * slopeSlideSpeed;
+                SetVerticalVelocity(Mathf.Sqrt(jumpHeight * -2f * gravity));
+                lastJumpTime = Time.time;
             }
+
+            if (!grounded)
+                velocity.Value += new Vector3(0, gravity * Time.deltaTime, 0);
+            else if (velocity.Value.y < 0f)
+                velocity.Value = new Vector3(velocity.Value.x, -2f, velocity.Value.z);
+
+            float currentSpeed = onSlowSurface ? slowSpeed : moveSpeed;
+            Vector3 horizontalMove = moveInput * currentSpeed;
+
+            if (grounded && Physics.Raycast(transform.position, Vector3.down, out RaycastHit slopeHit, 1f))
+            {
+                float slopeAngle = Vector3.Angle(slopeHit.normal, Vector3.up);
+                if (slopeAngle > slopeLimit)
+                {
+                    Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, slopeHit.normal).normalized;
+                    horizontalMove = slideDir * slopeSlideSpeed;
+                }
+            }
+
+            Vector3 finalMove = horizontalMove + externalForce + new Vector3(0, velocity.Value.y, 0);
+            controller.Move(finalMove * Time.deltaTime);
+
+            if (externalForce.magnitude > 0.01f)
+                externalForce = Vector3.Lerp(externalForce, Vector3.zero, externalForceDecay * Time.deltaTime);
+            else
+                externalForce = Vector3.zero;
         }
 
-        Vector3 finalMove = horizontalMove + externalForce + new Vector3(0, velocity.Value.y, 0);
-
-        if (shiftLock && cameraTransform != null)
+        // **Rotatie toepassen altijd als shift lock aanstaat en rotatie toegestaan**
+        if (shiftLock && allowRotation && cameraTransform != null)
         {
             transform.rotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
         }
@@ -162,13 +173,6 @@ public class CharacterMovement : NetworkBehaviour
             float targetAngle = Mathf.Atan2(moveInput.x, moveInput.z) * Mathf.Rad2Deg;
             transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0, targetAngle, 0), 720 * Time.deltaTime);
         }
-
-        controller.Move(finalMove * Time.deltaTime);
-
-        if (externalForce.magnitude > 0.01f)
-            externalForce = Vector3.Lerp(externalForce, Vector3.zero, externalForceDecay * Time.deltaTime);
-        else
-            externalForce = Vector3.zero;
     }
 
     private void CheckSlowSurfaces()

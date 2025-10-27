@@ -179,20 +179,26 @@ public class CameraMovement : NetworkBehaviour
                                     ? RuntimeSettings.ShiftedSensitivity
                                     : RuntimeSettings.NormalSensitivity;
 
-        // Camera rotatie en zoom altijd mogelijk (niet alleen in optionsCanvas)
-        bool rotateCamera = (characterMovement != null && characterMovement.shiftLockEnabled) || Input.GetMouseButton(1);
-        if (rotateCamera)
-        {
-            yaw += Input.GetAxis("Mouse X") * currentSensitivity;
-            pitch -= Input.GetAxis("Mouse Y") * currentSensitivity;
-            pitch = Mathf.Clamp(pitch, -30f, 60f);
-        }
+        // Camera input alleen in gameplay of optionsMenu
+        bool canRotateCamera = (pauseMenu != null && !pauseMenu.IsPaused) ||
+                               (pauseMenu != null && pauseMenu.IsPaused && pauseMenu.optionsMenu != null && pauseMenu.optionsMenu.activeSelf);
 
-        float scroll = Input.GetAxis("Mouse ScrollWheel");
-        if (scroll != 0f)
+        if (canRotateCamera)
         {
-            targetDistance -= scroll * zoomSpeed;
-            targetDistance = Mathf.Clamp(targetDistance, minDistance, maxDistance);
+            bool rotateCamera = (characterMovement != null && characterMovement.shiftLockEnabled) || Input.GetMouseButton(1);
+            if (rotateCamera)
+            {
+                yaw += Input.GetAxis("Mouse X") * currentSensitivity;
+                pitch -= Input.GetAxis("Mouse Y") * currentSensitivity;
+                pitch = Mathf.Clamp(pitch, -30f, 60f);
+            }
+
+            float scroll = Input.GetAxis("Mouse ScrollWheel");
+            if (scroll != 0f)
+            {
+                targetDistance -= scroll * zoomSpeed;
+                targetDistance = Mathf.Clamp(targetDistance, minDistance, maxDistance);
+            }
         }
 
         currentDistance = Mathf.SmoothDamp(currentDistance, targetDistance, ref distanceVelocity, zoomSmoothTime);
