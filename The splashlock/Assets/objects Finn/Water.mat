@@ -43,7 +43,7 @@ Material:
     - _FoamSpeed: 0.1
     - _QueueControl: 0
     - _QueueOffset: 0
-    - _RippleDensity: 224.84
+    - _RippleDensity: 1178.9
     - _RippleSlimness: 10
     - _RippleSpeed: 1
     - _WaveScale: 25
