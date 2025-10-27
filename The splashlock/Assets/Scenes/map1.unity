@@ -596,6 +596,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 936d8caaaf9ef0d41a2c47e66c608502, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
   optionsMenu: {fileID: 0}
   leaveButton: {fileID: 0}
   playerController: {fileID: 484280222030682799, guid: 17dd55d8cbc4e294591748275d41c89f, type: 3}
