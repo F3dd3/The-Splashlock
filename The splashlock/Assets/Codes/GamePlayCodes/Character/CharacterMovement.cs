@@ -76,11 +76,8 @@ public class CharacterMovement : NetworkBehaviour
     {
         if (!IsOwner) return;
 
-        // Shift lock & camera togglen alleen als optionsCanvas actief is
-        if (pauseMenu != null && pauseMenu.IsPaused && pauseMenu.optionsMenu != null && pauseMenu.optionsMenu.activeSelf)
-        {
-            HandleShiftLock();
-        }
+        // Shift lock & camera togglen altijd (niet alleen in optionsCanvas)
+        HandleShiftLock();
 
         // Character bewegen alleen als spel niet gepauzeerd is
         if (pauseMenu != null && !pauseMenu.IsPaused)
