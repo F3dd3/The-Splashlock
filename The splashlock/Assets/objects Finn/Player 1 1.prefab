@@ -1079,6 +1079,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 936d8caaaf9ef0d41a2c47e66c608502, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
   optionsMenu: {fileID: 1922693698863549853}
   leaveButton: {fileID: 1256448222287268986}
   playerController: {fileID: 0}
@@ -3589,6 +3590,7 @@ MonoBehaviour:
   slopeSlideSpeed: 3
   slopeLimit: 30
   externalForceDecay: 5
+  pauseMenu: {fileID: 0}
 --- !u!114 &2238524562474826358
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4602,6 +4604,10 @@ PrefabInstance:
       propertyPath: player
       value: 
       objectReference: {fileID: 3947403958547987570}
+    - target: {fileID: 3509628425637211841, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
+      propertyPath: pauseMenu
+      value: 
+      objectReference: {fileID: 485995015578490380}
     - target: {fileID: 3509628425637211841, guid: e4a52b93170e08841bebde15ae7568a4, type: 3}
       propertyPath: backButton
       value: 

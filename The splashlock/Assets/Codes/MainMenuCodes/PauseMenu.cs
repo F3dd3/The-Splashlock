@@ -1,9 +1,9 @@
 ﻿using UnityEngine;
-using Unity.Netcode;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Unity.Netcode;
+using System.Collections;
 
-public class PauseMenu : MonoBehaviour
+public class PauseMenu : NetworkBehaviour
 {
     [Header("UI")]
     public GameObject optionsMenu;
@@ -12,25 +12,38 @@ public class PauseMenu : MonoBehaviour
     [Header("Player Control")]
     public MonoBehaviour playerController;
 
-    public static bool IsPaused = false;
+    private bool isPaused = false;
+    public bool IsPaused => isPaused; // property voor andere scripts
 
     private void Start()
     {
+        if (!IsOwner)
+        {
+            gameObject.SetActive(false);
+            return;
+        }
+
         if (leaveButton != null)
             leaveButton.onClick.AddListener(OnLeaveClicked);
+
+        if (optionsMenu != null)
+            optionsMenu.SetActive(false); // canvas standaard uit
     }
 
     private void OnDestroy()
     {
+        if (!IsOwner) return;
         if (leaveButton != null)
             leaveButton.onClick.RemoveListener(OnLeaveClicked);
     }
 
-    void Update()
+    private void Update()
     {
+        if (!IsOwner) return;
+
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (IsPaused)
+            if (isPaused)
                 ResumeGame();
             else
                 PauseGame();
@@ -39,35 +52,27 @@ public class PauseMenu : MonoBehaviour
 
     void PauseGame()
     {
-        optionsMenu.SetActive(true);
+        if (optionsMenu != null)
+            optionsMenu.SetActive(true);
 
         if (playerController != null)
             playerController.enabled = false;
 
-        IsPaused = true;
+        isPaused = true;
 
-        // Forceer shift lock uit en verberg ShiftLock UI
-        CharacterMovement cm = playerController as CharacterMovement;
-        if (cm != null)
-        {
-            cm.shiftLockEnabled = false;
-            if (cm.shiftLockImage != null)
-                cm.shiftLockImage.enabled = false;
-        }
-
-        // Cursor zichtbaar in menu
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
 
     void ResumeGame()
     {
-        optionsMenu.SetActive(false);
+        if (optionsMenu != null)
+            optionsMenu.SetActive(false);
 
         if (playerController != null)
             playerController.enabled = true;
 
-        IsPaused = false;
+        isPaused = false;
 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -77,19 +82,14 @@ public class PauseMenu : MonoBehaviour
     {
         ResumeGame();
 
-        // ✅ Toon loading screen
         if (LoadingScreenManager.Instance != null)
-        {
             LoadingScreenManager.Instance.ShowLoadingScreenClientRpc("Lobby");
-        }
 
-        // Laad de lobby scene met delay
         StartCoroutine(LoadLobbyScene());
     }
 
-    private System.Collections.IEnumerator LoadLobbyScene()
+    private IEnumerator LoadLobbyScene()
     {
-        // Kleine delay zodat loading screen goed zichtbaar wordt (optioneel)
         yield return new WaitForSeconds(0.1f);
 
         if (NetworkManager.Singleton != null)
@@ -98,15 +98,12 @@ public class PauseMenu : MonoBehaviour
                 NetworkManager.Singleton.Shutdown();
         }
 
-        // Lobby laden
-        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync("MainLobby");
+        AsyncOperation asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync("MainLobby");
         asyncLoad.allowSceneActivation = true;
 
-        // Wacht tot de scene geladen is
         while (!asyncLoad.isDone)
             yield return null;
 
-        // ✅ Verberg loading screen na delay
         if (LoadingScreenManager.Instance != null)
             LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
     }

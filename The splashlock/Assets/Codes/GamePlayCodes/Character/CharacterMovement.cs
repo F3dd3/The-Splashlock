@@ -52,13 +52,20 @@ public class CharacterMovement : NetworkBehaviour
     private float spawnTime;
     public float VerticalVelocity => velocity.Value.y;
 
+    [Header("Pause Menu")]
+    public PauseMenu pauseMenu; // lokale reference naar PauseMenu
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
-        velocity.Value = new Vector3(0f, -2f, 0f);
+        velocity.Value = new Vector3(0f, -2f, 0);
 
         if (shiftLockImage != null)
             shiftLockImage.enabled = false;
+
+        // Vind automatisch de lokale PauseMenu als niet geset
+        if (pauseMenu == null)
+            pauseMenu = GetComponentInChildren<PauseMenu>();
     }
 
     private void Start()
@@ -72,7 +79,8 @@ public class CharacterMovement : NetworkBehaviour
 
         HandleShiftLock();
 
-        if (!PauseMenu.IsPaused)
+        // Beweging alleen als niet gepauzeerd
+        if (pauseMenu != null && !pauseMenu.IsPaused)
         {
             float moveX = Input.GetAxis("Horizontal");
             float moveZ = Input.GetAxis("Vertical");
@@ -84,12 +92,12 @@ public class CharacterMovement : NetworkBehaviour
 
     private void LateUpdate()
     {
-        // Geen cursor logica meer hier; alles via PauseMenu
+        // Cursor logica en camera wordt via PauseMenu/CameraMovement afgehandeld
     }
 
     private void HandleShiftLock()
     {
-        if (Input.GetKeyDown(KeyCode.LeftShift) && !PauseMenu.IsPaused)
+        if (Input.GetKeyDown(KeyCode.LeftShift) && pauseMenu != null && !pauseMenu.IsPaused)
         {
             shiftLockEnabled = !shiftLockEnabled;
 
@@ -97,7 +105,7 @@ public class CharacterMovement : NetworkBehaviour
             Cursor.visible = !shiftLockEnabled;
 
             if (shiftLockImage != null)
-                shiftLockImage.enabled = shiftLockEnabled && !PauseMenu.IsPaused;
+                shiftLockImage.enabled = shiftLockEnabled && !pauseMenu.IsPaused;
         }
     }
 
