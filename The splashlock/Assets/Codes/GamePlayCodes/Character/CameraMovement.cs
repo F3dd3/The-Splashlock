@@ -39,6 +39,7 @@ public class CameraMovement : NetworkBehaviour
 
     [Header("Pause Menu")]
     public PauseMenu pauseMenu; // lokale PauseMenu reference
+    public Button resumeGameButton; // button die mainCanvas sluit via PauseMenu
 
     private CharacterMovement characterMovement;
 
@@ -58,14 +59,12 @@ public class CameraMovement : NetworkBehaviour
 
         if (!IsOwner)
         {
-            // Alleen eigenaar mag zijn canvas en camera gebruiken
             if (optionsCanvas != null) optionsCanvas.enabled = false;
             if (mainCanvas != null) mainCanvas.enabled = false;
             gameObject.SetActive(false);
             return;
         }
 
-        // Zet canvassen correct uit bij network spawn voor eigenaar
         if (optionsCanvas != null) optionsCanvas.enabled = false;
         if (mainCanvas != null) mainCanvas.enabled = true;
     }
@@ -111,7 +110,20 @@ public class CameraMovement : NetworkBehaviour
                 {
                     optionsCanvas.enabled = false;
                     mainCanvas.enabled = true;
+
+                    // ESC werkt automatisch omdat mainCanvas.enabled nu true is
                 }
+            });
+        }
+
+        // Resume Game Button
+        if (resumeGameButton != null)
+        {
+            resumeGameButton.onClick.AddListener(() =>
+            {
+                if (!IsOwner) return;
+                if (pauseMenu != null)
+                    pauseMenu.ResumeGame();
             });
         }
 
@@ -131,7 +143,6 @@ public class CameraMovement : NetworkBehaviour
         yaw = currentRotation.y;
         pitch = currentRotation.x;
 
-        // automatische reference naar PauseMenu als niet ingesteld
         if (pauseMenu == null)
             pauseMenu = player.GetComponentInChildren<PauseMenu>();
     }
@@ -198,5 +209,22 @@ public class CameraMovement : NetworkBehaviour
         Vector3 offset = rotation * new Vector3(0, 0, -currentDistance) + new Vector3(0, height, 0);
         transform.position = player.position + offset;
         transform.LookAt(player.position + Vector3.up * 1.5f);
+    }
+
+    private void Update()
+    {
+        if (!IsOwner) return;
+
+        // Esc werkt alleen in mainCanvas
+        if (pauseMenu != null && mainCanvas != null && mainCanvas.enabled)
+        {
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                if (pauseMenu.IsPaused)
+                    pauseMenu.ResumeGame();
+                else
+                    pauseMenu.PauseGame();
+            }
+        }
     }
 }

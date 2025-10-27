@@ -41,16 +41,17 @@ public class PauseMenu : NetworkBehaviour
     {
         if (!IsOwner) return;
 
+        // Esc doet niets in optionsMenu
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (isPaused)
+            if (isPaused && optionsMenu != null && !optionsMenu.activeSelf)
                 ResumeGame();
-            else
+            else if (!isPaused)
                 PauseGame();
         }
     }
 
-    void PauseGame()
+    public void PauseGame()
     {
         if (optionsMenu != null)
             optionsMenu.SetActive(true);
@@ -64,7 +65,7 @@ public class PauseMenu : NetworkBehaviour
         Cursor.visible = true;
     }
 
-    void ResumeGame()
+    public void ResumeGame()
     {
         if (optionsMenu != null)
             optionsMenu.SetActive(false);
