@@ -28,20 +28,22 @@ public class CameraMovement : NetworkBehaviour
     private RawImage shiftLockInstance;
 
     [Header("Options Canvas")]
-    public Canvas optionsCanvas;            // Canvas op player
-    public Canvas mainCanvas;               // Andere canvas die verdwijnt bij options
-    public Button openOptionsButton;        // Knop in scene
-    public Button backButton;               // Knop in options canvas
+    public Canvas optionsCanvas;
+    public Canvas mainCanvas;
+    public Button openOptionsButton;
+    public Button backButton;
     public Slider normalSensitivitySlider;
     public Slider shiftedSensitivitySlider;
     public TextMeshProUGUI normalSensText;
     public TextMeshProUGUI shiftedSensText;
 
+    [Header("Pause Menu")]
+    public PauseMenu pauseMenu; // lokale PauseMenu reference
+
     private CharacterMovement characterMovement;
 
     private void Awake()
     {
-        // ❗ Zet default instellingen bij het opstarten van het spel
         if (!RuntimeSettings.SessionStarted)
         {
             RuntimeSettings.NormalSensitivity = 2f;
@@ -50,13 +52,27 @@ public class CameraMovement : NetworkBehaviour
         }
     }
 
-    private void Start()
+    public override void OnNetworkSpawn()
     {
+        base.OnNetworkSpawn();
+
         if (!IsOwner)
         {
+            // Alleen eigenaar mag zijn canvas en camera gebruiken
+            if (optionsCanvas != null) optionsCanvas.enabled = false;
+            if (mainCanvas != null) mainCanvas.enabled = false;
             gameObject.SetActive(false);
             return;
         }
+
+        // Zet canvassen correct uit bij network spawn voor eigenaar
+        if (optionsCanvas != null) optionsCanvas.enabled = false;
+        if (mainCanvas != null) mainCanvas.enabled = true;
+    }
+
+    private void Start()
+    {
+        if (!IsOwner) return;
 
         if (player == null) player = transform.root;
 
@@ -70,15 +86,12 @@ public class CameraMovement : NetworkBehaviour
             shiftLockInstance.enabled = false;
         }
 
-        // Canvas startstatus
-        if (optionsCanvas != null) optionsCanvas.enabled = false;
-        if (mainCanvas != null) mainCanvas.enabled = true;
-
         // Open Options Button
         if (openOptionsButton != null)
         {
             openOptionsButton.onClick.AddListener(() =>
             {
+                if (!IsOwner) return;
                 if (optionsCanvas != null && mainCanvas != null)
                 {
                     optionsCanvas.enabled = true;
@@ -88,11 +101,12 @@ public class CameraMovement : NetworkBehaviour
             });
         }
 
-        // Back Button in Options
+        // Back Button
         if (backButton != null)
         {
             backButton.onClick.AddListener(() =>
             {
+                if (!IsOwner) return;
                 if (optionsCanvas != null && mainCanvas != null)
                 {
                     optionsCanvas.enabled = false;
@@ -110,13 +124,16 @@ public class CameraMovement : NetworkBehaviour
         normalSensitivitySlider.onValueChanged.AddListener(UpdateNormalSensitivity);
         shiftedSensitivitySlider.onValueChanged.AddListener(UpdateShiftedSensitivity);
 
-        // Gebruik instellingen uit RuntimeSettings (sessie) i.p.v. PlayerPrefs
         UpdateSlidersAndText();
 
         currentDistance = targetDistance = distance;
         currentRotation = transform.eulerAngles;
         yaw = currentRotation.y;
         pitch = currentRotation.x;
+
+        // automatische reference naar PauseMenu als niet ingesteld
+        if (pauseMenu == null)
+            pauseMenu = player.GetComponentInChildren<PauseMenu>();
     }
 
     private void UpdateSlidersAndText()
@@ -150,8 +167,8 @@ public class CameraMovement : NetworkBehaviour
     {
         if (!IsOwner || player == null) return;
 
-        if (shiftLockInstance != null && characterMovement != null)
-            shiftLockInstance.enabled = !PauseMenu.IsPaused && characterMovement.shiftLockEnabled;
+        if (shiftLockInstance != null && characterMovement != null && pauseMenu != null)
+            shiftLockInstance.enabled = !pauseMenu.IsPaused && characterMovement.shiftLockEnabled;
 
         float currentSensitivity = (characterMovement != null && characterMovement.shiftLockEnabled)
                                     ? RuntimeSettings.ShiftedSensitivity
@@ -183,6 +200,3 @@ public class CameraMovement : NetworkBehaviour
         transform.LookAt(player.position + Vector3.up * 1.5f);
     }
 }
-
-// Voeg dit toe als aparte class (zelfde als OptionsCameraMovement)
-
