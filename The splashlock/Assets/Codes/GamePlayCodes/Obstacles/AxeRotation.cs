@@ -15,18 +15,19 @@ public class AxeSmash : MonoBehaviour
         col.isTrigger = true;
     }
 
-    void Update()
+    private void Update()
     {
         transform.Rotate(rotationSpeed * Time.deltaTime);
     }
 
     private void ApplyPush(Collider col)
     {
-        CharacterMovement_Local player = col.GetComponent<CharacterMovement_Local>();
+        // Zoek de CharacterMovement component (niet meer "Local")
+        CharacterMovement player = col.GetComponent<CharacterMovement>();
         if (player != null)
         {
             Vector3 pushDir = (col.transform.position - transform.position);
-            pushDir.y = 0f; // alleen horizontaal pushen
+            pushDir.y = 0f; // alleen horizontaal duwen
 
             if (pushDir.magnitude < 0.1f)
                 pushDir = transform.forward;
