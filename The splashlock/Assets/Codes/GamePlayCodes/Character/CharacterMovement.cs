@@ -61,9 +61,8 @@ public class CharacterMovement : NetworkBehaviour
         velocity.Value = new Vector3(0f, -2f, 0);
 
         if (shiftLockImage != null)
-            shiftLockImage.enabled = false;
+            shiftLockImage.enabled = shiftLockEnabled; // toon altijd als actief
 
-        // Vind automatisch de lokale PauseMenu als niet geset
         if (pauseMenu == null)
             pauseMenu = GetComponentInChildren<PauseMenu>();
     }
@@ -77,9 +76,13 @@ public class CharacterMovement : NetworkBehaviour
     {
         if (!IsOwner) return;
 
-        HandleShiftLock();
+        // Shift lock & camera togglen alleen als optionsCanvas actief is
+        if (pauseMenu != null && pauseMenu.IsPaused && pauseMenu.optionsMenu != null && pauseMenu.optionsMenu.activeSelf)
+        {
+            HandleShiftLock();
+        }
 
-        // Beweging alleen als niet gepauzeerd
+        // Character bewegen alleen als spel niet gepauzeerd is
         if (pauseMenu != null && !pauseMenu.IsPaused)
         {
             float moveX = Input.GetAxis("Horizontal");
@@ -90,14 +93,9 @@ public class CharacterMovement : NetworkBehaviour
         }
     }
 
-    private void LateUpdate()
-    {
-        // Cursor logica en camera wordt via PauseMenu/CameraMovement afgehandeld
-    }
-
     private void HandleShiftLock()
     {
-        if (Input.GetKeyDown(KeyCode.LeftShift) && pauseMenu != null && !pauseMenu.IsPaused)
+        if (Input.GetKeyDown(KeyCode.LeftShift))
         {
             shiftLockEnabled = !shiftLockEnabled;
 
@@ -105,7 +103,15 @@ public class CharacterMovement : NetworkBehaviour
             Cursor.visible = !shiftLockEnabled;
 
             if (shiftLockImage != null)
-                shiftLockImage.enabled = shiftLockEnabled && !pauseMenu.IsPaused;
+                shiftLockImage.enabled = shiftLockEnabled;
+        }
+
+        // Character volgt camera alleen bij shift lock
+        if (shiftLockEnabled && cameraTransform != null)
+        {
+            Vector3 euler = transform.rotation.eulerAngles;
+            euler.y = cameraTransform.eulerAngles.y;
+            transform.rotation = Quaternion.Euler(euler);
         }
     }
 
@@ -150,8 +156,10 @@ public class CharacterMovement : NetworkBehaviour
 
         Vector3 finalMove = horizontalMove + externalForce + new Vector3(0, velocity.Value.y, 0);
 
-        if (shiftLock)
+        if (shiftLock && cameraTransform != null)
+        {
             transform.rotation = Quaternion.Euler(0, cameraTransform.eulerAngles.y, 0);
+        }
         else if (moveInput.sqrMagnitude > 0.001f)
         {
             float targetAngle = Mathf.Atan2(moveInput.x, moveInput.z) * Mathf.Rad2Deg;

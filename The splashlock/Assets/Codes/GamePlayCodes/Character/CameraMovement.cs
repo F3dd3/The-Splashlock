@@ -38,8 +38,8 @@ public class CameraMovement : NetworkBehaviour
     public TextMeshProUGUI shiftedSensText;
 
     [Header("Pause Menu")]
-    public PauseMenu pauseMenu; // lokale PauseMenu reference
-    public Button resumeGameButton; // button die mainCanvas sluit via PauseMenu
+    public PauseMenu pauseMenu;
+    public Button resumeGameButton;
 
     private CharacterMovement characterMovement;
 
@@ -85,7 +85,6 @@ public class CameraMovement : NetworkBehaviour
             shiftLockInstance.enabled = false;
         }
 
-        // Open Options Button
         if (openOptionsButton != null)
         {
             openOptionsButton.onClick.AddListener(() =>
@@ -100,7 +99,6 @@ public class CameraMovement : NetworkBehaviour
             });
         }
 
-        // Back Button
         if (backButton != null)
         {
             backButton.onClick.AddListener(() =>
@@ -110,13 +108,10 @@ public class CameraMovement : NetworkBehaviour
                 {
                     optionsCanvas.enabled = false;
                     mainCanvas.enabled = true;
-
-                    // ESC werkt automatisch omdat mainCanvas.enabled nu true is
                 }
             });
         }
 
-        // Resume Game Button
         if (resumeGameButton != null)
         {
             resumeGameButton.onClick.AddListener(() =>
@@ -127,7 +122,6 @@ public class CameraMovement : NetworkBehaviour
             });
         }
 
-        // Slider setup
         normalSensitivitySlider.minValue = 0.25f;
         normalSensitivitySlider.maxValue = 25f;
         shiftedSensitivitySlider.minValue = 0.25f;
@@ -185,19 +179,23 @@ public class CameraMovement : NetworkBehaviour
                                     ? RuntimeSettings.ShiftedSensitivity
                                     : RuntimeSettings.NormalSensitivity;
 
-        bool rotateCamera = (characterMovement != null && characterMovement.shiftLockEnabled) || Input.GetMouseButton(1);
-        if (rotateCamera)
+        // **Camera rotatie alleen mogelijk als optionsCanvas actief is**
+        if (optionsCanvas != null && optionsCanvas.enabled)
         {
-            yaw += Input.GetAxis("Mouse X") * currentSensitivity;
-            pitch -= Input.GetAxis("Mouse Y") * currentSensitivity;
-            pitch = Mathf.Clamp(pitch, -30f, 60f);
-        }
+            bool rotateCamera = (characterMovement != null && characterMovement.shiftLockEnabled) || Input.GetMouseButton(1);
+            if (rotateCamera)
+            {
+                yaw += Input.GetAxis("Mouse X") * currentSensitivity;
+                pitch -= Input.GetAxis("Mouse Y") * currentSensitivity;
+                pitch = Mathf.Clamp(pitch, -30f, 60f);
+            }
 
-        float scroll = Input.GetAxis("Mouse ScrollWheel");
-        if (scroll != 0f)
-        {
-            targetDistance -= scroll * zoomSpeed;
-            targetDistance = Mathf.Clamp(targetDistance, minDistance, maxDistance);
+            float scroll = Input.GetAxis("Mouse ScrollWheel");
+            if (scroll != 0f)
+            {
+                targetDistance -= scroll * zoomSpeed;
+                targetDistance = Mathf.Clamp(targetDistance, minDistance, maxDistance);
+            }
         }
 
         currentDistance = Mathf.SmoothDamp(currentDistance, targetDistance, ref distanceVelocity, zoomSmoothTime);
@@ -209,22 +207,5 @@ public class CameraMovement : NetworkBehaviour
         Vector3 offset = rotation * new Vector3(0, 0, -currentDistance) + new Vector3(0, height, 0);
         transform.position = player.position + offset;
         transform.LookAt(player.position + Vector3.up * 1.5f);
-    }
-
-    private void Update()
-    {
-        if (!IsOwner) return;
-
-        // Esc werkt alleen in mainCanvas
-        if (pauseMenu != null && mainCanvas != null && mainCanvas.enabled)
-        {
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                if (pauseMenu.IsPaused)
-                    pauseMenu.ResumeGame();
-                else
-                    pauseMenu.PauseGame();
-            }
-        }
     }
 }

@@ -82,8 +82,6 @@ public class PlayerAnimation : NetworkBehaviour
 
             animator.SetBool("isRunning", isRunning.Value);
             animator.SetBool("isJumping", isJumping.Value);
-            animator.SetBool("isFalling", isFalling.Value);
-            animator.SetFloat("moveSpeed", moveSpeed.Value);
         }
     }
 }

@@ -3847,7 +3847,7 @@ MonoBehaviour:
   slopeSlideSpeed: 3
   slopeLimit: 30
   externalForceDecay: 5
-  pauseMenu: {fileID: 0}
+  pauseMenu: {fileID: 485995015578490380}
 --- !u!114 &2238524562474826358
 MonoBehaviour:
   m_ObjectHideFlags: 0
