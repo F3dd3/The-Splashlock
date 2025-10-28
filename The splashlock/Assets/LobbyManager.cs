@@ -109,7 +109,9 @@ public class LobbyManager : NetworkBehaviour
             );
 
             NetworkManager.Singleton.StartHost();
-            PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
+
+            // Server spawnt zelf player, client hoeft dit niet
+            // PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
 
             infoText.text = $"Join code: {lastJoinCode}";
 
@@ -182,7 +184,8 @@ public class LobbyManager : NetworkBehaviour
 
             await WaitUntilClientConnectedAsync();
 
-            PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
+            // ❌ Verwijderd: client spawn player
+            // PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
 
             infoText.text = $"Connected to: {joinCode}";
             leaveButton.gameObject.SetActive(false);
