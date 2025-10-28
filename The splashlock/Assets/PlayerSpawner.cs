@@ -223,4 +223,32 @@ public class PlayerSpawner : MonoBehaviour
             }
         }
     }
+
+    // ----------------- Nieuwe code voor lobby terugkeer -----------------
+    private void OnEnable()
+    {
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
+            NetworkManager.Singleton.SceneManager.OnLoadEventCompleted += OnLobbySceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
+            NetworkManager.Singleton.SceneManager.OnLoadEventCompleted -= OnLobbySceneLoaded;
+    }
+
+    private void OnLobbySceneLoaded(string sceneName, UnityEngine.SceneManagement.LoadSceneMode loadMode,
+                                    List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
+    {
+        if (!NetworkManager.Singleton.IsServer) return;
+
+        if (sceneName == "MainLobby")
+        {
+            Debug.Log("[PlayerSpawner] Lobbyscene geladen, spelers worden teruggezet.");
+            ResetForLobby();
+
+            if (LoadingScreenManager.Instance != null)
+                LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
+        }
+    }
 }
