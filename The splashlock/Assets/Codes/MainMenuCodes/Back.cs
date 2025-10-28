@@ -41,11 +41,9 @@ public class Back : NetworkBehaviour
     {
         if (!IsClient) return;
 
-        // Toggle lokale ready status
         isLocalReady = !isLocalReady;
         UpdateButtonText();
 
-        // ServerRpc om ready status bij te werken
         if (isLocalReady)
             SetReadyServerRpc(NetworkManager.Singleton.LocalClientId);
         else
@@ -58,7 +56,6 @@ public class Back : NetworkBehaviour
             readyButton.GetComponentInChildren<TextMeshProUGUI>().text = isLocalReady ? "Cancel Ready" : "Ready";
     }
 
-    // ----------------- Server RPCs -----------------
     [ServerRpc(RequireOwnership = false)]
     private void SetReadyServerRpc(ulong clientId)
     {
@@ -67,10 +64,9 @@ public class Back : NetworkBehaviour
 
         UpdateReadyStatusClientRpc(readyClients.ToArray());
 
-        // Check of alle connected clients ready zijn
         if (readyClients.Count == NetworkManager.Singleton.ConnectedClients.Count)
         {
-            StartGame(); // Server-only logica
+            StartGame();
         }
     }
 
@@ -83,7 +79,6 @@ public class Back : NetworkBehaviour
         UpdateReadyStatusClientRpc(readyClients.ToArray());
     }
 
-    // ----------------- Client RPC -----------------
     [ClientRpc]
     private void UpdateReadyStatusClientRpc(ulong[] readyIds)
     {
@@ -96,7 +91,6 @@ public class Back : NetworkBehaviour
         }
     }
 
-    // ----------------- Helpers -----------------
     public void RemoveClientReadyStatus(ulong clientId)
     {
         if (readyClients.Contains(clientId))
@@ -112,7 +106,6 @@ public class Back : NetworkBehaviour
         UpdateButtonText();
     }
 
-    // ----------------- Start Game & Load Map -----------------
     private void StartGame()
     {
         if (selectableMaps.Count == 0)
@@ -121,11 +114,9 @@ public class Back : NetworkBehaviour
             return;
         }
 
-        // Kies een map (random keuze hier, kan later met consecutivePlays logica)
         string selectedMap = selectableMaps[Random.Range(0, selectableMaps.Count)];
         Debug.Log("Geselecteerde map: " + selectedMap);
 
-        // Laad de scene via Netcode SceneManager, zodat host en clients synchroon gaan
         if (NetworkManager.Singleton != null)
         {
             NetworkManager.Singleton.SceneManager.LoadScene(
@@ -133,5 +124,14 @@ public class Back : NetworkBehaviour
                 UnityEngine.SceneManagement.LoadSceneMode.Single
             );
         }
+    }
+
+    // ✅ Full reset bij exit
+    public void FullReset()
+    {
+        readyClients.Clear();
+        isLocalReady = false;
+        UpdateButtonText();
+        consecutivePlays.Clear();
     }
 }

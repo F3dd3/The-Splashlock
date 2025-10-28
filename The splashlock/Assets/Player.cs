@@ -15,7 +15,6 @@ public class Player : NetworkBehaviour
     private Vector3 velocity;
     private CharacterController controller;
 
-    // ---------------- READY STATUS ----------------
     public NetworkVariable<bool> isReady = new NetworkVariable<bool>(
         false,
         NetworkVariableReadPermission.Everyone,
@@ -73,7 +72,6 @@ public class Player : NetworkBehaviour
             readyLabel.gameObject.SetActive(ready);
     }
 
-    // ---------------- SERVER RPC VOOR READY TOGGLE ----------------
     [ServerRpc(RequireOwnership = false)]
     public void RequestToggleReadyServerRpc(ulong clientId)
     {
@@ -84,10 +82,7 @@ public class Player : NetworkBehaviour
             Player player = client.PlayerObject.GetComponent<Player>();
             if (player != null)
             {
-                // Server togglet ready status
                 player.isReady.Value = !player.isReady.Value;
-
-                // Forceer UI update naar requesting client
                 player.ForceReadyClientRpc(player.isReady.Value, new ClientRpcParams
                 {
                     Send = new ClientRpcSendParams
@@ -102,22 +97,33 @@ public class Player : NetworkBehaviour
     [ClientRpc]
     public void ForceReadyClientRpc(bool ready, ClientRpcParams clientRpcParams = default)
     {
-        isReady.Value = ready; // triggert OnValueChanged
+        isReady.Value = ready;
     }
 
-    // ---------------- OPTIONAL: COLOR ----------------
     [ServerRpc(RequireOwnership = false)]
     public void SetColorServerRpc(Vector3 colorVec)
     {
-        Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
-        playerRenderer.material.color = color;
+        ApplyColor(new Color(colorVec.x, colorVec.y, colorVec.z));
         ForceColorClientRpc(colorVec);
     }
 
     [ClientRpc]
     public void ForceColorClientRpc(Vector3 colorVec, ClientRpcParams clientRpcParams = default)
     {
-        Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
-        playerRenderer.material.color = color;
+        ApplyColor(new Color(colorVec.x, colorVec.y, colorVec.z));
+    }
+
+    private void ApplyColor(Color color)
+    {
+        if (playerRenderer != null)
+            playerRenderer.material.color = color;
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+
+        if (!IsServer && playerRenderer != null)
+            ApplyColor(Color.gray);
     }
 }

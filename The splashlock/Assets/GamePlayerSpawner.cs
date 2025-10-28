@@ -60,7 +60,6 @@ public class GamePlayerSpawner : MonoBehaviour
             SpawnPlayerForClient(clientId, clientSpawnIndex[clientId]);
         }
 
-        // ✅ Verberg loading screen zodra iedereen gespawned is
         if (LoadingScreenManager.Instance != null)
         {
             LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
@@ -114,5 +113,40 @@ public class GamePlayerSpawner : MonoBehaviour
 
         assignedColors[clientId] = color;
         return color;
+    }
+
+    // ✅ Full reset bij exit
+    public void FullReset()
+    {
+        if (NetworkManager.Singleton == null || NetworkManager.Singleton.ConnectedClients == null)
+        {
+            clientSpawnIndex.Clear();
+            assignedColors.Clear();
+            return;
+        }
+
+        foreach (var kvp in clientSpawnIndex)
+        {
+            ulong clientId = kvp.Key;
+
+            if (NetworkManager.Singleton.ConnectedClients.ContainsKey(clientId))
+            {
+                var client = NetworkManager.Singleton.ConnectedClients[clientId];
+                if (client != null && client.PlayerObject != null)
+                {
+                    GameObject playerObj = client.PlayerObject.gameObject;
+                    if (playerObj != null)
+                    {
+                        NetworkObject netObj = playerObj.GetComponent<NetworkObject>();
+                        if (netObj != null && netObj.IsSpawned) netObj.Despawn(true);
+
+                        Destroy(playerObj);
+                    }
+                }
+            }
+        }
+
+        clientSpawnIndex.Clear();
+        assignedColors.Clear();
     }
 }

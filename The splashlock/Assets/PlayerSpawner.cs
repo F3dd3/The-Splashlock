@@ -52,7 +52,7 @@ public class PlayerSpawner : MonoBehaviour
 
         SpawnPlayer(clientId);
 
-        // Sync kleuren naar nieuwe client
+        // Sync kleuren en ready-status naar de nieuwe client
         foreach (var kvp in playerRefs)
         {
             ulong otherId = kvp.Key;
@@ -66,13 +66,8 @@ public class PlayerSpawner : MonoBehaviour
                     Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { clientId } }
                 });
             }
-        }
 
-        // Sync ready status van bestaande spelers naar nieuwe client
-        foreach (var kvp in playerRefs)
-        {
-            Player existingPlayer = kvp.Value;
-            existingPlayer.ForceReadyClientRpc(existingPlayer.isReady.Value, new ClientRpcParams
+            otherPlayer.ForceReadyClientRpc(otherPlayer.isReady.Value, new ClientRpcParams
             {
                 Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { clientId } }
             });
@@ -103,11 +98,11 @@ public class PlayerSpawner : MonoBehaviour
             return;
         }
 
-        // Forceer despawn van bestaande player voor deze client
+        if (!NetworkManager.Singleton.IsServer) return; // ✅ spawn alleen op server
+
         if (forceSpawn && playerRefs.ContainsKey(clientId))
             RemovePlayer(clientId);
 
-        // Als de player al bestaat en we forceren niet, stop
         if (!forceSpawn && playerRefs.ContainsKey(clientId)) return;
 
         if (playerPrefab == null)
@@ -135,19 +130,19 @@ public class PlayerSpawner : MonoBehaviour
             }
         }
 
-        // Zet spawnIndex VÓÓR spawn, voorkomt 0,0,0 teleport
         playerSpawnIndices[clientId] = spawnIndex;
 
         Vector3 spawnPos = spawnPoints[Mathf.Clamp(spawnIndex, 0, spawnPoints.Length - 1)].position;
         GameObject playerObj = Instantiate(playerPrefab, spawnPos, Quaternion.Euler(0, 180, 0));
+
         var netObj = playerObj.GetComponent<NetworkObject>();
         if (netObj != null)
         {
             if (netObj.IsSpawned)
                 netObj.Despawn(true);
 
-            DontDestroyOnLoad(playerObj); // Player blijft persistent over scenes
-            netObj.SpawnAsPlayerObject(clientId, true);
+            DontDestroyOnLoad(playerObj);
+            netObj.SpawnAsPlayerObject(clientId, true); // ✅ server spawn
         }
 
         Color color = rejoinColors.ContainsKey(clientId) ? rejoinColors[clientId] : GetNextUniqueColor();
@@ -254,9 +249,7 @@ public class PlayerSpawner : MonoBehaviour
         if (playerRefs.Count >= totalPlayers && totalPlayers > 0)
         {
             if (LoadingScreenManager.Instance != null)
-            {
                 LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
-            }
         }
     }
 
@@ -285,5 +278,11 @@ public class PlayerSpawner : MonoBehaviour
             if (LoadingScreenManager.Instance != null)
                 LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
         }
+    }
+
+    // ✅ Volledige reset bij exit
+    public void FullReset()
+    {
+        ResetAll();
     }
 }
