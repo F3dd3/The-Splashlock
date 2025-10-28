@@ -199,13 +199,12 @@ public class RagdollControllerSmooth : MonoBehaviour
         if (animator != null)
             animator.enabled = !active;
 
-        // <-- FIX: respect 'active' state (was hardcoded true before)
         if (rootRigidbody != null)
             rootRigidbody.isKinematic = !active;
 
-        // Disable root collider while ragdoll to avoid double collisions
-        if (rootCollider != null)
-            rootCollider.enabled = !active;
+        // ⚠️ Laat root collider aan tijdens ragdoll
+        // if (rootCollider != null)
+        //     rootCollider.enabled = !active;
 
         foreach (Rigidbody rb in ragdollRigidbodies)
         {
@@ -213,16 +212,14 @@ public class RagdollControllerSmooth : MonoBehaviour
             rb.isKinematic = !active;
             rb.detectCollisions = active;
 
-            // set velocities to zero in a compatible way
-#if UNITY_2020_1_OR_NEWER
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
-#else
-            rb.velocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-#endif
         }
+
+        // ✅ Zorg dat physics direct up-to-date zijn
+        Physics.SyncTransforms();
     }
+
 
     private Transform FindCentralBone()
     {
