@@ -379,6 +379,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2c43273f32806243bb3dd783c07c0e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  spawnPoint: {fileID: 0}
 --- !u!4 &69231533 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1442575413923378640, guid: 0fff7e16fa89b0745ab26eb089e4e28f, type: 3}
@@ -4159,12 +4160,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 50e5101f22f7a004fafda1e61d5ee983, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startPlatform: {fileID: 1912531889}
+  ShowTopMostFoldoutHeaderGroup: 1
+  startPlatform: {fileID: 0}
   checkpoints:
-  - {fileID: 69231530}
-  - {fileID: 1926362356}
-  activeTag: Start
-  raycastDistance: 2
+  - {fileID: 69231532}
+  - {fileID: 1926362357}
 --- !u!4 &868847696
 Transform:
   m_ObjectHideFlags: 0
@@ -7555,11 +7555,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 25024d185cd3a144ba681eae3b0a6eee, type: 3}
---- !u!1 &1912531889 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 3753399887940416402, guid: 25024d185cd3a144ba681eae3b0a6eee, type: 3}
-  m_PrefabInstance: {fileID: 1912531888}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1926362355
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7645,6 +7640,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2c43273f32806243bb3dd783c07c0e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  spawnPoint: {fileID: 0}
 --- !u!65 &1926362358
 BoxCollider:
   m_ObjectHideFlags: 0

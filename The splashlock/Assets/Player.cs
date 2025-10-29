@@ -62,21 +62,28 @@ public class Player : NetworkBehaviour
 
     private void OnReadyChanged(bool oldValue, bool newValue)
     {
-        if (readyLabel != null)
-            readyLabel.gameObject.SetActive(newValue);
+        SetReadyText(newValue);
     }
 
     public void SetReadyText(bool ready)
     {
         if (readyLabel != null)
+        {
             readyLabel.gameObject.SetActive(ready);
+        }
+        else
+        {
+            Debug.LogWarning($"readyLabel niet ingesteld op {name} ({OwnerClientId})");
+        }
     }
 
     [ServerRpc(RequireOwnership = false)]
     public void SetColorServerRpc(Vector3 colorVec)
     {
         Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
-        playerRenderer.material.color = color;
+        if (playerRenderer != null)
+            playerRenderer.material.color = color;
+
         ForceColorClientRpc(colorVec);
     }
 
@@ -84,6 +91,7 @@ public class Player : NetworkBehaviour
     public void ForceColorClientRpc(Vector3 colorVec)
     {
         Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
-        playerRenderer.material.color = color;
+        if (playerRenderer != null)
+            playerRenderer.material.color = color;
     }
 }

@@ -27,14 +27,18 @@ public class Back : NetworkBehaviour
 
     private void Start()
     {
-        readyButton.onClick.AddListener(OnReadyClicked);
-        UpdateButtonText();
-        readyButton.gameObject.SetActive(true);
+        if (readyButton != null)
+        {
+            readyButton.onClick.AddListener(OnReadyClicked);
+            UpdateButtonText();
+            readyButton.gameObject.SetActive(true);
+        }
     }
 
     private void OnDestroy()
     {
-        readyButton.onClick.RemoveListener(OnReadyClicked);
+        if (readyButton != null)
+            readyButton.onClick.RemoveListener(OnReadyClicked);
     }
 
     private void OnReadyClicked()
@@ -86,8 +90,11 @@ public class Back : NetworkBehaviour
 
         foreach (var player in FindObjectsOfType<Player>())
         {
-            bool isReady = readyClients.Contains(player.OwnerClientId);
-            player.SetReadyText(isReady);
+            if (player != null)
+            {
+                bool isReady = readyClients.Contains(player.OwnerClientId);
+                player.SetReadyText(isReady);
+            }
         }
     }
 
