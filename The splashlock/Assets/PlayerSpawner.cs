@@ -50,24 +50,27 @@ public class PlayerSpawner : MonoBehaviour
     {
         if (!NetworkManager.Singleton.IsServer) return;
 
+        // Host heeft zichzelf al gespawned bij StartHost(), dus niet opnieuw
+        if (NetworkManager.Singleton.IsHost && clientId == NetworkManager.Singleton.LocalClientId)
+            return;
+
         SpawnPlayer(clientId);
 
         // Sync kleuren en ready-status naar de nieuwe client
         foreach (var kvp in playerRefs)
         {
-            ulong otherId = kvp.Key;
-            Player otherPlayer = kvp.Value;
+            Player player = kvp.Value;
 
-            if (playerColors.TryGetValue(otherId, out Color color))
+            if (playerColors.TryGetValue(kvp.Key, out Color color))
             {
                 Vector3 colorVec = new Vector3(color.r, color.g, color.b);
-                otherPlayer.ForceColorClientRpc(colorVec, new ClientRpcParams
+                player.ForceColorClientRpc(colorVec, new ClientRpcParams
                 {
                     Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { clientId } }
                 });
             }
 
-            otherPlayer.ForceReadyClientRpc(otherPlayer.isReady.Value, new ClientRpcParams
+            player.ForceReadyClientRpc(player.isReady.Value, new ClientRpcParams
             {
                 Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { clientId } }
             });
@@ -98,12 +101,24 @@ public class PlayerSpawner : MonoBehaviour
             return;
         }
 
-        if (!NetworkManager.Singleton.IsServer) return; // ✅ spawn alleen op server
+        if (!NetworkManager.Singleton.IsServer) return; // ✅ alleen server spawnt
+
+        // Safety: check of speler al bestaat
+        if (!forceSpawn && playerRefs.ContainsKey(clientId))
+        {
+            var existingPlayer = playerRefs[clientId];
+            var netObj = existingPlayer.GetComponent<NetworkObject>();
+            if (netObj != null && netObj.IsSpawned)
+            {
+                Debug.LogWarning($"Extra spawn gedetecteerd voor client {clientId}, despawning extra object.");
+                netObj.Despawn(true);
+                Destroy(existingPlayer.gameObject);
+            }
+            return;
+        }
 
         if (forceSpawn && playerRefs.ContainsKey(clientId))
             RemovePlayer(clientId);
-
-        if (!forceSpawn && playerRefs.ContainsKey(clientId)) return;
 
         if (playerPrefab == null)
         {
@@ -111,11 +126,10 @@ public class PlayerSpawner : MonoBehaviour
             return;
         }
 
+        // Spawn index logica
         int spawnIndex = 0;
         if (NetworkManager.Singleton.IsHost && clientId == NetworkManager.Singleton.LocalClientId)
-        {
             spawnIndex = 0;
-        }
         else
         {
             if (freeSpawnPoints.Count > 0)
@@ -129,22 +143,19 @@ public class PlayerSpawner : MonoBehaviour
                 nextSpawnIndex++;
             }
         }
-
         playerSpawnIndices[clientId] = spawnIndex;
 
         Vector3 spawnPos = spawnPoints[Mathf.Clamp(spawnIndex, 0, spawnPoints.Length - 1)].position;
         GameObject playerObj = Instantiate(playerPrefab, spawnPos, Quaternion.Euler(0, 180, 0));
 
-        var netObj = playerObj.GetComponent<NetworkObject>();
-        if (netObj != null)
+        var netObject = playerObj.GetComponent<NetworkObject>();
+        if (netObject != null)
         {
-            if (netObj.IsSpawned)
-                netObj.Despawn(true);
-
             DontDestroyOnLoad(playerObj);
-            netObj.SpawnAsPlayerObject(clientId, true); // ✅ server spawn
+            netObject.SpawnAsPlayerObject(clientId, true);
         }
 
+        // Kleur & refs
         Color color = rejoinColors.ContainsKey(clientId) ? rejoinColors[clientId] : GetNextUniqueColor();
         if (rejoinColors.ContainsKey(clientId)) rejoinColors.Remove(clientId);
         playerColors[clientId] = color;
@@ -280,7 +291,6 @@ public class PlayerSpawner : MonoBehaviour
         }
     }
 
-    // ✅ Volledige reset bij exit
     public void FullReset()
     {
         ResetAll();
