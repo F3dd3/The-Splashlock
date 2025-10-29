@@ -73,34 +73,6 @@ public class Player : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void RequestToggleReadyServerRpc(ulong clientId)
-    {
-        if (!IsServer) return;
-
-        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client))
-        {
-            Player player = client.PlayerObject.GetComponent<Player>();
-            if (player != null)
-            {
-                player.isReady.Value = !player.isReady.Value;
-                player.ForceReadyClientRpc(player.isReady.Value, new ClientRpcParams
-                {
-                    Send = new ClientRpcSendParams
-                    {
-                        TargetClientIds = new ulong[] { clientId }
-                    }
-                });
-            }
-        }
-    }
-
-    [ClientRpc]
-    public void ForceReadyClientRpc(bool ready, ClientRpcParams clientRpcParams = default)
-    {
-        isReady.Value = ready;
-    }
-
-    [ServerRpc(RequireOwnership = false)]
     public void SetColorServerRpc(Vector3 colorVec)
     {
         Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
@@ -109,7 +81,7 @@ public class Player : NetworkBehaviour
     }
 
     [ClientRpc]
-    public void ForceColorClientRpc(Vector3 colorVec, ClientRpcParams clientRpcParams = default)
+    public void ForceColorClientRpc(Vector3 colorVec)
     {
         Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
         playerRenderer.material.color = color;
