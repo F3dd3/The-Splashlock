@@ -3,14 +3,12 @@ using Unity.Netcode;
 
 public class Die : NetworkBehaviour
 {
-    [Header("Respawn Settings")]
-    public float respawnHeight = 2f;           // Hoeveel boven spawnpoint spawnen
-    public float checkDistance = 1f;           // Hoe ver de raycast onder de speler checkt
-    public LayerMask waterLayer;               // Layer voor water (zorg dat je Water objecten hierin hebt)
-    public float spawnProtectionTime = 0.5f;   // Tijd na spawn dat speler geen schade kan krijgen
+    public float respawnHeight = 2f;
+    public float checkDistance = 1f;
+    public LayerMask waterLayer;
+    public float spawnProtectionTime = 0.5f;
 
     private CharacterController controller;
-    private Vector3 spawnPosition;
     private float spawnTimestamp;
 
     private void Awake()
@@ -20,10 +18,6 @@ public class Die : NetworkBehaviour
 
     private void Start()
     {
-        // Als er geen spawn is ingesteld, fallback naar huidige positie
-        if (spawnPosition == Vector3.zero)
-            spawnPosition = transform.position;
-
         spawnTimestamp = Time.time;
     }
 
@@ -36,45 +30,122 @@ public class Die : NetworkBehaviour
 
     private void CheckWaterBelow()
     {
-        // Spawn protectie: negeer checks net na spawn
-        if (Time.time - spawnTimestamp < spawnProtectionTime)
-            return;
+        if (Time.time - spawnTimestamp < spawnProtectionTime) return;
 
         Vector3 origin = transform.position + Vector3.up * 0.1f;
         if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, checkDistance, waterLayer))
         {
-            if (hit.collider.CompareTag("Water"))
-                Respawn();
+            // Roep server aan om server-side te respawnen
+            RespawnServerRpc();
         }
 
-        // Debug zichtbaar maken in Scene
         Debug.DrawRay(origin, Vector3.down * checkDistance, Color.blue);
     }
 
-    public void SetSpawnProtection(Vector3 spawnPos)
+    // Client vraagt de server om te respawnen voor deze player.
+    // RequireOwnership = false zodat de server verzoeken van de owner kan accepteren.
+    [ServerRpc(RequireOwnership = false)]
+    private void RespawnServerRpc(ServerRpcParams rpcParams = default)
     {
-        spawnPosition = spawnPos + Vector3.up * respawnHeight;
+        // Vind de player NetworkObject van de sender
+        ulong senderClientId = rpcParams.Receive.SenderClientId;
+
+        if (!NetworkManager.Singleton.ConnectedClients.ContainsKey(senderClientId))
+        {
+            Debug.LogWarning($"RespawnServerRpc: geen connected client voor id {senderClientId}");
+            return;
+        }
+
+        var client = NetworkManager.Singleton.ConnectedClients[senderClientId];
+        if (client == null || client.PlayerObject == null)
+        {
+            Debug.LogWarning($"RespawnServerRpc: geen PlayerObject voor client {senderClientId}");
+            return;
+        }
+
+        GameObject playerGO = client.PlayerObject.gameObject;
+
+        // doe de server-side respawn op het player-go
+        ServerRespawn(playerGO);
+    }
+
+    // Server-side teleport functie die een player GameObject ontvangt
+    private void ServerRespawn(GameObject playerGO)
+    {
+        if (playerGO == null)
+        {
+            Debug.LogWarning("ServerRespawn: playerGO is null");
+            return;
+        }
+
+        CheckpointManager manager = FindObjectOfType<CheckpointManager>();
+        Vector3 spawnPos = manager != null ? manager.GetSpawnPosition(playerGO) : playerGO.transform.position;
+
+        spawnPos += Vector3.up * respawnHeight;
+
+        CharacterController playerController = playerGO.GetComponent<CharacterController>();
+
+        if (playerController != null)
+        {
+            playerController.enabled = false;
+            playerGO.transform.position = spawnPos;
+            playerController.enabled = true;
+        }
+        else
+        {
+            playerGO.transform.position = spawnPos;
+        }
+
+        CharacterMovement cm = playerGO.GetComponent<CharacterMovement>();
+        if (cm != null)
+            cm.SetVerticalVelocity(0f);
+
+        // Belangrijk: update spawnTimestamp alleen op de owner instance (client)
+        // We sturen een ClientRpc naar de owner om spawnTimestamp bij te werken
+        ulong ownerId = playerGO.GetComponent<NetworkObject>().OwnerClientId;
+        ResetSpawnTimestampClientRpc(new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { ownerId } }
+        });
+
+        Debug.Log($"[Server] Speler '{playerGO.name}' respawnt bij {spawnPos}");
+    }
+
+    // Instructie naar de owner-client om spawnTimestamp te resetten (zodat spawn-protection blijft werken client-side)
+    [ClientRpc]
+    private void ResetSpawnTimestampClientRpc(ClientRpcParams clientRpcParams = default)
+    {
+        if (!IsOwner)
+        {
+            // We willen dit alleen lokaal op de owner uitvoeren; maar ClientRpc is gericht aan owner, dus fine.
+        }
         spawnTimestamp = Time.time;
     }
 
-    private void Respawn()
+    // Voor lokale (non-server) Respawn fallback - niet gebruikt voor multiplayer flow maar behouden voor safety
+    public void Respawn()
     {
+        CheckpointManager manager = FindObjectOfType<CheckpointManager>();
+        Vector3 spawnPos = manager != null ? manager.GetSpawnPosition(gameObject) : transform.position;
+
+        spawnPos += Vector3.up * respawnHeight;
+
         if (controller != null)
         {
             controller.enabled = false;
-            transform.position = spawnPosition;
+            transform.position = spawnPos;
             controller.enabled = true;
         }
         else
         {
-            transform.position = spawnPosition;
+            transform.position = spawnPos;
         }
 
-        // Reset vertical velocity als je CharacterMovement hebt
         CharacterMovement cm = GetComponent<CharacterMovement>();
         if (cm != null)
             cm.SetVerticalVelocity(0f);
 
-        spawnTimestamp = Time.time; // heractiveer spawn protection
+        spawnTimestamp = Time.time;
+        Debug.Log($"Speler '{gameObject.name}' respawnt bij '{spawnPos}' (lokale Respawn)");
     }
 }
