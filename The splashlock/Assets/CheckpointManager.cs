@@ -1,100 +1,70 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Unity.Netcode;
 
-public class CheckpointManager : MonoBehaviour
+public class CheckpointManager : NetworkBehaviour
 {
-    public static CheckpointManager Instance;
-
     [Header("Checkpoints Setup")]
-    public GameObject startPlatform;
-    public List<GameObject> checkpoints = new List<GameObject>();
+    [Tooltip("Het eerste platform waar de speler begint.")]
+    public Checkpoint startPlatform;
 
-    [Header("Checkpoint Settings")]
-    public string activeTag = "Start";
-    public float raycastDistance = 2f; // Hoe ver naar beneden checken
+    [Tooltip("Alle checkpoints in volgorde")]
+    public List<Checkpoint> checkpoints = new List<Checkpoint>();
 
-    private GameObject currentCheckpoint;
+    // Houdt per speler hun spawnpunt bij (gebruik OwnerClientId voor Netcode)
+    private Dictionary<ulong, Transform> playerSpawnPoints = new Dictionary<ulong, Transform>();
 
-    private void Awake()
+    // Wordt aangeroepen (server-side) om een checkpoint te activeren voor een speler
+    public void ActivateCheckpoint(Checkpoint checkpoint, GameObject player)
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
-    }
-
-    private void Start()
-    {
-        if (startPlatform != null)
+        if (checkpoint == null || player == null) return;
+        if (checkpoint.spawnPoint == null)
         {
-            currentCheckpoint = startPlatform;
-            SetCheckpointActive(currentCheckpoint);
+            Debug.LogWarning($"Checkpoint '{checkpoint.name}' heeft geen spawnPoint!");
+            return;
         }
 
-        // Alle andere checkpoints untagged
-        foreach (GameObject cp in checkpoints)
+        NetworkObject netObj = player.GetComponent<NetworkObject>();
+        if (netObj == null)
         {
-            if (cp != null && cp != startPlatform)
-                SetCheckpointInactive(cp);
-        }
-    }
-
-    private void Update()
-    {
-        GameObject player = GameObject.FindGameObjectWithTag("Player");
-        if (player == null) return;
-
-        CheckCheckpoint(player);
-    }
-
-    private void CheckCheckpoint(GameObject player)
-    {
-        Vector3 origin = player.transform.position + Vector3.up * 0.1f;
-        Ray ray = new Ray(origin, Vector3.down);
-        if (Physics.Raycast(ray, out RaycastHit hit, raycastDistance))
-        {
-            if (checkpoints.Contains(hit.collider.gameObject) || hit.collider.gameObject == startPlatform)
-            {
-                if (hit.collider.gameObject != currentCheckpoint)
-                {
-                    ActivateCheckpoint(hit.collider.gameObject, player);
-                }
-            }
+            Debug.LogWarning($"ActivateCheckpoint: player '{player.name}' heeft geen NetworkObject component!");
+            return;
         }
 
-        Debug.DrawRay(origin, Vector3.down * raycastDistance, Color.green);
-    }
-
-    public void ActivateCheckpoint(GameObject newCheckpoint, GameObject player)
-    {
-        if (newCheckpoint == null || player == null) return;
-
-        string oldName = currentCheckpoint != null ? currentCheckpoint.name : "none";
-
-        if (currentCheckpoint != null)
-            SetCheckpointInactive(currentCheckpoint);
-
-        currentCheckpoint = newCheckpoint;
-        SetCheckpointActive(currentCheckpoint);
-
-        // Spawnpositie van speler updaten
-        Die playerDie = player.GetComponent<Die>();
-        if (playerDie != null)
+        if (!IsServer)
         {
-            Transform spawnPoint = currentCheckpoint.transform.Find("SpawnPoint");
-            if (spawnPoint == null) spawnPoint = currentCheckpoint.transform;
-
-            playerDie.SetSpawnProtection(spawnPoint.position);
+            Debug.LogWarning($"ActivateCheckpoint werd op een client aangeroepen voor player '{player.name}'. Dit moet op de server gebeuren.");
+            return;
         }
 
-        Debug.Log($"Checkpoint veranderd van '{oldName}' naar '{currentCheckpoint.name}'");
+        playerSpawnPoints[netObj.OwnerClientId] = checkpoint.spawnPoint;
+        Debug.Log($"[Server] Speler '{player.name}' ({netObj.OwnerClientId}) activeerde checkpoint '{checkpoint.name}' op spawn {checkpoint.spawnPoint.position}");
     }
 
-    private void SetCheckpointActive(GameObject cp)
+    // Wordt gebruikt door Die.cs om de spawnpositie te vinden
+    public Vector3 GetSpawnPosition(GameObject player)
     {
-        cp.tag = activeTag;
-    }
+        if (player == null)
+        {
+            Debug.LogWarning("GetSpawnPosition: player is null");
+            return Vector3.zero;
+        }
 
-    private void SetCheckpointInactive(GameObject cp)
-    {
-        cp.tag = "Untagged";
+        NetworkObject netObj = player.GetComponent<NetworkObject>();
+        if (netObj != null && playerSpawnPoints.TryGetValue(netObj.OwnerClientId, out Transform spawn))
+        {
+            Debug.Log($"GetSpawnPosition: gevonden spawn voor player {player.name} -> {spawn.position}");
+            return spawn.position;
+        }
+
+        // fallback: startPlatform
+        if (startPlatform != null && startPlatform.spawnPoint != null)
+        {
+            Debug.Log($"GetSpawnPosition: fallback naar startPlatform {startPlatform.spawnPoint.position} voor player {player.name}");
+            return startPlatform.spawnPoint.position;
+        }
+
+        Debug.LogWarning($"GetSpawnPosition: geen spawn gevonden voor player {player.name}, fallback naar huidige positie");
+        return player.transform.position;
     }
 }
