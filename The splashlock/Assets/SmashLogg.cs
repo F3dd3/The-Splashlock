@@ -29,7 +29,6 @@ public class SmashTrigger : MonoBehaviour
 
         // Pas kracht toe
         player.AddExternalForce(smashDir * smashForce);
-
         Debug.Log($"💥 SmashTrigger: {player.name} geraakt! Force = {smashForce}");
 
         // Optioneel: uitschakelen na eerste smash

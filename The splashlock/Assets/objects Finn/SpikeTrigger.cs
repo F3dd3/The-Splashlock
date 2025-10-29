@@ -8,28 +8,31 @@ public class SpikeTrigger : MonoBehaviour
     private RagdollControllerSmooth ragdollController;
     private CharacterMovement movement;
 
-    void Start()
+    void Awake()
     {
+        // Vind de componenten op dezelfde GameObject
         ragdollController = GetComponent<RagdollControllerSmooth>();
         movement = GetComponent<CharacterMovement>();
 
         if (ragdollController == null)
-            Debug.LogError("RagdollControllerSmooth niet gevonden op dit object!");
+            Debug.LogError("RagdollControllerSmooth niet gevonden!");
         if (movement == null)
-            Debug.LogError("CharacterMovement niet gevonden op dit object!");
+            Debug.LogError("CharacterMovement niet gevonden!");
     }
 
-    private void OnCollisionEnter(Collision collision)
+    // Dit werkt voor trigger colliders
+    private void OnTriggerEnter(Collider other)
     {
-        if (collision.gameObject.CompareTag("Spike"))
+        if (other.CompareTag("Spike"))
         {
             TriggerRagdoll();
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    // Dit werkt voor normale colliders (Collision)
+    private void OnCollisionEnter(Collision collision)
     {
-        if (other.CompareTag("Spike"))
+        if (collision.gameObject.CompareTag("Spike"))
         {
             TriggerRagdoll();
         }
@@ -39,13 +42,14 @@ public class SpikeTrigger : MonoBehaviour
     {
         if (ragdollController != null && !ragdollController.isRagdoll)
         {
-            // 1️⃣ Disable player movement input
-            if (movement != null) movement.enabled = false;
+            // 1️⃣ Stop speler input tijdelijk
+            if (movement != null)
+                movement.enabled = false;
 
-            // 2️⃣ Activate ragdoll
+            // 2️⃣ Activeer ragdoll
             ragdollController.ActivateRagdoll();
 
-            // 3️⃣ Re-enable movement after ragdoll duration + blend
+            // 3️⃣ Movement automatisch weer inschakelen na ragdoll + blend
             StartCoroutine(ReenableMovementAfterRagdoll());
         }
     }
@@ -53,7 +57,6 @@ public class SpikeTrigger : MonoBehaviour
     private IEnumerator ReenableMovementAfterRagdoll()
     {
         float waitTime = ragdollController.ragdollDuration + ragdollController.blendDuration;
-
         yield return new WaitForSeconds(waitTime);
 
         if (movement != null)
