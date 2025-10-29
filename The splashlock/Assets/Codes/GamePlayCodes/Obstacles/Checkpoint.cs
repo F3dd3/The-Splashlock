@@ -3,27 +3,29 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public class Checkpoint : MonoBehaviour
 {
-    private Collider col;
+    [Header("Spawn Point")]
+    public Transform spawnPoint;
 
     private void Awake()
     {
-        col = GetComponent<Collider>();
+        Collider col = GetComponent<Collider>();
         if (col != null)
             col.isTrigger = true;
     }
 
-    private void Update()
+    /// <summary>
+    /// Wordt aangeroepen door speler via PlayerCheckpointDetector
+    /// </summary>
+    public void OnPlayerTouch(GameObject player)
     {
-        if (CheckpointManager.Instance == null) return;
-
-        // Vind speler in de scene (of via tag)
-        GameObject player = GameObject.FindGameObjectWithTag("Player");
-        if (player == null) return;
-
-        // Check of speler in trigger zit
-        if (col.bounds.Contains(player.transform.position))
+        if (spawnPoint == null)
         {
-            CheckpointManager.Instance.ActivateCheckpoint(gameObject, player);
+            Debug.LogWarning($"Checkpoint '{gameObject.name}' heeft geen spawnPoint ingesteld!");
+            return;
         }
+
+        CheckpointManager manager = FindObjectOfType<CheckpointManager>();
+        if (manager != null)
+            manager.ActivateCheckpoint(this, player);
     }
 }
