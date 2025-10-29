@@ -108,6 +108,7 @@ public class LobbyManager : NetworkBehaviour
 
             NetworkManager.Singleton.StartHost();
 
+            // Host spawnt zichzelf
             PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
 
             infoText.text = $"Join code: {lastJoinCode}";
@@ -179,7 +180,7 @@ public class LobbyManager : NetworkBehaviour
 
             await WaitUntilClientConnectedAsync();
 
-            // ✅ Laat server de spawn doen (geen dubbele spawn)
+            // ✅ Client spawn niet zelf, server doet dat
             infoText.text = $"Connected to: {joinCode}";
             leaveButton.gameObject.SetActive(false);
             hasJoinedOnce = true;
@@ -192,12 +193,10 @@ public class LobbyManager : NetworkBehaviour
 
     private async Task WaitUntilClientConnectedAsync()
     {
-        // ✅ wacht totdat server speler heeft gespawned
         while (NetworkManager.Singleton == null ||
                !NetworkManager.Singleton.IsClient ||
                NetworkManager.Singleton.LocalClient == null ||
-               NetworkManager.Singleton.LocalClient.PlayerObject == null ||
-               NetworkManager.Singleton.LocalClient.PlayerObject.transform.position == Vector3.zero)
+               NetworkManager.Singleton.LocalClient.PlayerObject == null)
         {
             await Task.Yield();
         }
