@@ -52,7 +52,7 @@ public class PlayerSpawner : MonoBehaviour
 
         SpawnPlayer(clientId);
 
-        // Sync kleuren naar nieuwe client
+        // Sync kleuren en ready-status naar de nieuwe client
         foreach (var kvp in playerRefs)
         {
             ulong otherId = kvp.Key;
@@ -66,13 +66,8 @@ public class PlayerSpawner : MonoBehaviour
                     Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { clientId } }
                 });
             }
-        }
 
-        // ✅ Sync ready status van bestaande spelers naar nieuwe client
-        foreach (var kvp in playerRefs)
-        {
-            Player existingPlayer = kvp.Value;
-            existingPlayer.ForceReadyClientRpc(existingPlayer.isReady.Value, new ClientRpcParams
+            otherPlayer.ForceReadyClientRpc(otherPlayer.isReady.Value, new ClientRpcParams
             {
                 Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { clientId } }
             });
@@ -103,15 +98,18 @@ public class PlayerSpawner : MonoBehaviour
             return;
         }
 
+        if (!NetworkManager.Singleton.IsServer) return; // ✅ spawn alleen op server
+
+        if (forceSpawn && playerRefs.ContainsKey(clientId))
+            RemovePlayer(clientId);
+
         if (!forceSpawn && playerRefs.ContainsKey(clientId)) return;
+
         if (playerPrefab == null)
         {
             Debug.LogError("PlayerPrefab niet ingesteld!");
             return;
         }
-
-        if (forceSpawn && playerRefs.ContainsKey(clientId))
-            RemovePlayer(clientId);
 
         int spawnIndex = 0;
         if (NetworkManager.Singleton.IsHost && clientId == NetworkManager.Singleton.LocalClientId)
@@ -132,12 +130,20 @@ public class PlayerSpawner : MonoBehaviour
             }
         }
 
+        playerSpawnIndices[clientId] = spawnIndex;
+
         Vector3 spawnPos = spawnPoints[Mathf.Clamp(spawnIndex, 0, spawnPoints.Length - 1)].position;
         GameObject playerObj = Instantiate(playerPrefab, spawnPos, Quaternion.Euler(0, 180, 0));
-        var netObj = playerObj.GetComponent<NetworkObject>();
-        if (netObj != null) netObj.SpawnAsPlayerObject(clientId, true);
 
-        playerSpawnIndices[clientId] = spawnIndex;
+        var netObj = playerObj.GetComponent<NetworkObject>();
+        if (netObj != null)
+        {
+            if (netObj.IsSpawned)
+                netObj.Despawn(true);
+
+            DontDestroyOnLoad(playerObj);
+            netObj.SpawnAsPlayerObject(clientId, true); // ✅ server spawn
+        }
 
         Color color = rejoinColors.ContainsKey(clientId) ? rejoinColors[clientId] : GetNextUniqueColor();
         if (rejoinColors.ContainsKey(clientId)) rejoinColors.Remove(clientId);
@@ -167,6 +173,7 @@ public class PlayerSpawner : MonoBehaviour
         {
             var netObj = playerRefs[clientId].GetComponent<NetworkObject>();
             if (netObj != null && netObj.IsSpawned) netObj.Despawn(true);
+            Destroy(playerRefs[clientId].gameObject);
             playerRefs.Remove(clientId);
         }
 
@@ -178,12 +185,19 @@ public class PlayerSpawner : MonoBehaviour
 
     public void ResetAll()
     {
-        nextSpawnIndex = 1;
-        playerColors.Clear();
+        foreach (var player in playerRefs.Values.ToList())
+        {
+            var netObj = player.GetComponent<NetworkObject>();
+            if (netObj != null && netObj.IsSpawned) netObj.Despawn(true);
+            Destroy(player.gameObject);
+        }
+
         playerRefs.Clear();
+        playerColors.Clear();
         playerSpawnIndices.Clear();
         freeSpawnPoints.Clear();
         rejoinColors.Clear();
+        nextSpawnIndex = 1;
     }
 
     public void ResetForLobby()
@@ -207,7 +221,24 @@ public class PlayerSpawner : MonoBehaviour
             }
         }
 
-        CheckAllPlayersSpawned();
+        ResetForLobbyClientRpc();
+    }
+
+    [ClientRpc]
+    private void ResetForLobbyClientRpc()
+    {
+        foreach (var kvp in playerRefs)
+        {
+            Player player = kvp.Value;
+            if (!player.IsOwner)
+            {
+                int spawnIndex = playerSpawnIndices.ContainsKey(kvp.Key) ? playerSpawnIndices[kvp.Key] : 0;
+                spawnIndex = Mathf.Clamp(spawnIndex, 0, spawnPoints.Length - 1);
+
+                player.transform.position = spawnPoints[spawnIndex].position;
+                player.transform.rotation = Quaternion.Euler(0, 180, 0);
+            }
+        }
     }
 
     private void CheckAllPlayersSpawned()
@@ -218,13 +249,10 @@ public class PlayerSpawner : MonoBehaviour
         if (playerRefs.Count >= totalPlayers && totalPlayers > 0)
         {
             if (LoadingScreenManager.Instance != null)
-            {
                 LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
-            }
         }
     }
 
-    // ----------------- Nieuwe code voor lobby terugkeer -----------------
     private void OnEnable()
     {
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
@@ -250,5 +278,11 @@ public class PlayerSpawner : MonoBehaviour
             if (LoadingScreenManager.Instance != null)
                 LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
         }
+    }
+
+    // ✅ Volledige reset bij exit
+    public void FullReset()
+    {
+        ResetAll();
     }
 }
