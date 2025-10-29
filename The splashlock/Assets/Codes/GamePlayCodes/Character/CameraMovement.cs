@@ -149,23 +149,23 @@ public class CameraMovement : NetworkBehaviour
             shiftedSensitivitySlider.value = RuntimeSettings.ShiftedSensitivity;
 
         if (normalSensText != null)
-            normalSensText.text = $"Normal Sens: {RuntimeSettings.NormalSensitivity:F2}";
+            normalSensText.text = $" {RuntimeSettings.NormalSensitivity:F2}";
         if (shiftedSensText != null)
-            shiftedSensText.text = $"Shifted Sens: {RuntimeSettings.ShiftedSensitivity:F2}";
+            shiftedSensText.text = $" {RuntimeSettings.ShiftedSensitivity:F2}";
     }
 
     private void UpdateNormalSensitivity(float value)
     {
         RuntimeSettings.NormalSensitivity = value;
         if (normalSensText != null)
-            normalSensText.text = $"Normal Sens: {value:F2}";
+            normalSensText.text = $" {value:F2}";
     }
 
     private void UpdateShiftedSensitivity(float value)
     {
         RuntimeSettings.ShiftedSensitivity = value;
         if (shiftedSensText != null)
-            shiftedSensText.text = $"Shifted Sens: {value:F2}";
+            shiftedSensText.text = $" {value:F2}";
     }
 
     private void LateUpdate()
