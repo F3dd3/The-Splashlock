@@ -17,21 +17,15 @@ public class GameExitManager : MonoBehaviour
 
     private void ResetAllStaticInstances()
     {
-        // PlayerSpawner
+        // PlayerSpawner volledig resetten
         if (PlayerSpawner.Instance != null)
-        {
             PlayerSpawner.Instance.ResetAll();
-            PlayerSpawner.Instance = null;
-        }
 
-        // Back
+        // Back volledig resetten
         if (Back.Instance != null)
-        {
             Back.Instance.FullReset();
-            Back.Instance = null;
-        }
 
-        // GamePlayerSpawner
+        // GamePlayerSpawner resetten
         GamePlayerSpawner spawner = FindObjectOfType<GamePlayerSpawner>();
         if (spawner != null)
             spawner.FullReset();
@@ -39,7 +33,7 @@ public class GameExitManager : MonoBehaviour
 
     private void ResetAllNetworkObjects()
     {
-        // Stop NetworkManager
+        // Stop en despawn NetworkManager objecten
         if (NetworkManager.Singleton != null)
         {
             foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
@@ -53,11 +47,11 @@ public class GameExitManager : MonoBehaviour
                 }
             }
 
+            // Alleen shutdown, niet destroyen
             NetworkManager.Singleton.Shutdown();
-            Destroy(NetworkManager.Singleton.gameObject);
         }
 
-        // Alle andere NetworkObjects in scene
+        // Alle andere NetworkObjects in de scene despawnen en destroyen
         NetworkObject[] netObjs = FindObjectsOfType<NetworkObject>();
         foreach (var obj in netObjs)
         {

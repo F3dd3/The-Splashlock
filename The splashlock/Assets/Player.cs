@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
-using Unity.Netcode;
 using TMPro;
+using Unity.Netcode;
 
 [RequireComponent(typeof(CharacterController))]
 public class Player : NetworkBehaviour
@@ -15,7 +15,6 @@ public class Player : NetworkBehaviour
     private Vector3 velocity;
     private CharacterController controller;
 
-    // ---------------- READY STATUS ----------------
     public NetworkVariable<bool> isReady = new NetworkVariable<bool>(
         false,
         NetworkVariableReadPermission.Everyone,
@@ -73,7 +72,6 @@ public class Player : NetworkBehaviour
             readyLabel.gameObject.SetActive(ready);
     }
 
-    // ---------------- SERVER RPC VOOR READY TOGGLE ----------------
     [ServerRpc(RequireOwnership = false)]
     public void RequestToggleReadyServerRpc(ulong clientId)
     {
@@ -84,10 +82,7 @@ public class Player : NetworkBehaviour
             Player player = client.PlayerObject.GetComponent<Player>();
             if (player != null)
             {
-                // Server togglet ready status
                 player.isReady.Value = !player.isReady.Value;
-
-                // Forceer UI update naar requesting client
                 player.ForceReadyClientRpc(player.isReady.Value, new ClientRpcParams
                 {
                     Send = new ClientRpcSendParams
@@ -102,10 +97,9 @@ public class Player : NetworkBehaviour
     [ClientRpc]
     public void ForceReadyClientRpc(bool ready, ClientRpcParams clientRpcParams = default)
     {
-        isReady.Value = ready; // triggert OnValueChanged
+        isReady.Value = ready;
     }
 
-    // ---------------- OPTIONAL: COLOR ----------------
     [ServerRpc(RequireOwnership = false)]
     public void SetColorServerRpc(Vector3 colorVec)
     {

@@ -53,7 +53,9 @@ public class LobbyManager : NetworkBehaviour
         leaveButton.onClick.AddListener(() =>
         {
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost)
+            {
                 _ = HostLeaveFlowAsync();
+            }
         });
 
         if (NetworkManager.Singleton != null)
@@ -107,11 +109,10 @@ public class LobbyManager : NetworkBehaviour
             );
 
             NetworkManager.Singleton.StartHost();
-
-            // Host spawnt zichzelf
             PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
 
             infoText.text = $"Join code: {lastJoinCode}";
+
             leaveButton.gameObject.SetActive(false);
             hasJoinedOnce = true;
         }
@@ -135,6 +136,7 @@ public class LobbyManager : NetworkBehaviour
         }
 
         await WaitForServicesReadyAsync();
+
         await JoinRelayAsync(joinCode);
     }
 
@@ -180,7 +182,8 @@ public class LobbyManager : NetworkBehaviour
 
             await WaitUntilClientConnectedAsync();
 
-            // ✅ Client spawn niet zelf, server doet dat
+            PlayerSpawner.Instance?.SpawnPlayer(NetworkManager.Singleton.LocalClientId, true);
+
             infoText.text = $"Connected to: {joinCode}";
             leaveButton.gameObject.SetActive(false);
             hasJoinedOnce = true;
@@ -233,19 +236,49 @@ public class LobbyManager : NetworkBehaviour
 
     private async Task HostLeaveFlowAsync()
     {
-        if (!NetworkManager.Singleton.IsHost) return;
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
+        {
+            if (client.ClientId != NetworkManager.Singleton.LocalClientId)
+                NetworkManager.Singleton.DisconnectClient(client.ClientId);
+        }
 
-        PlayerSpawner.Instance?.ResetAll();
         Back.Instance?.ResetReadyStatus();
+        PlayerSpawner.Instance?.ResetAll();
+
+        leaveButton.gameObject.SetActive(false);
+        infoText.text = $"Join code: {lastJoinCode}";
 
         NetworkManager.Singleton.Shutdown();
 
-        await Task.Delay(300);
+        while (NetworkManager.Singleton.IsListening)
+            await Task.Yield();
+
+        await WaitForServicesReadyAsync();
         AutoHostGame();
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
-        PlayerSpawner.Instance?.RemovePlayer(clientId);
+        if (!NetworkManager.Singleton.IsHost && !autoHostPending)
+        {
+            autoHostPending = true;
+            _ = ClientAutohostFlowAsync();
+        }
+    }
+
+    private async Task ClientAutohostFlowAsync()
+    {
+        PlayerSpawner.Instance?.ResetAll();
+        Back.Instance?.ResetReadyStatus();
+
+        infoText.text = "Host left, starting own server...";
+
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+            NetworkManager.Singleton.Shutdown();
+
+        await WaitForServicesReadyAsync();
+        AutoHostGame();
+
+        autoHostPending = false;
     }
 }
