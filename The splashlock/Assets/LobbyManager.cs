@@ -29,10 +29,7 @@ public class LobbyManager : NetworkBehaviour
         { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan };
 
     // Server-side tracking
-    private Dictionary<ulong, int> clientSpawnIndices = new Dictionary<ulong, int>();
-    private Dictionary<ulong, Color> clientColors = new Dictionary<ulong, Color>();
-    private int nextSpawnIndex = 1; // host = 0
-    private int nextColorIndex = 1;
+    private List<GameObject> allPlayerClones = new List<GameObject>();
 
     private bool servicesInitialized = false;
     private string lastJoinCode = "";
@@ -127,6 +124,10 @@ public class LobbyManager : NetworkBehaviour
             infoText.text = $"Join code: {lastJoinCode}";
             leaveButton.gameObject.SetActive(false);
             hasJoinedOnce = true;
+
+            // ✅ Spawn alle player clones direct bij autohost
+            if (NetworkManager.Singleton.IsServer)
+                SpawnAllPlayerClones();
         }
         catch (Exception e)
         {
@@ -255,8 +256,10 @@ public class LobbyManager : NetworkBehaviour
             _ = ClientAutohostFlowAsync();
         }
 
-        clientSpawnIndices.Remove(clientId);
-        clientColors.Remove(clientId);
+        // Maak de clone van de disconnected client weer onzichtbaar
+        GameObject clone = allPlayerClones.FirstOrDefault(c => c.GetComponent<NetworkObject>().OwnerClientId == clientId);
+        if (clone != null)
+            clone.SetActive(false);
     }
 
     private async Task ClientAutohostFlowAsync()
@@ -276,65 +279,47 @@ public class LobbyManager : NetworkBehaviour
     // ---------------- Server-side player spawning ----------------
     private void OnClientConnected(ulong clientId)
     {
-        if (NetworkManager.Singleton.IsServer)
+        if (!NetworkManager.Singleton.IsServer) return;
+
+        // Vind eerste onzichtbare clone
+        GameObject cloneToUse = allPlayerClones.FirstOrDefault(c => !c.activeSelf);
+        if (cloneToUse != null)
         {
-            SpawnPlayerServer(clientId);
-        }
-    }
+            cloneToUse.SetActive(true);
+            NetworkObject netObj = cloneToUse.GetComponent<NetworkObject>();
+            netObj.ChangeOwnership(clientId);
 
-    private void SpawnPlayerServer(ulong clientId)
-    {
-        if (playerPrefab == null || spawnPoints == null || spawnPoints.Length == 0)
-        {
-            Debug.LogError("PlayerPrefab of SpawnPoints niet ingesteld!");
-            return;
-        }
-
-        int spawnIndex;
-        Color color;
-
-        if (!clientSpawnIndices.ContainsKey(clientId))
-        {
-            spawnIndex = (clientId == NetworkManager.Singleton.LocalClientId && NetworkManager.Singleton.IsHost) ? 0 : Mathf.Min(nextSpawnIndex, spawnPoints.Length - 1);
-            color = (clientId == NetworkManager.Singleton.LocalClientId && NetworkManager.Singleton.IsHost) ? allColors[0] : allColors[nextColorIndex % allColors.Count];
-
-            clientSpawnIndices[clientId] = spawnIndex;
-            clientColors[clientId] = color;
-
-            if (clientId != NetworkManager.Singleton.LocalClientId || !NetworkManager.Singleton.IsHost)
-            {
-                nextSpawnIndex++;
-                nextColorIndex++;
-            }
+            Player playerScript = cloneToUse.GetComponent<Player>();
+            if (playerScript.nameLabel != null)
+                playerScript.nameLabel.text = "You";
         }
         else
         {
-            spawnIndex = clientSpawnIndices[clientId];
-            color = clientColors[clientId];
+            Debug.LogWarning("Geen beschikbare player clones over!");
         }
+    }
 
-        // Correct positie vóór spawn instellen
-        Vector3 spawnPos = spawnPoints[spawnIndex].position;
-        Quaternion spawnRot = Quaternion.Euler(0, 180, 0);
+    private void SpawnAllPlayerClones()
+    {
+        for (int i = 0; i < spawnPoints.Length; i++)
+        {
+            GameObject playerObj = Instantiate(playerPrefab, spawnPoints[i].position, Quaternion.Euler(0, 180, 0));
+            NetworkObject netObj = playerObj.GetComponent<NetworkObject>();
+            netObj.Spawn();
 
-        GameObject playerObj = Instantiate(playerPrefab, spawnPos, spawnRot);
-        NetworkObject netObj = playerObj.GetComponent<NetworkObject>();
-        netObj.SpawnAsPlayerObject(clientId, true);
+            Player playerScript = playerObj.GetComponent<Player>();
+            Color color = allColors[i % allColors.Count];
+            playerScript.SetColorServerRpc(new Vector3(color.r, color.g, color.b));
 
-        // Zet kleur via NetworkVariable
-        Player playerScript = playerObj.GetComponent<Player>();
-        Vector3 colorVec = new Vector3(color.r, color.g, color.b);
-        playerScript.SetColorServerRpc(colorVec);
+            bool isVisible = (i == 0); // Alleen host zichtbaar
+            playerObj.SetActive(isVisible);
 
-        if (clientId == NetworkManager.Singleton.LocalClientId && playerScript.nameLabel != null)
-            playerScript.nameLabel.text = "You";
+            allPlayerClones.Add(playerObj);
+        }
     }
 
     private void ResetServerData()
     {
-        clientSpawnIndices.Clear();
-        clientColors.Clear();
-        nextSpawnIndex = 1;
-        nextColorIndex = 1;
+        allPlayerClones.Clear();
     }
 }

@@ -526,6 +526,8 @@ MonoBehaviour:
   nameLabel: {fileID: 3861805057078645105}
   readyLabel: {fileID: 293684413231652612}
   gravity: -20
+  playerColor:
+    m_InternalValue: {x: 1, y: 1, z: 1}
   isReady:
     m_InternalValue: 0
 --- !u!114 &7107244613085946979
@@ -552,7 +554,7 @@ MonoBehaviour:
   RotationMaxInterpolationTime: 0.1
   ScaleLerpSmoothing: 1
   ScaleMaxInterpolationTime: 0.1
-  AuthorityMode: 1
+  AuthorityMode: 0
   TickSyncChildren: 0
   UseUnreliableDeltas: 0
   SyncPositionX: 1

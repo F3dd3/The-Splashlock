@@ -15,9 +15,8 @@ public class Player : NetworkBehaviour
     private Vector3 velocity;
     private CharacterController controller;
 
-    // NetworkVariable voor kleur, wordt automatisch gesynct naar nieuwe clients
     public NetworkVariable<Vector3> playerColor = new NetworkVariable<Vector3>(
-        new Vector3(1f, 1f, 1f), // default wit
+        new Vector3(1f, 1f, 1f),
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server
     );
@@ -53,7 +52,6 @@ public class Player : NetworkBehaviour
         isReady.OnValueChanged += OnReadyChanged;
         playerColor.OnValueChanged += OnColorChanged;
 
-        // Zorg dat de renderer meteen juiste kleur heeft bij start
         OnColorChanged(Vector3.zero, playerColor.Value);
     }
 
@@ -89,7 +87,6 @@ public class Player : NetworkBehaviour
             playerRenderer.material.color = new Color(newValue.x, newValue.y, newValue.z);
     }
 
-    // Server zet de kleur van deze player
     [ServerRpc(RequireOwnership = false)]
     public void SetColorServerRpc(Vector3 colorVec)
     {
