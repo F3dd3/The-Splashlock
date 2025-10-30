@@ -15,6 +15,13 @@ public class Player : NetworkBehaviour
     private Vector3 velocity;
     private CharacterController controller;
 
+    // NetworkVariable voor kleur, wordt automatisch gesynct naar nieuwe clients
+    public NetworkVariable<Vector3> playerColor = new NetworkVariable<Vector3>(
+        new Vector3(1f, 1f, 1f), // default wit
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
     public NetworkVariable<bool> isReady = new NetworkVariable<bool>(
         false,
         NetworkVariableReadPermission.Everyone,
@@ -44,6 +51,10 @@ public class Player : NetworkBehaviour
             readyLabel.gameObject.SetActive(isReady.Value);
 
         isReady.OnValueChanged += OnReadyChanged;
+        playerColor.OnValueChanged += OnColorChanged;
+
+        // Zorg dat de renderer meteen juiste kleur heeft bij start
+        OnColorChanged(Vector3.zero, playerColor.Value);
     }
 
     private void Update()
@@ -62,36 +73,26 @@ public class Player : NetworkBehaviour
 
     private void OnReadyChanged(bool oldValue, bool newValue)
     {
-        SetReadyText(newValue);
+        if (readyLabel != null)
+            readyLabel.gameObject.SetActive(newValue);
     }
 
     public void SetReadyText(bool ready)
     {
         if (readyLabel != null)
-        {
             readyLabel.gameObject.SetActive(ready);
-        }
-        else
-        {
-            Debug.LogWarning($"readyLabel niet ingesteld op {name} ({OwnerClientId})");
-        }
     }
 
+    private void OnColorChanged(Vector3 oldValue, Vector3 newValue)
+    {
+        if (playerRenderer != null)
+            playerRenderer.material.color = new Color(newValue.x, newValue.y, newValue.z);
+    }
+
+    // Server zet de kleur van deze player
     [ServerRpc(RequireOwnership = false)]
     public void SetColorServerRpc(Vector3 colorVec)
     {
-        Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
-        if (playerRenderer != null)
-            playerRenderer.material.color = color;
-
-        ForceColorClientRpc(colorVec);
-    }
-
-    [ClientRpc]
-    public void ForceColorClientRpc(Vector3 colorVec)
-    {
-        Color color = new Color(colorVec.x, colorVec.y, colorVec.z);
-        if (playerRenderer != null)
-            playerRenderer.material.color = color;
+        playerColor.Value = colorVec;
     }
 }

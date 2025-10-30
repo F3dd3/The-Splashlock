@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+using Unity.Netcode;
 
 public class OptionsManager : MonoBehaviour
 {
@@ -123,21 +124,27 @@ public class OptionsManager : MonoBehaviour
     private void UpdateOptionsPlayerColor()
     {
         Player lobbyPlayer = null;
-        ulong clientId = Unity.Netcode.NetworkManager.Singleton.LocalClientId;
+        ulong clientId = NetworkManager.Singleton.LocalClientId;
 
-        if (PlayerSpawner.Instance != null && PlayerSpawner.Instance.playerRefs.TryGetValue(clientId, out Player lp))
+        // Vind de lokale player zonder PlayerSpawner
+        foreach (var player in FindObjectsOfType<Player>())
         {
-            lobbyPlayer = lp;
+            if (player.IsOwner && player.OwnerClientId == clientId)
+            {
+                lobbyPlayer = player;
+                break;
+            }
         }
 
-        if (lobbyPlayer != null)
+        if (lobbyPlayer != null && spawnedOptionsPlayer != null)
         {
             Renderer optionsRenderer = spawnedOptionsPlayer.GetComponentInChildren<Renderer>();
             if (optionsRenderer != null)
             {
-                if (optionsRenderer.material.color != lobbyPlayer.playerRenderer.material.color)
+                Color targetColor = lobbyPlayer.playerRenderer.material.color;
+                if (optionsRenderer.material.color != targetColor)
                 {
-                    optionsRenderer.material.color = lobbyPlayer.playerRenderer.material.color;
+                    optionsRenderer.material.color = targetColor;
                 }
             }
         }

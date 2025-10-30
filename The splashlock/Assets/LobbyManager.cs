@@ -21,7 +21,7 @@ public class LobbyManager : NetworkBehaviour
     public TextMeshProUGUI infoText;
 
     [Header("Player Prefab & Spawn Points")]
-    public GameObject playerPrefab; // sleep prefab hier in inspector
+    public GameObject playerPrefab;
     public Transform[] spawnPoints;
 
     [Header("Player Colors")]
@@ -31,9 +31,8 @@ public class LobbyManager : NetworkBehaviour
     // Server-side tracking
     private Dictionary<ulong, int> clientSpawnIndices = new Dictionary<ulong, int>();
     private Dictionary<ulong, Color> clientColors = new Dictionary<ulong, Color>();
-    private Dictionary<ulong, GameObject> spawnedPlayers = new Dictionary<ulong, GameObject>();
     private int nextSpawnIndex = 1; // host = 0
-    private int nextColorIndex = 1; // host = 0
+    private int nextColorIndex = 1;
 
     private bool servicesInitialized = false;
     private string lastJoinCode = "";
@@ -41,7 +40,10 @@ public class LobbyManager : NetworkBehaviour
     private bool autoHostPending = false;
     private bool isShowingInvalidCode = false;
 
-    private void Awake() => InitializeUnityServicesSafe();
+    private void Awake()
+    {
+        InitializeUnityServicesSafe();
+    }
 
     private async void InitializeUnityServicesSafe()
     {
@@ -69,7 +71,10 @@ public class LobbyManager : NetworkBehaviour
         });
 
         if (NetworkManager.Singleton != null)
+        {
             NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
+            NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        }
 
         WaitUntilReadyAndAutoHost();
     }
@@ -88,7 +93,12 @@ public class LobbyManager : NetworkBehaviour
 
         while (!AuthenticationService.Instance.IsSignedIn || string.IsNullOrEmpty(AuthenticationService.Instance.PlayerId))
         {
-            try { await AuthenticationService.Instance.SignInAnonymouslyAsync(); } catch { }
+            try
+            {
+                if (!AuthenticationService.Instance.IsSignedIn)
+                    await AuthenticationService.Instance.SignInAnonymouslyAsync();
+            }
+            catch { }
             await Task.Yield();
         }
     }
@@ -113,8 +123,6 @@ public class LobbyManager : NetworkBehaviour
             );
 
             NetworkManager.Singleton.StartHost();
-
-            SpawnPlayerServer(NetworkManager.Singleton.LocalClientId); // host
 
             infoText.text = $"Join code: {lastJoinCode}";
             leaveButton.gameObject.SetActive(false);
@@ -143,8 +151,15 @@ public class LobbyManager : NetworkBehaviour
     private async Task JoinRelayAsync(string joinCode)
     {
         JoinAllocation allocation;
-        try { allocation = await RelayService.Instance.JoinAllocationAsync(joinCode); }
-        catch { await ShowInvalidCodeTemporarily(); return; }
+        try
+        {
+            allocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
+        }
+        catch
+        {
+            await ShowInvalidCodeTemporarily();
+            return;
+        }
 
         if (NetworkManager.Singleton.IsHost)
         {
@@ -167,7 +182,6 @@ public class LobbyManager : NetworkBehaviour
         NetworkManager.Singleton.StartClient();
         await WaitUntilClientConnectedAsync();
 
-        // spawn enkel server-side via OnClientConnectedCallback
         infoText.text = $"Connected to: {joinCode}";
         leaveButton.gameObject.SetActive(false);
         hasJoinedOnce = true;
@@ -206,6 +220,12 @@ public class LobbyManager : NetworkBehaviour
         isShowingInvalidCode = false;
     }
 
+    public void SetLeaveButtonVisible(bool visible)
+    {
+        if (leaveButton != null)
+            leaveButton.gameObject.SetActive(visible && NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost);
+    }
+
     private async Task HostLeaveFlowAsync()
     {
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
@@ -219,6 +239,7 @@ public class LobbyManager : NetworkBehaviour
         infoText.text = $"Join code: {lastJoinCode}";
 
         NetworkManager.Singleton.Shutdown();
+
         while (NetworkManager.Singleton.IsListening)
             await Task.Yield();
 
@@ -234,16 +255,8 @@ public class LobbyManager : NetworkBehaviour
             _ = ClientAutohostFlowAsync();
         }
 
-        // free spawnpoint en kleur
         clientSpawnIndices.Remove(clientId);
         clientColors.Remove(clientId);
-
-        if (spawnedPlayers.ContainsKey(clientId))
-        {
-            var netObj = spawnedPlayers[clientId].GetComponent<NetworkObject>();
-            if (netObj != null && netObj.IsSpawned) netObj.Despawn(true);
-            spawnedPlayers.Remove(clientId);
-        }
     }
 
     private async Task ClientAutohostFlowAsync()
@@ -256,44 +269,43 @@ public class LobbyManager : NetworkBehaviour
 
         await WaitForServicesReadyAsync();
         AutoHostGame();
+
         autoHostPending = false;
     }
 
-    // ---------------- Server-side spawning ----------------
-    public override void OnNetworkSpawn()
+    // ---------------- Server-side player spawning ----------------
+    private void OnClientConnected(ulong clientId)
     {
-        if (!IsServer) return;
-        NetworkManager.Singleton.OnClientConnectedCallback += (clientId) =>
+        if (NetworkManager.Singleton.IsServer)
         {
             SpawnPlayerServer(clientId);
-        };
+        }
     }
 
     private void SpawnPlayerServer(ulong clientId)
     {
-        if (!IsServer || playerPrefab == null || spawnPoints.Length == 0) return;
-        if (spawnedPlayers.ContainsKey(clientId)) return; // al gespawned
+        if (playerPrefab == null || spawnPoints == null || spawnPoints.Length == 0)
+        {
+            Debug.LogError("PlayerPrefab of SpawnPoints niet ingesteld!");
+            return;
+        }
 
         int spawnIndex;
         Color color;
 
         if (!clientSpawnIndices.ContainsKey(clientId))
         {
-            if (IsHost && clientId == NetworkManager.Singleton.LocalClientId)
-            {
-                spawnIndex = 0;
-                color = allColors[0];
-            }
-            else
-            {
-                spawnIndex = Mathf.Min(nextSpawnIndex, spawnPoints.Length - 1);
-                color = allColors[nextColorIndex % allColors.Count];
-                nextSpawnIndex++;
-                nextColorIndex++;
-            }
+            spawnIndex = (clientId == NetworkManager.Singleton.LocalClientId && NetworkManager.Singleton.IsHost) ? 0 : Mathf.Min(nextSpawnIndex, spawnPoints.Length - 1);
+            color = (clientId == NetworkManager.Singleton.LocalClientId && NetworkManager.Singleton.IsHost) ? allColors[0] : allColors[nextColorIndex % allColors.Count];
 
             clientSpawnIndices[clientId] = spawnIndex;
             clientColors[clientId] = color;
+
+            if (clientId != NetworkManager.Singleton.LocalClientId || !NetworkManager.Singleton.IsHost)
+            {
+                nextSpawnIndex++;
+                nextColorIndex++;
+            }
         }
         else
         {
@@ -301,24 +313,27 @@ public class LobbyManager : NetworkBehaviour
             color = clientColors[clientId];
         }
 
+        // Correct positie vóór spawn instellen
         Vector3 spawnPos = spawnPoints[spawnIndex].position;
-        GameObject playerObj = Instantiate(playerPrefab, spawnPos, Quaternion.Euler(0, 180, 0));
-        var netObj = playerObj.GetComponent<NetworkObject>();
-        if (netObj != null)
-            netObj.SpawnWithOwnership(clientId);
+        Quaternion spawnRot = Quaternion.Euler(0, 180, 0);
 
-        // kleur server -> client
+        GameObject playerObj = Instantiate(playerPrefab, spawnPos, spawnRot);
+        NetworkObject netObj = playerObj.GetComponent<NetworkObject>();
+        netObj.SpawnAsPlayerObject(clientId, true);
+
+        // Zet kleur via NetworkVariable
         Player playerScript = playerObj.GetComponent<Player>();
-        playerScript.SetColorServerRpc(new Vector3(color.r, color.g, color.b));
+        Vector3 colorVec = new Vector3(color.r, color.g, color.b);
+        playerScript.SetColorServerRpc(colorVec);
 
-        spawnedPlayers[clientId] = playerObj;
+        if (clientId == NetworkManager.Singleton.LocalClientId && playerScript.nameLabel != null)
+            playerScript.nameLabel.text = "You";
     }
 
     private void ResetServerData()
     {
         clientSpawnIndices.Clear();
         clientColors.Clear();
-        spawnedPlayers.Clear();
         nextSpawnIndex = 1;
         nextColorIndex = 1;
     }
