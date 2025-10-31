@@ -164,8 +164,14 @@ public class LobbyManager : NetworkBehaviour
 
         if (NetworkManager.Singleton.IsHost)
         {
-            var localPlayer = NetworkManager.Singleton.LocalClient?.PlayerObject;
-            if (localPlayer != null) Destroy(localPlayer.gameObject);
+            // ✅ Alle clones verwijderen voordat je client wordt
+            foreach (var clone in allPlayerClones)
+            {
+                if (clone != null)
+                    Destroy(clone);
+            }
+            allPlayerClones.Clear();
+
             NetworkManager.Singleton.Shutdown();
             await Task.Delay(300);
         }
@@ -256,7 +262,6 @@ public class LobbyManager : NetworkBehaviour
             _ = ClientAutohostFlowAsync();
         }
 
-        // Maak de clone van de disconnected client weer onzichtbaar
         GameObject clone = allPlayerClones.FirstOrDefault(c => c.GetComponent<NetworkObject>().OwnerClientId == clientId);
         if (clone != null)
             clone.SetActive(false);
@@ -281,7 +286,6 @@ public class LobbyManager : NetworkBehaviour
     {
         if (!NetworkManager.Singleton.IsServer) return;
 
-        // Vind eerste onzichtbare clone
         GameObject cloneToUse = allPlayerClones.FirstOrDefault(c => !c.activeSelf);
         if (cloneToUse != null)
         {
@@ -304,15 +308,16 @@ public class LobbyManager : NetworkBehaviour
         for (int i = 0; i < spawnPoints.Length; i++)
         {
             GameObject playerObj = Instantiate(playerPrefab, spawnPoints[i].position, Quaternion.Euler(0, 180, 0));
+            Player playerScript = playerObj.GetComponent<Player>();
+
+            bool isVisible = (i == 0);
+            playerScript.isVisible.Value = isVisible; // ✅ Zet vóór spawn
+
             NetworkObject netObj = playerObj.GetComponent<NetworkObject>();
             netObj.Spawn();
 
-            Player playerScript = playerObj.GetComponent<Player>();
             Color color = allColors[i % allColors.Count];
             playerScript.SetColorServerRpc(new Vector3(color.r, color.g, color.b));
-
-            bool isVisible = (i == 0); // Alleen host zichtbaar
-            playerObj.SetActive(isVisible);
 
             allPlayerClones.Add(playerObj);
         }

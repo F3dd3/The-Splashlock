@@ -27,11 +27,26 @@ public class Player : NetworkBehaviour
         NetworkVariableWritePermission.Server
     );
 
+    // ✅ Nieuw: zichtbaarheid
+    public NetworkVariable<bool> isVisible = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
         if (controller == null)
             controller = gameObject.AddComponent<CharacterController>();
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+        // ✅ Direct na sync initialiseren
+        isVisible.OnValueChanged += OnVisibilityChanged;
+        OnVisibilityChanged(!isVisible.Value, isVisible.Value);
     }
 
     private void Start()
@@ -87,9 +102,21 @@ public class Player : NetworkBehaviour
             playerRenderer.material.color = new Color(newValue.x, newValue.y, newValue.z);
     }
 
+    private void OnVisibilityChanged(bool oldValue, bool newValue)
+    {
+        gameObject.SetActive(newValue);
+    }
+
     [ServerRpc(RequireOwnership = false)]
     public void SetColorServerRpc(Vector3 colorVec)
     {
         playerColor.Value = colorVec;
+    }
+
+    // ✅ Nieuw: ServerRpc om zichtbaarheid te zetten
+    [ServerRpc(RequireOwnership = false)]
+    public void SetVisibilityServerRpc(bool visible)
+    {
+        isVisible.Value = visible;
     }
 }

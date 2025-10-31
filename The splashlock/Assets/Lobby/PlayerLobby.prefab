@@ -530,6 +530,8 @@ MonoBehaviour:
     m_InternalValue: {x: 1, y: 1, z: 1}
   isReady:
     m_InternalValue: 0
+  isVisible:
+    m_InternalValue: 1
 --- !u!114 &7107244613085946979
 MonoBehaviour:
   m_ObjectHideFlags: 0
