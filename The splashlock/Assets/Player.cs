@@ -15,6 +15,19 @@ public class Player : NetworkBehaviour
     private Vector3 velocity;
     private CharacterController controller;
 
+    // De eigenaar van deze clone
+    public NetworkVariable<ulong> ownerClientId = new NetworkVariable<ulong>(
+        0,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
+    public NetworkVariable<bool> isHostPlayer = new NetworkVariable<bool>(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
     public NetworkVariable<Vector3> playerColor = new NetworkVariable<Vector3>(
         new Vector3(1f, 1f, 1f),
         NetworkVariableReadPermission.Everyone,
@@ -27,7 +40,6 @@ public class Player : NetworkBehaviour
         NetworkVariableWritePermission.Server
     );
 
-    // ✅ Nieuw: zichtbaarheid
     public NetworkVariable<bool> isVisible = new NetworkVariable<bool>(
         true,
         NetworkVariableReadPermission.Everyone,
@@ -44,23 +56,39 @@ public class Player : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
-        // ✅ Direct na sync initialiseren
+
         isVisible.OnValueChanged += OnVisibilityChanged;
+        ownerClientId.OnValueChanged += OnOwnerChanged;
+
         OnVisibilityChanged(!isVisible.Value, isVisible.Value);
+        UpdateNameLabelLocal();
     }
 
-    private void Start()
+    private void OnOwnerChanged(ulong oldValue, ulong newValue)
     {
-        if (IsOwner && nameLabel != null)
+        UpdateNameLabelLocal();
+    }
+
+    private void UpdateNameLabelLocal()
+    {
+        if (nameLabel == null) return;
+
+        // Alleen “You” label voor de clone die bij deze client hoort
+        if (NetworkManager.Singleton.LocalClientId == ownerClientId.Value)
         {
             nameLabel.text = "You";
             nameLabel.gameObject.SetActive(true);
         }
-        else if (nameLabel != null)
+        else
         {
+            // Laat label leeg voor andere clones
+            nameLabel.text = "";
             nameLabel.gameObject.SetActive(false);
         }
+    }
 
+    private void Start()
+    {
         if (readyLabel != null)
             readyLabel.gameObject.SetActive(isReady.Value);
 
@@ -90,12 +118,6 @@ public class Player : NetworkBehaviour
             readyLabel.gameObject.SetActive(newValue);
     }
 
-    public void SetReadyText(bool ready)
-    {
-        if (readyLabel != null)
-            readyLabel.gameObject.SetActive(ready);
-    }
-
     private void OnColorChanged(Vector3 oldValue, Vector3 newValue)
     {
         if (playerRenderer != null)
@@ -107,13 +129,22 @@ public class Player : NetworkBehaviour
         gameObject.SetActive(newValue);
     }
 
+    // ✅ Hier kan de client zijn eigen ready aanzetten
+    public void SetReadyText(bool ready)
+    {
+        if (readyLabel != null)
+            readyLabel.gameObject.SetActive(ready);
+
+        if (IsServer)
+            isReady.Value = ready;
+    }
+
     [ServerRpc(RequireOwnership = false)]
     public void SetColorServerRpc(Vector3 colorVec)
     {
         playerColor.Value = colorVec;
     }
 
-    // ✅ Nieuw: ServerRpc om zichtbaarheid te zetten
     [ServerRpc(RequireOwnership = false)]
     public void SetVisibilityServerRpc(bool visible)
     {
