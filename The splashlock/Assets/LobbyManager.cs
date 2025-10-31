@@ -259,21 +259,52 @@ public class LobbyManager : NetworkBehaviour
         GameObject clone = allPlayerClones.FirstOrDefault(c => c.activeSelf && c.GetComponent<Player>().ownerClientId.Value == clientId);
         if (clone != null)
             clone.GetComponent<Player>().isVisible.Value = false;
+
+        int index = allPlayerClones.FindIndex(c => c == clone);
+        if (index != -1)
+            cloneOccupied[index] = false;
     }
 
     private void OnClientConnected(ulong clientId)
     {
         if (!NetworkManager.Singleton.IsServer) return;
 
-        int index = cloneOccupied.FindIndex(o => o == false);
-        if (index == -1) return;
+        int nextIndex = cloneOccupied.FindIndex(o => o == false);
+        if (nextIndex == -1)
+        {
+            Debug.LogWarning("Geen vrije player clone beschikbaar voor client: " + clientId);
+            return;
+        }
 
-        GameObject clone = allPlayerClones[index];
+        GameObject clone = allPlayerClones[nextIndex];
         Player playerScript = clone.GetComponent<Player>();
 
+        // Clone toewijzen
+        playerScript.ownerClientId.Value = clientId;
         playerScript.isVisible.Value = true;
-        playerScript.ownerClientId.Value = clientId; // deze clone is voor deze client
-        cloneOccupied[index] = true;
+        cloneOccupied[nextIndex] = true;
+
+        // Maak client eigenaar van het NetworkObject
+        clone.GetComponent<NetworkObject>().ChangeOwnership(clientId);
+
+        Debug.Log($"Clone {nextIndex} toegewezen aan client {clientId}");
+
+        // Optioneel: volgende clone voorbereiden
+        PrepareNextClone();
+    }
+
+    private void PrepareNextClone()
+    {
+        int nextIndex = cloneOccupied.FindIndex(o => o == false);
+        if (nextIndex != -1)
+        {
+            GameObject nextClone = allPlayerClones[nextIndex];
+            Player playerScript = nextClone.GetComponent<Player>();
+
+            // Kan zichtbaar of invisible zijn als “waiting”
+            playerScript.isVisible.Value = false;
+            // playerScript.nameLabel.text = "Waiting..."; // optioneel
+        }
     }
 
     private void SpawnAllPlayerClones()
@@ -301,6 +332,9 @@ public class LobbyManager : NetworkBehaviour
             allPlayerClones.Add(playerObj);
             cloneOccupied.Add(isVisible);
         }
+
+        // Bereid meteen de eerste vrije clone voor
+        PrepareNextClone();
     }
 
     private void ResetServerData()
