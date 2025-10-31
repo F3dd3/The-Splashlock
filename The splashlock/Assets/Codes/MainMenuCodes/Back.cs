@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using Unity.Netcode;
 using System.Collections.Generic;
+using System.Linq;
 
 public class Back : NetworkBehaviour
 {
@@ -92,8 +93,11 @@ public class Back : NetworkBehaviour
         {
             if (player != null)
             {
-                bool isReady = readyClients.Contains(player.OwnerClientId);
-                player.SetReadyText(isReady);
+                // ✅ Ready alleen aanzetten op de clone die bij deze client hoort
+                if (readyClients.Contains(player.ownerClientId.Value))
+                    player.SetReadyText(true);
+                else
+                    player.SetReadyText(false);
             }
         }
     }
