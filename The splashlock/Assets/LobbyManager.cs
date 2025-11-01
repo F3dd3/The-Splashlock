@@ -34,8 +34,7 @@ public class LobbyManager : NetworkBehaviour
     private bool servicesInitialized = false;
     private string lastJoinCode = "";
     private bool hasJoinedOnce = false;
-    private bool autoHostPending = false;
-    private bool isShowingInvalidCode = false;
+    private bool clonesReady = false;
 
     private void Awake()
     {
@@ -119,14 +118,17 @@ public class LobbyManager : NetworkBehaviour
                 allocation.ConnectionData
             );
 
+            // Start host
             NetworkManager.Singleton.StartHost();
+
+            // Spawn clones voor alle spawnpoints (onzichtbaar, geen eigenaar)
+            SpawnAllPlayerClones();
 
             infoText.text = $"Join code: {lastJoinCode}";
             leaveButton.gameObject.SetActive(false);
             hasJoinedOnce = true;
 
-            if (NetworkManager.Singleton.IsServer)
-                SpawnAllPlayerClones();
+            clonesReady = true; // server klaar om clones toe te wijzen
         }
         catch (Exception e)
         {
@@ -163,6 +165,7 @@ public class LobbyManager : NetworkBehaviour
 
         if (NetworkManager.Singleton.IsHost)
         {
+            // verwijder oude clones en shutdown host
             foreach (var clone in allPlayerClones)
             {
                 if (clone != null)
@@ -204,31 +207,9 @@ public class LobbyManager : NetworkBehaviour
 
     private async Task ShowInvalidCodeTemporarily()
     {
-        if (isShowingInvalidCode) return;
-        isShowingInvalidCode = true;
-
-        string originalCode = lastJoinCode;
         infoText.text = "Invalid code!";
-        float timer = 0f;
-        float duration = 2f;
-
-        while (timer < duration)
-        {
-            timer += Time.deltaTime;
-            await Task.Yield();
-
-            if (!string.IsNullOrEmpty(infoText.text) && infoText.text.StartsWith("Connected"))
-                break;
-        }
-
-        infoText.text = $"Join code: {originalCode}";
-        isShowingInvalidCode = false;
-    }
-
-    public void SetLeaveButtonVisible(bool visible)
-    {
-        if (leaveButton != null)
-            leaveButton.gameObject.SetActive(visible && NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost);
+        await Task.Delay(2000);
+        infoText.text = $"Join code: {lastJoinCode}";
     }
 
     private async Task HostLeaveFlowAsync()
@@ -265,10 +246,20 @@ public class LobbyManager : NetworkBehaviour
             cloneOccupied[index] = false;
     }
 
-    private void OnClientConnected(ulong clientId)
+    private async void OnClientConnected(ulong clientId)
     {
         if (!NetworkManager.Singleton.IsServer) return;
 
+        while (!clonesReady)
+        {
+            await Task.Yield();
+        }
+
+        AssignNextCloneToClient(clientId);
+    }
+
+    private void AssignNextCloneToClient(ulong clientId)
+    {
         int nextIndex = cloneOccupied.FindIndex(o => o == false);
         if (nextIndex == -1)
         {
@@ -279,49 +270,30 @@ public class LobbyManager : NetworkBehaviour
         GameObject clone = allPlayerClones[nextIndex];
         Player playerScript = clone.GetComponent<Player>();
 
-        // Clone toewijzen
         playerScript.ownerClientId.Value = clientId;
         playerScript.isVisible.Value = true;
+
         cloneOccupied[nextIndex] = true;
 
-        // Maak client eigenaar van het NetworkObject
-        clone.GetComponent<NetworkObject>().ChangeOwnership(clientId);
+        playerScript.ownerClientId.SetDirty(true);
+        playerScript.isVisible.SetDirty(true);
 
         Debug.Log($"Clone {nextIndex} toegewezen aan client {clientId}");
-
-        // Optioneel: volgende clone voorbereiden
-        PrepareNextClone();
-    }
-
-    private void PrepareNextClone()
-    {
-        int nextIndex = cloneOccupied.FindIndex(o => o == false);
-        if (nextIndex != -1)
-        {
-            GameObject nextClone = allPlayerClones[nextIndex];
-            Player playerScript = nextClone.GetComponent<Player>();
-
-            // Kan zichtbaar of invisible zijn als “waiting”
-            playerScript.isVisible.Value = false;
-            // playerScript.nameLabel.text = "Waiting..."; // optioneel
-        }
     }
 
     private void SpawnAllPlayerClones()
     {
         cloneOccupied.Clear();
+        allPlayerClones.Clear();
 
         for (int i = 0; i < spawnPoints.Length; i++)
         {
             GameObject playerObj = Instantiate(playerPrefab, spawnPoints[i].position, Quaternion.Euler(0, 180, 0));
             Player playerScript = playerObj.GetComponent<Player>();
 
-            bool isVisible = (i == 0);
-            playerScript.isVisible.Value = isVisible;
-            playerScript.isHostPlayer.Value = (i == 0);
-
-            // Host eigen clone krijgt LocalClientId
-            playerScript.ownerClientId.Value = (i == 0) ? NetworkManager.Singleton.LocalClientId : 0;
+            playerScript.isVisible.Value = false;
+            playerScript.isHostPlayer.Value = false;
+            playerScript.ownerClientId.Value = 0UL;
 
             NetworkObject netObj = playerObj.GetComponent<NetworkObject>();
             netObj.Spawn();
@@ -330,16 +302,16 @@ public class LobbyManager : NetworkBehaviour
             playerScript.SetColorServerRpc(new Vector3(color.r, color.g, color.b));
 
             allPlayerClones.Add(playerObj);
-            cloneOccupied.Add(isVisible);
+            cloneOccupied.Add(false);
         }
 
-        // Bereid meteen de eerste vrije clone voor
-        PrepareNextClone();
+        clonesReady = true;
     }
 
     private void ResetServerData()
     {
         allPlayerClones.Clear();
         cloneOccupied.Clear();
+        clonesReady = false;
     }
 }

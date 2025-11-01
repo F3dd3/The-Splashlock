@@ -15,7 +15,6 @@ public class Player : NetworkBehaviour
     private Vector3 velocity;
     private CharacterController controller;
 
-    // De eigenaar van deze clone
     public NetworkVariable<ulong> ownerClientId = new NetworkVariable<ulong>(
         0,
         NetworkVariableReadPermission.Everyone,
@@ -73,7 +72,6 @@ public class Player : NetworkBehaviour
     {
         if (nameLabel == null) return;
 
-        // Alleen “You” label voor de clone die bij deze client hoort
         if (NetworkManager.Singleton.LocalClientId == ownerClientId.Value)
         {
             nameLabel.text = "You";
@@ -81,7 +79,6 @@ public class Player : NetworkBehaviour
         }
         else
         {
-            // Laat label leeg voor andere clones
             nameLabel.text = "";
             nameLabel.gameObject.SetActive(false);
         }
@@ -129,7 +126,6 @@ public class Player : NetworkBehaviour
         gameObject.SetActive(newValue);
     }
 
-    // ✅ Hier kan de client zijn eigen ready aanzetten
     public void SetReadyText(bool ready)
     {
         if (readyLabel != null)
