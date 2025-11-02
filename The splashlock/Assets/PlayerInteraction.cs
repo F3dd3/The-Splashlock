@@ -8,25 +8,28 @@ using System.Collections.Generic;
 public class PlayerInteraction : NetworkBehaviour
 {
     [Header("UI References")]
-    public Canvas actionCanvas;           // Canvas met knoppen, sleep hier prefab of scene canvas
+    public Canvas actionCanvas;           // Canvas met buttons (inactief in prefab)
     public TextMeshProUGUI floatingText;  // Tekst die boven speler verschijnt
 
     [Header("Buttons & Messages")]
     public List<Button> actionButtons = new List<Button>(); // Sleep hier de buttons
-    public List<string> messages = new List<string>();      // Tekst die verschijnt bij elke button
+    public List<string> messages = new List<string>();      // Tekst bij elke button
 
     private Camera mainCam;
+    private Player playerScript;
 
     private void Start()
     {
         mainCam = Camera.main;
 
-        // Verberg tekst en canvas bij start
+        // Verberg canvas en floating text
+        if (actionCanvas != null)
+            actionCanvas.gameObject.SetActive(false);
+
         if (floatingText != null)
             floatingText.gameObject.SetActive(false);
 
-        if (actionCanvas != null)
-            actionCanvas.gameObject.SetActive(false);
+        playerScript = GetComponent<Player>();
 
         SetupButtons();
     }
@@ -35,24 +38,21 @@ public class PlayerInteraction : NetworkBehaviour
     {
         if (floatingText != null && floatingText.gameObject.activeSelf)
         {
-            // Zorg dat tekst altijd naar camera kijkt
-            floatingText.transform.rotation = Quaternion.LookRotation(floatingText.transform.position - mainCam.transform.position);
+            floatingText.transform.LookAt(mainCam.transform);
+            floatingText.transform.Rotate(0, 180, 0); // draai zodat tekst goed staat
         }
     }
 
     private void OnMouseDown()
     {
-        if (!IsOwner) return; // Alleen lokale speler mag eigen canvas openen
+        // Controleer of dit de clone is die bij deze client hoort
+        if (playerScript != null && playerScript.ownerClientId.Value != NetworkManager.Singleton.LocalClientId)
+            return;
 
         if (actionCanvas != null)
-        {
             actionCanvas.gameObject.SetActive(!actionCanvas.gameObject.activeSelf);
-        }
     }
 
-    /// <summary>
-    /// Zet de button-clicks op zodat elk button-element exact de corresponderende message-element toont
-    /// </summary>
     private void SetupButtons()
     {
         if (actionButtons.Count != messages.Count)
@@ -63,19 +63,12 @@ public class PlayerInteraction : NetworkBehaviour
 
         for (int i = 0; i < actionButtons.Count; i++)
         {
-            int index = i; // Lokale kopie voor lambda
-
-            // Verwijder bestaande listeners voor veiligheid
+            int index = i;
             actionButtons[i].onClick.RemoveAllListeners();
 
             actionButtons[i].onClick.AddListener(() =>
             {
-                // Stuur message naar server
                 SendActionServerRpc(messages[index]);
-
-                // Sluit canvas na klik
-                if (actionCanvas != null)
-                    actionCanvas.gameObject.SetActive(false);
             });
         }
     }
@@ -95,7 +88,7 @@ public class PlayerInteraction : NetworkBehaviour
         floatingText.gameObject.SetActive(true);
 
         StopAllCoroutines();
-        StartCoroutine(HideTextAfterSeconds(3f)); // 3 seconden zichtbaar
+        StartCoroutine(HideTextAfterSeconds(3f));
     }
 
     private IEnumerator HideTextAfterSeconds(float time)
