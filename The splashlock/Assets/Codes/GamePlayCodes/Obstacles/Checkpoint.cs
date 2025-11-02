@@ -6,26 +6,13 @@ public class Checkpoint : MonoBehaviour
     [Header("Spawn Point")]
     public Transform spawnPoint;
 
+    [Header("Uniek ID voor Netcode")]
+    public int checkpointId; // Gebruik dit i.p.v GetInstanceID
+
     private void Awake()
     {
         Collider col = GetComponent<Collider>();
         if (col != null)
             col.isTrigger = true;
-    }
-
-    /// <summary>
-    /// Wordt aangeroepen door speler via PlayerCheckpointDetector
-    /// </summary>
-    public void OnPlayerTouch(GameObject player)
-    {
-        if (spawnPoint == null)
-        {
-            Debug.LogWarning($"Checkpoint '{gameObject.name}' heeft geen spawnPoint ingesteld!");
-            return;
-        }
-
-        CheckpointManager manager = FindObjectOfType<CheckpointManager>();
-        if (manager != null)
-            manager.ActivateCheckpoint(this, player);
     }
 }

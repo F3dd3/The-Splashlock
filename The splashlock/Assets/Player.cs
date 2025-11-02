@@ -45,6 +45,9 @@ public class Player : NetworkBehaviour
         NetworkVariableWritePermission.Server
     );
 
+    // ✅ Nieuw: deze bepaalt of de speler een lobby clone is
+    public bool isLobbyClone = true;
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
