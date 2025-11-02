@@ -112,7 +112,6 @@ public class OptionsManager : MonoBehaviour
         spawnedOptionsPlayer = null;
     }
 
-    // ----------------- Update loop -----------------
     private void Update()
     {
         if (spawnedOptionsPlayer == null) return;
@@ -120,33 +119,42 @@ public class OptionsManager : MonoBehaviour
         UpdateOptionsPlayerColor();
     }
 
-    // Haal kleur van eigen LobbyPlayer en zet op OptionsPlayer
+    /// <summary>
+    /// Zoekt de juiste lobby Player-clone die bij deze client hoort
+    /// en kopieert diens kleur naar de Options-player.
+    /// </summary>
     private void UpdateOptionsPlayerColor()
     {
-        Player lobbyPlayer = null;
-        ulong clientId = NetworkManager.Singleton.LocalClientId;
+        if (!NetworkManager.Singleton || !NetworkManager.Singleton.IsConnectedClient)
+            return;
 
-        // Vind de lokale player zonder PlayerSpawner
+        ulong clientId = NetworkManager.Singleton.LocalClientId;
+        Player lobbyPlayer = null;
+
+        // Zoek de player die aan deze clientId is toegewezen (ongeacht IsOwner)
         foreach (var player in FindObjectsOfType<Player>())
         {
-            if (player.IsOwner && player.OwnerClientId == clientId)
+            if (player.ownerClientId.Value == clientId)
             {
                 lobbyPlayer = player;
                 break;
             }
         }
 
-        if (lobbyPlayer != null && spawnedOptionsPlayer != null)
+        Renderer optionsRenderer = spawnedOptionsPlayer?.GetComponentInChildren<Renderer>();
+        if (optionsRenderer == null) return;
+
+        if (lobbyPlayer != null && lobbyPlayer.playerRenderer != null)
         {
-            Renderer optionsRenderer = spawnedOptionsPlayer.GetComponentInChildren<Renderer>();
-            if (optionsRenderer != null)
-            {
-                Color targetColor = lobbyPlayer.playerRenderer.material.color;
-                if (optionsRenderer.material.color != targetColor)
-                {
-                    optionsRenderer.material.color = targetColor;
-                }
-            }
+            // Normale client: neem kleur van toegewezen clone
+            Color targetColor = lobbyPlayer.playerRenderer.material.color;
+            if (optionsRenderer.material.color != targetColor)
+                optionsRenderer.material.color = targetColor;
+        }
+        else
+        {
+            // Host zonder eigen clone → toon neutrale kleur (bijv. wit of grijs)
+            optionsRenderer.material.color = Color.gray;
         }
     }
 }
