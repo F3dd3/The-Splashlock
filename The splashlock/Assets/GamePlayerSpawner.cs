@@ -36,6 +36,15 @@ public class GamePlayerSpawner : MonoBehaviour
     {
         if (!NetworkManager.Singleton.IsServer) return;
 
+        // ✅ Verwijder eerst alle lobby player clones, ook de uitgeschakelde
+        var lobbyClones = FindObjectsOfType<Player>(true).ToList(); // 'true' = ook inactieve objecten
+        foreach (var clone in lobbyClones)
+        {
+            NetworkObject netObj = clone.GetComponent<NetworkObject>();
+            if (netObj != null && netObj.IsSpawned) netObj.Despawn(true);
+            Destroy(clone.gameObject);
+        }
+
         bool shouldSpawn = false;
 
         if (Back.Instance != null && Back.Instance.selectableMaps.Count > 0)

@@ -1,8 +1,10 @@
 ﻿using UnityEngine;
 using Unity.Netcode;
 
+[RequireComponent(typeof(CharacterController))]
 public class Die : NetworkBehaviour
 {
+    [Header("Respawn Settings")]
     public float respawnHeight = 2f;
     public float checkDistance = 1f;
     public LayerMask waterLayer;
@@ -23,112 +25,48 @@ public class Die : NetworkBehaviour
 
     private void Update()
     {
-        if (!IsOwner) return;
-
-        CheckWaterBelow();
+        // Alleen de server checkt waterdeath
+        if (IsServer)
+            CheckWaterBelowServer();
     }
 
-    private void CheckWaterBelow()
+    private void CheckWaterBelowServer()
     {
-        if (Time.time - spawnTimestamp < spawnProtectionTime) return;
-
         Vector3 origin = transform.position + Vector3.up * 0.1f;
+
         if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, checkDistance, waterLayer))
         {
-            // Roep server aan om server-side te respawnen
-            RespawnServerRpc();
+            // Water death: negeer spawnProtection, respawn direct
+            RespawnPlayer();
         }
 
         Debug.DrawRay(origin, Vector3.down * checkDistance, Color.blue);
     }
 
-    // Client vraagt de server om te respawnen voor deze player.
-    // RequireOwnership = false zodat de server verzoeken van de owner kan accepteren.
-    [ServerRpc(RequireOwnership = false)]
-    private void RespawnServerRpc(ServerRpcParams rpcParams = default)
-    {
-        // Vind de player NetworkObject van de sender
-        ulong senderClientId = rpcParams.Receive.SenderClientId;
-
-        if (!NetworkManager.Singleton.ConnectedClients.ContainsKey(senderClientId))
-        {
-            Debug.LogWarning($"RespawnServerRpc: geen connected client voor id {senderClientId}");
-            return;
-        }
-
-        var client = NetworkManager.Singleton.ConnectedClients[senderClientId];
-        if (client == null || client.PlayerObject == null)
-        {
-            Debug.LogWarning($"RespawnServerRpc: geen PlayerObject voor client {senderClientId}");
-            return;
-        }
-
-        GameObject playerGO = client.PlayerObject.gameObject;
-
-        // doe de server-side respawn op het player-go
-        ServerRespawn(playerGO);
-    }
-
-    // Server-side teleport functie die een player GameObject ontvangt
-    private void ServerRespawn(GameObject playerGO)
-    {
-        if (playerGO == null)
-        {
-            Debug.LogWarning("ServerRespawn: playerGO is null");
-            return;
-        }
-
-        CheckpointManager manager = FindObjectOfType<CheckpointManager>();
-        Vector3 spawnPos = manager != null ? manager.GetSpawnPosition(playerGO) : playerGO.transform.position;
-
-        spawnPos += Vector3.up * respawnHeight;
-
-        CharacterController playerController = playerGO.GetComponent<CharacterController>();
-
-        if (playerController != null)
-        {
-            playerController.enabled = false;
-            playerGO.transform.position = spawnPos;
-            playerController.enabled = true;
-        }
-        else
-        {
-            playerGO.transform.position = spawnPos;
-        }
-
-        CharacterMovement cm = playerGO.GetComponent<CharacterMovement>();
-        if (cm != null)
-            cm.SetVerticalVelocity(0f);
-
-        // Belangrijk: update spawnTimestamp alleen op de owner instance (client)
-        // We sturen een ClientRpc naar de owner om spawnTimestamp bij te werken
-        ulong ownerId = playerGO.GetComponent<NetworkObject>().OwnerClientId;
-        ResetSpawnTimestampClientRpc(new ClientRpcParams
-        {
-            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { ownerId } }
-        });
-
-        Debug.Log($"[Server] Speler '{playerGO.name}' respawnt bij {spawnPos}");
-    }
-
-    // Instructie naar de owner-client om spawnTimestamp te resetten (zodat spawn-protection blijft werken client-side)
-    [ClientRpc]
-    private void ResetSpawnTimestampClientRpc(ClientRpcParams clientRpcParams = default)
-    {
-        if (!IsOwner)
-        {
-            // We willen dit alleen lokaal op de owner uitvoeren; maar ClientRpc is gericht aan owner, dus fine.
-        }
-        spawnTimestamp = Time.time;
-    }
-
-    // Voor lokale (non-server) Respawn fallback - niet gebruikt voor multiplayer flow maar behouden voor safety
-    public void Respawn()
+    private void RespawnPlayer()
     {
         CheckpointManager manager = FindObjectOfType<CheckpointManager>();
         Vector3 spawnPos = manager != null ? manager.GetSpawnPosition(gameObject) : transform.position;
-
         spawnPos += Vector3.up * respawnHeight;
+
+        // Stuur naar owner-client om zichzelf direct te respawnen
+        RespawnClientRpc(spawnPos, new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams
+            {
+                TargetClientIds = new ulong[] { GetComponent<NetworkObject>().OwnerClientId }
+            }
+        });
+
+        // Update server-side timestamp voor spawnProtection (normale respawns)
+        spawnTimestamp = Time.time;
+    }
+
+    [ClientRpc]
+    private void RespawnClientRpc(Vector3 spawnPos, ClientRpcParams clientRpcParams = default)
+    {
+        // Alleen de owner voert dit uit
+        if (!IsOwner) return;
 
         if (controller != null)
         {
@@ -141,11 +79,14 @@ public class Die : NetworkBehaviour
             transform.position = spawnPos;
         }
 
+        // Reset verticale snelheid
         CharacterMovement cm = GetComponent<CharacterMovement>();
         if (cm != null)
             cm.SetVerticalVelocity(0f);
 
+        // Update spawnTimestamp lokaal (spawnProtection voor normale respawns)
         spawnTimestamp = Time.time;
-        Debug.Log($"Speler '{gameObject.name}' respawnt bij '{spawnPos}' (lokale Respawn)");
+
+        Debug.Log($"[Client] Speler '{gameObject.name}' respawnt bij {spawnPos}");
     }
 }
