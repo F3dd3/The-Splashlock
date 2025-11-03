@@ -2754,9 +2754,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1895982581762200416}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: -7471802360325708439}
     - targetCorrespondingSourceObject: {fileID: 3604022772451146551, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8062578683125478705}
@@ -4013,20 +4010,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &-7471802360325708439
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4434970658288002760}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 67d96fee7a3f3124485a5a489186fd61, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  raceLines:
-  - {fileID: 0}
 --- !u!1 &4570022284767648247 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1019709688074568302, guid: 18197650ff4f84c4d8f33d9b404c1d20, type: 3}
@@ -5164,7 +5147,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3535012317650503521, guid: 0da1a9ba937396046857830cab0d54ac, type: 3}
       propertyPath: m_Color.a
-      value: 0.18039216
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
