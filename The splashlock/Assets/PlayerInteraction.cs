@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.UI;
 using TMPro;
@@ -45,7 +45,7 @@ public class PlayerInteraction : NetworkBehaviour
 
     private void OnMouseDown()
     {
-        // Controleer of dit de clone is die bij deze client hoort
+        // Alleen op je eigen clone klikken
         if (playerScript != null && playerScript.ownerClientId.Value != NetworkManager.Singleton.LocalClientId)
             return;
 
@@ -68,7 +68,12 @@ public class PlayerInteraction : NetworkBehaviour
 
             actionButtons[i].onClick.AddListener(() =>
             {
+                // Stuur de actie naar de server
                 SendActionServerRpc(messages[index]);
+
+                // ✅ NIEUW: sluit het canvas zodra een knop wordt geklikt
+                if (actionCanvas != null)
+                    actionCanvas.gameObject.SetActive(false);
             });
         }
     }
