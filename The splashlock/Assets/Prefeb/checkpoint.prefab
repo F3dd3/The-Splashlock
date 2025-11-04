@@ -101,8 +101,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2c43273f32806243bb3dd783c07c0e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerTag: Player
-  startTag: Start
+  spawnPoint: {fileID: 0}
+  checkpointId: 0
+  defaultCheckpointMaterial: {fileID: -3846018093981099296, guid: 1a2a8c98204a20748862706670044740, type: 3}
+  targetCheckpointMaterial: {fileID: 2100000, guid: 35509fcd0bf81ac4aa05e0c8b6b2ddd2, type: 2}
 --- !u!64 &6335986042895091882
 MeshCollider:
   m_ObjectHideFlags: 0

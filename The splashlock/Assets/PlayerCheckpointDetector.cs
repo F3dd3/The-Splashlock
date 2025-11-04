@@ -6,12 +6,17 @@ public class PlayerCheckpointDetector : NetworkBehaviour
 {
     private void OnTriggerEnter(Collider other)
     {
-        if (!IsOwner) return;
+        if (!IsOwner) return; // Alleen lokale speler detectie
 
         Checkpoint cp = other.GetComponent<Checkpoint>();
         if (cp != null)
         {
             Debug.Log($"[Client] checkpoint touched: {cp.name} (ID {cp.checkpointId})");
+
+            // Direct lokaal activeren (kleur verandert naar targetColor)
+            cp.Activate();
+
+            // Server informeren
             ActivateCheckpointServerRpc(cp.checkpointId);
         }
     }
@@ -41,6 +46,7 @@ public class PlayerCheckpointDetector : NetworkBehaviour
 
         if (cp == null) return;
 
+        // Activeer checkpoint op server voor verdere logica (bijv. respawn)
         CheckpointManager manager = FindObjectOfType<CheckpointManager>();
         if (manager != null)
             manager.ActivateCheckpoint(cp, playerGO);
