@@ -6018,8 +6018,6 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   readyButton: {fileID: 329615585}
   selectableMaps:
-  - Game Scene
-  - map2
   - map3
 --- !u!4 &2092132142
 Transform:
