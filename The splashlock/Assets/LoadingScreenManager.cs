@@ -53,12 +53,6 @@ public class LoadingScreenManager : NetworkBehaviour
         StartCoroutine(HideAfterDelay());
     }
 
-    // **Nieuwe methode**
-    public void HideLoadingScreenAfterSceneLoad()
-    {
-        StartCoroutine(HideAfterDelay());
-    }
-
     private IEnumerator HideAfterDelay()
     {
         yield return new WaitForSeconds(delayAfterSpawn);

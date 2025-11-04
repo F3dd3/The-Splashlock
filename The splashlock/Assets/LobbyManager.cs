@@ -76,14 +76,16 @@ public class LobbyManager : NetworkBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        if (scene.name != "MainLobby")
+        if (scene.name == "MainLobby")
+        {
+            clonesReady = true;
+            if (LoadingScreenManager.Instance != null)
+                LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
+        }
+        else
         {
             Destroy(gameObject);
-            return;
         }
-
-        if (!NetworkManager.Singleton.IsListening && servicesInitialized)
-            AutoHostGame();
     }
 
     private async void WaitUntilReadyAndAutoHost()
@@ -261,8 +263,16 @@ public class LobbyManager : NetworkBehaviour
 
     public async Task HandleClientOrHostLeftAsync()
     {
+        // ✅ Toon loading screen
         if (LoadingScreenManager.Instance != null)
             LoadingScreenManager.Instance.ShowLoadingScreenClientRpc("MainLobby");
+
+        // ✅ Verberg loading screen vóór shutdown
+        if (SceneManager.GetActiveScene().name == "MainLobby")
+        {
+            if (LoadingScreenManager.Instance != null)
+                LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
+        }
 
         await SafeShutdownNetworkManagerAsync();
         ResetServerData();
@@ -272,17 +282,12 @@ public class LobbyManager : NetworkBehaviour
         while (!asyncLoad.isDone)
             await Task.Yield();
 
+        clonesReady = true; // belangrijk om waiting loops te stoppen
+
         await WaitUntilServicesReadyAsync();
 
         if (!NetworkManager.Singleton.IsListening)
             AutoHostGame();
-
-        // ✅ Wacht tot alle clones gespawned zijn voordat de loading screen verdwijnt
-        while (!clonesReady)
-            await Task.Yield();
-
-        if (LoadingScreenManager.Instance != null)
-            LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
     }
 
     private void OnClientDisconnectedHandler(ulong clientId)
