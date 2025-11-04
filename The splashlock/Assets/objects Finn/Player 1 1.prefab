@@ -3710,7 +3710,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
-  respawnHeight: 5
+  respawnHeight: 1
   checkDistance: 1
   waterLayer:
     serializedVersion: 2
@@ -3820,7 +3820,7 @@ MonoBehaviour:
   cameraTransform: {fileID: 186781053408517031}
   shiftLockEnabled: 0
   shiftLockImage: {fileID: 7047156292004137910}
-  groundCheckDistance: 1
+  groundCheckDistance: 2
   slowCheckDistance: 2.5
   slopeSlideSpeed: 3
   slopeLimit: 30

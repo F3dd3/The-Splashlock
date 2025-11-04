@@ -4,87 +4,100 @@ using Unity.Netcode;
 public class LazerDie : NetworkBehaviour
 {
     [Header("Respawn Settings")]
-    public float respawnHeight = 2f;           // Hoeveel boven spawnpoint spawnen
-    public float spawnProtectionTime = 0.5f;   // Tijd na spawn dat speler geen schade kan krijgen
+    public float respawnHeight = 2f;
+    public float spawnProtectionTime = 0.5f;
 
     private CharacterController controller;
-    private Vector3 spawnPosition;
     private float spawnTimestamp;
 
-    private void Awake()
-    {
-        controller = GetComponent<CharacterController>();
-    }
+    private void Awake() => controller = GetComponent<CharacterController>();
 
-    private void Start()
-    {
-        // Als er geen spawn is ingesteld, fallback naar huidige positie
-        if (spawnPosition == Vector3.zero)
-            spawnPosition = transform.position;
-
-        spawnTimestamp = Time.time;
-    }
-
-    private void Update()
-    {
-        if (!IsOwner) return;
-
-        // Je hoeft hier niets te doen, collisions worden door Unity zelf aangeroepen
-    }
+    private void Start() => spawnTimestamp = Time.time;
 
     private void OnTriggerEnter(Collider other)
     {
         if (!IsOwner) return;
+        if (Time.time - spawnTimestamp < spawnProtectionTime) return;
 
-        // Spawn protectie: negeer net na spawn
-        if (Time.time - spawnTimestamp < spawnProtectionTime)
-            return;
-
-        // Controleer of object een "Lazer" tag heeft of in "Lazer" layer zit
         if (other.CompareTag("Lazer") || other.gameObject.layer == LayerMask.NameToLayer("Lazer"))
         {
-            Respawn();
+            RespawnServerRpc(GetComponent<NetworkObject>().NetworkObjectId);
         }
     }
 
     private void OnCollisionEnter(Collision collision)
     {
         if (!IsOwner) return;
+        if (Time.time - spawnTimestamp < spawnProtectionTime) return;
 
-        if (Time.time - spawnTimestamp < spawnProtectionTime)
-            return;
-
-        // Controleer tag of layer
         if (collision.collider.CompareTag("Lazer") || collision.gameObject.layer == LayerMask.NameToLayer("Lazer"))
         {
-            Respawn();
+            RespawnServerRpc(GetComponent<NetworkObject>().NetworkObjectId);
         }
     }
 
-    public void SetSpawnProtection(Vector3 spawnPos)
+    [ServerRpc(RequireOwnership = false)]
+    private void RespawnServerRpc(ulong networkId)
     {
-        spawnPosition = spawnPos + Vector3.up * respawnHeight;
-        spawnTimestamp = Time.time;
+        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(networkId, out var obj))
+        {
+            ServerRespawn(obj.gameObject);
+        }
     }
 
-    private void Respawn()
+    private void ServerRespawn(GameObject playerGO)
     {
+        if (playerGO == null) return;
+
+        CheckpointManager manager = FindObjectOfType<CheckpointManager>();
+        Vector3 spawnPos = manager != null ? manager.GetSpawnPosition(playerGO) : playerGO.transform.position;
+        spawnPos += Vector3.up * respawnHeight;
+
+        // Teleporteer speler server-side
         if (controller != null)
         {
             controller.enabled = false;
-            transform.position = spawnPosition;
+            playerGO.transform.position = spawnPos;
             controller.enabled = true;
         }
         else
         {
-            transform.position = spawnPosition;
+            playerGO.transform.position = spawnPos;
         }
 
-        // Reset verticale snelheid als CharacterMovement aanwezig is
-        CharacterMovement cm = GetComponent<CharacterMovement>();
-        if (cm != null)
-            cm.SetVerticalVelocity(0f);
+        var cm = playerGO.GetComponent<CharacterMovement>();
+        cm?.SetVerticalVelocity(0f);
 
-        spawnTimestamp = Time.time; // spawn protectie opnieuw starten
+        // Sync met owner-client
+        ulong ownerId = playerGO.GetComponent<NetworkObject>().OwnerClientId;
+        ResetSpawnTimestampClientRpc(spawnPos, new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { ownerId } }
+        });
+
+        Debug.Log($"[Server] {playerGO.name} respawnt op {spawnPos} door laser");
+    }
+
+    [ClientRpc]
+    private void ResetSpawnTimestampClientRpc(Vector3 confirmedPos, ClientRpcParams rpcParams = default)
+    {
+        if (!IsOwner) return;
+
+        if (controller != null)
+        {
+            controller.enabled = false;
+            transform.position = confirmedPos;
+            controller.enabled = true;
+        }
+        else
+        {
+            transform.position = confirmedPos;
+        }
+
+        var cm = GetComponent<CharacterMovement>();
+        cm?.SetVerticalVelocity(0f);
+
+        spawnTimestamp = Time.time;
+        Debug.Log($"[Client] {gameObject.name} respawn bevestigd op {confirmedPos} door laser");
     }
 }
