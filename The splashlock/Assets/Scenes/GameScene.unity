@@ -612,7 +612,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 11737ff149af11b4fb9a4f3758687164, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ShowTopMostFoldoutHeaderGroup: 1
   backToLobbyButton: {fileID: 141733958}
 --- !u!114 &141733958
 MonoBehaviour:
@@ -3649,7 +3648,6 @@ MonoBehaviour:
   - {fileID: 765853755}
   - {fileID: 408412063}
   - {fileID: 55725667}
-  raceLineTag: RaceLine
 --- !u!4 &719920024
 Transform:
   m_ObjectHideFlags: 0
