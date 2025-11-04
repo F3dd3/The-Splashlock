@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 public class Menu : MonoBehaviour
@@ -13,16 +13,16 @@ public class Menu : MonoBehaviour
 
     private void OnBackToLobbyClicked()
     {
-        // Zoek LobbyManager in de scene
+        if (LoadingScreenManager.Instance != null)
+            LoadingScreenManager.Instance.ShowLoadingScreenClientRpc("MainLobby");
+
         LobbyManager lobbyManager = FindObjectOfType<LobbyManager>();
         if (lobbyManager != null)
         {
-            // LobbyManager regelt alles: shutdown, lobby load, autohost
             _ = lobbyManager.HandleClientOrHostLeftAsync();
         }
         else
         {
-            // fallback
             UnityEngine.SceneManagement.SceneManager.LoadScene("MainLobby");
         }
     }

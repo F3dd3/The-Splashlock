@@ -5796,7 +5796,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8034093140768673029, guid: 6c410ccc4219f2b4fae2828c98d5e228, type: 3}
       propertyPath: delayAfterSpawn
-      value: 0.5
+      value: 0.75
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

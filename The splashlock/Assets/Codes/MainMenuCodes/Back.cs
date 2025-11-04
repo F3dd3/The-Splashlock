@@ -17,13 +17,9 @@ public class Back : NetworkBehaviour
     private List<ulong> readyClients = new List<ulong>();
     private bool isLocalReady = false;
 
-    private Dictionary<string, int> consecutivePlays = new Dictionary<string, int>();
-
     private void Awake()
     {
         Instance = this;
-        foreach (string map in selectableMaps)
-            consecutivePlays[map] = 0;
     }
 
     private void Start()
@@ -93,12 +89,34 @@ public class Back : NetworkBehaviour
         {
             if (player != null)
             {
-                // ✅ Ready alleen aanzetten op de clone die bij deze client hoort
                 if (readyClients.Contains(player.ownerClientId.Value))
                     player.SetReadyText(true);
                 else
                     player.SetReadyText(false);
             }
+        }
+    }
+
+    private void StartGame()
+    {
+        if (selectableMaps.Count == 0)
+        {
+            Debug.LogWarning("Geen maps beschikbaar om te laden!");
+            return;
+        }
+
+        string selectedMap = selectableMaps[UnityEngine.Random.Range(0, selectableMaps.Count)];
+        Debug.Log("Geselecteerde map: " + selectedMap);
+
+        if (LoadingScreenManager.Instance != null)
+            LoadingScreenManager.Instance.ShowLoadingScreenClientRpc(selectedMap);
+
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.SceneManager.LoadScene(
+                selectedMap,
+                UnityEngine.SceneManagement.LoadSceneMode.Single
+            );
         }
     }
 
@@ -115,34 +133,5 @@ public class Back : NetworkBehaviour
         readyClients.Clear();
         isLocalReady = false;
         UpdateButtonText();
-    }
-
-    private void StartGame()
-    {
-        if (selectableMaps.Count == 0)
-        {
-            Debug.LogWarning("Geen maps beschikbaar om te laden!");
-            return;
-        }
-
-        string selectedMap = selectableMaps[Random.Range(0, selectableMaps.Count)];
-        Debug.Log("Geselecteerde map: " + selectedMap);
-
-        if (NetworkManager.Singleton != null)
-        {
-            NetworkManager.Singleton.SceneManager.LoadScene(
-                selectedMap,
-                UnityEngine.SceneManagement.LoadSceneMode.Single
-            );
-        }
-    }
-
-    // ✅ Full reset bij exit
-    public void FullReset()
-    {
-        readyClients.Clear();
-        isLocalReady = false;
-        UpdateButtonText();
-        consecutivePlays.Clear();
     }
 }

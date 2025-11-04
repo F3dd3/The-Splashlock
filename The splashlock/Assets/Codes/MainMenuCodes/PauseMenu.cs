@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using Unity.Netcode;
-using System.Threading.Tasks;
 
 public class PauseMenu : NetworkBehaviour
 {
@@ -41,7 +40,6 @@ public class PauseMenu : NetworkBehaviour
     {
         if (!IsOwner) return;
 
-        // Esc toggle pause
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             if (isPaused)
@@ -60,7 +58,6 @@ public class PauseMenu : NetworkBehaviour
             playerController.enabled = false;
 
         isPaused = true;
-
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -74,7 +71,6 @@ public class PauseMenu : NetworkBehaviour
             playerController.enabled = true;
 
         isPaused = false;
-
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -83,16 +79,16 @@ public class PauseMenu : NetworkBehaviour
     {
         ResumeGame();
 
-        // Zoek LobbyManager in de scene
+        if (LoadingScreenManager.Instance != null)
+            LoadingScreenManager.Instance.ShowLoadingScreenClientRpc("MainLobby");
+
         LobbyManager lobbyManager = FindObjectOfType<LobbyManager>();
         if (lobbyManager != null)
         {
-            // Trigger volledige lobby + autohost flow
             _ = lobbyManager.HandleClientOrHostLeftAsync();
         }
         else
         {
-            // fallback: gewoon lobby loaden
             UnityEngine.SceneManagement.SceneManager.LoadScene("MainLobby");
         }
     }

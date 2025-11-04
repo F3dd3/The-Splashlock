@@ -21,10 +21,8 @@ public class LobbyManager : NetworkBehaviour
     public TMP_InputField joinCodeInput;
     public TextMeshProUGUI infoText;
 
-    [Header("Player Prefab")]
+    [Header("Player Prefab & Spawn Points")]
     public GameObject playerPrefab;
-
-    [Header("Spawn Points (assign in inspector)")]
     public Transform[] spawnPoints;
 
     [Header("Player Colors")]
@@ -80,13 +78,9 @@ public class LobbyManager : NetworkBehaviour
     {
         if (scene.name != "MainLobby")
         {
-            Destroy(gameObject); // LobbyManager niet nodig in game scene
+            Destroy(gameObject);
             return;
         }
-
-        // Lobby logic alleen in MainLobby
-        if (spawnPoints == null || spawnPoints.Length == 0)
-            Debug.LogWarning("LobbyManager: spawnPoints niet ingesteld in inspector");
 
         if (!NetworkManager.Singleton.IsListening && servicesInitialized)
             AutoHostGame();
@@ -101,8 +95,7 @@ public class LobbyManager : NetworkBehaviour
 
     private async Task WaitUntilServicesReadyAsync()
     {
-        while (!servicesInitialized)
-            await Task.Yield();
+        while (!servicesInitialized) await Task.Yield();
 
         while (!AuthenticationService.Instance.IsSignedIn || string.IsNullOrEmpty(AuthenticationService.Instance.PlayerId))
         {
@@ -123,7 +116,6 @@ public class LobbyManager : NetworkBehaviour
         if (NetworkManager.Singleton.IsListening)
         {
             NetworkManager.Singleton.Shutdown();
-            // Wacht tot NetworkManager echt klaar is
             while (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
                 await Task.Yield();
         }
@@ -132,8 +124,6 @@ public class LobbyManager : NetworkBehaviour
     public async void AutoHostGame()
     {
         await WaitUntilServicesReadyAsync();
-
-        // Veilig shutdown
         await SafeShutdownNetworkManagerAsync();
 
         if (NetworkManager.Singleton.IsListening)
@@ -167,7 +157,7 @@ public class LobbyManager : NetworkBehaviour
 
             NetworkManager.Singleton.StartHost();
 
-            await Task.Delay(100); // kleine delay zodat scene ready is
+            await Task.Delay(100);
             SpawnAllPlayerClones();
 
             infoText.text = $"Join code: {lastJoinCode}";
@@ -254,6 +244,9 @@ public class LobbyManager : NetworkBehaviour
 
     private async Task LeaveFlowAsync()
     {
+        if (LoadingScreenManager.Instance != null)
+            LoadingScreenManager.Instance.ShowLoadingScreenClientRpc("MainLobby");
+
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost)
         {
             foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
@@ -268,9 +261,10 @@ public class LobbyManager : NetworkBehaviour
 
     public async Task HandleClientOrHostLeftAsync()
     {
-        // Veilig shutdown NetworkManager
-        await SafeShutdownNetworkManagerAsync();
+        if (LoadingScreenManager.Instance != null)
+            LoadingScreenManager.Instance.ShowLoadingScreenClientRpc("MainLobby");
 
+        await SafeShutdownNetworkManagerAsync();
         ResetServerData();
 
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync("MainLobby");
@@ -282,6 +276,13 @@ public class LobbyManager : NetworkBehaviour
 
         if (!NetworkManager.Singleton.IsListening)
             AutoHostGame();
+
+        // ✅ Wacht tot alle clones gespawned zijn voordat de loading screen verdwijnt
+        while (!clonesReady)
+            await Task.Yield();
+
+        if (LoadingScreenManager.Instance != null)
+            LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
     }
 
     private void OnClientDisconnectedHandler(ulong clientId)
@@ -309,9 +310,7 @@ public class LobbyManager : NetworkBehaviour
     private async void OnClientConnectedHandler(ulong clientId)
     {
         if (!NetworkManager.Singleton.IsServer) return;
-
         while (!clonesReady) await Task.Yield();
-
         AssignNextCloneToClient(clientId);
     }
 
@@ -329,7 +328,6 @@ public class LobbyManager : NetworkBehaviour
 
         playerScript.ownerClientId.Value = clientId;
         playerScript.isVisible.Value = true;
-
         cloneOccupied[nextIndex] = true;
 
         playerScript.ownerClientId.SetDirty(true);
@@ -353,7 +351,6 @@ public class LobbyManager : NetworkBehaviour
         {
             GameObject playerObj = Instantiate(playerPrefab, spawnPoints[i].position, Quaternion.Euler(0, 180, 0));
             Player playerScript = playerObj.GetComponent<Player>();
-
             playerScript.isVisible.Value = false;
             playerScript.isHostPlayer.Value = false;
             playerScript.ownerClientId.Value = 0UL;
@@ -362,7 +359,7 @@ public class LobbyManager : NetworkBehaviour
             netObj.Spawn();
 
             Color color = allColors[i % allColors.Count];
-            playerScript.SetColorServerRpc(new Vector3(color.r, color.g, color.b));
+            playerScript.SetColorServerRpc(new UnityEngine.Vector3(color.r, color.g, color.b));
 
             allPlayerClones.Add(playerObj);
             cloneOccupied.Add(false);

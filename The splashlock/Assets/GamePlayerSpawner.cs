@@ -59,6 +59,12 @@ public class GamePlayerSpawner : MonoBehaviour
             clientSpawnIndex[clientId] = spawnCounter++;
             SpawnPlayerForClient(clientId, clientSpawnIndex[clientId]);
         }
+
+        // ✅ Hide loading screen nadat alle players gespawnd zijn
+        if (LoadingScreenManager.Instance != null)
+        {
+            LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
+        }
     }
 
     private void SpawnPlayerForClient(ulong clientId, int spawnIndex)
@@ -77,17 +83,16 @@ public class GamePlayerSpawner : MonoBehaviour
         if (netObj != null)
             netObj.SpawnAsPlayerObject(clientId, true);
 
+        Player playerScript = player.GetComponent<Player>();
+        if (playerScript != null)
+            playerScript.isLobbyClone = false;
+
         GamePlayerColor colorScript = player.GetComponent<GamePlayerColor>();
         if (colorScript != null)
         {
             Color playerColor = GetNextUniqueColor(clientId);
             colorScript.SetColor(playerColor);
         }
-
-        // Zet lobby status uit
-        Player playerScript = player.GetComponent<Player>();
-        if (playerScript != null)
-            playerScript.isLobbyClone = false;
     }
 
     private Color GetNextUniqueColor(ulong clientId)
@@ -96,7 +101,6 @@ public class GamePlayerSpawner : MonoBehaviour
         var availableColors = allColors.Except(usedColors).ToList();
 
         Color color = availableColors.Count > 0 ? availableColors[0] : Random.ColorHSV();
-
         assignedColors[clientId] = color;
         return color;
     }
@@ -106,7 +110,6 @@ public class GamePlayerSpawner : MonoBehaviour
         foreach (var kvp in clientSpawnIndex)
         {
             ulong clientId = kvp.Key;
-
             if (NetworkManager.Singleton.ConnectedClients.ContainsKey(clientId))
             {
                 var client = NetworkManager.Singleton.ConnectedClients[clientId];
@@ -114,12 +117,10 @@ public class GamePlayerSpawner : MonoBehaviour
                 {
                     NetworkObject netObj = client.PlayerObject.GetComponent<NetworkObject>();
                     if (netObj != null && netObj.IsSpawned) netObj.Despawn(true);
-
                     Destroy(client.PlayerObject.gameObject);
                 }
             }
         }
-
         clientSpawnIndex.Clear();
         assignedColors.Clear();
     }
