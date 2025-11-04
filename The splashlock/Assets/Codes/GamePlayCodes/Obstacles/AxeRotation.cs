@@ -9,20 +9,35 @@ public class AxeSmash : MonoBehaviour
     [Header("Push Settings")]
     public float pushForce = 20f;
 
+    [Header("Swing Settings")]
+    public float swingAngle = 45f;      // maximale hoek naar links/rechts
+    public float swingSpeed = 2f;       // hoe snel hij zwaait
+
+    private float initialZ;
+
     private void Awake()
     {
         Collider col = GetComponent<Collider>();
         col.isTrigger = true;
     }
 
+    private void Start()
+    {
+        initialZ = transform.eulerAngles.z; // onthoud startrotatie op Z-as
+    }
+
     private void Update()
     {
-        transform.Rotate(rotationSpeed * Time.deltaTime);
+        // heen-en-weer zwaai in Z-as
+        float angle = Mathf.Sin(Time.time * swingSpeed) * swingAngle;
+        Vector3 euler = transform.eulerAngles;
+        euler.z = initialZ + angle;
+        transform.eulerAngles = euler;
     }
 
     private void ApplyPush(Collider col)
     {
-        // Zoek de CharacterMovement component (niet meer "Local")
+        // Zoek de CharacterMovement component
         CharacterMovement player = col.GetComponent<CharacterMovement>();
         if (player != null)
         {
