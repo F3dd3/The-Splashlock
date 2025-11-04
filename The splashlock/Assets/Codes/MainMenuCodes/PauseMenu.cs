@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using Unity.Netcode;
-using System.Collections;
+using System.Threading.Tasks;
 
 public class PauseMenu : NetworkBehaviour
 {
@@ -13,7 +13,7 @@ public class PauseMenu : NetworkBehaviour
     public MonoBehaviour playerController;
 
     private bool isPaused = false;
-    public bool IsPaused => isPaused; // property voor andere scripts
+    public bool IsPaused => isPaused;
 
     private void Start()
     {
@@ -27,7 +27,7 @@ public class PauseMenu : NetworkBehaviour
             leaveButton.onClick.AddListener(OnLeaveClicked);
 
         if (optionsMenu != null)
-            optionsMenu.SetActive(false); // canvas standaard uit
+            optionsMenu.SetActive(false);
     }
 
     private void OnDestroy()
@@ -41,12 +41,12 @@ public class PauseMenu : NetworkBehaviour
     {
         if (!IsOwner) return;
 
-        // Esc doet niets in optionsMenu
+        // Esc toggle pause
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (isPaused && optionsMenu != null && !optionsMenu.activeSelf)
+            if (isPaused)
                 ResumeGame();
-            else if (!isPaused)
+            else
                 PauseGame();
         }
     }
@@ -83,29 +83,17 @@ public class PauseMenu : NetworkBehaviour
     {
         ResumeGame();
 
-        if (LoadingScreenManager.Instance != null)
-            LoadingScreenManager.Instance.ShowLoadingScreenClientRpc("Lobby");
-
-        StartCoroutine(LoadLobbyScene());
-    }
-
-    private IEnumerator LoadLobbyScene()
-    {
-        yield return new WaitForSeconds(0.1f);
-
-        if (NetworkManager.Singleton != null)
+        // Zoek LobbyManager in de scene
+        LobbyManager lobbyManager = FindObjectOfType<LobbyManager>();
+        if (lobbyManager != null)
         {
-            if (NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsClient)
-                NetworkManager.Singleton.Shutdown();
+            // Trigger volledige lobby + autohost flow
+            _ = lobbyManager.HandleClientOrHostLeftAsync();
         }
-
-        AsyncOperation asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync("MainLobby");
-        asyncLoad.allowSceneActivation = true;
-
-        while (!asyncLoad.isDone)
-            yield return null;
-
-        if (LoadingScreenManager.Instance != null)
-            LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
+        else
+        {
+            // fallback: gewoon lobby loaden
+            UnityEngine.SceneManagement.SceneManager.LoadScene("MainLobby");
+        }
     }
 }

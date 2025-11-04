@@ -11,6 +11,7 @@ using System;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 
 public class LobbyManager : NetworkBehaviour
 {
@@ -20,8 +21,10 @@ public class LobbyManager : NetworkBehaviour
     public TMP_InputField joinCodeInput;
     public TextMeshProUGUI infoText;
 
-    [Header("Player Prefab & Spawn Points")]
+    [Header("Player Prefab")]
     public GameObject playerPrefab;
+
+    [Header("Spawn Points (assign in inspector)")]
     public Transform[] spawnPoints;
 
     [Header("Player Colors")]
@@ -56,33 +59,47 @@ public class LobbyManager : NetworkBehaviour
 
     private void Start()
     {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+
         infoText.gameObject.SetActive(true);
 
         joinButton.onClick.AddListener(() => _ = JoinGameAsync());
+        leaveButton.onClick.AddListener(() => _ = LeaveFlowAsync());
         leaveButton.gameObject.SetActive(false);
-        leaveButton.onClick.AddListener(() =>
-        {
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost)
-                _ = HostLeaveFlowAsync();
-        });
 
         if (NetworkManager.Singleton != null)
         {
-            NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
-            NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnectedHandler;
+            NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnectedHandler;
         }
 
         WaitUntilReadyAndAutoHost();
     }
 
-    private async void WaitUntilReadyAndAutoHost()
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        await WaitForServicesReadyAsync();
-        if (!hasJoinedOnce)
+        if (scene.name != "MainLobby")
+        {
+            Destroy(gameObject); // LobbyManager niet nodig in game scene
+            return;
+        }
+
+        // Lobby logic alleen in MainLobby
+        if (spawnPoints == null || spawnPoints.Length == 0)
+            Debug.LogWarning("LobbyManager: spawnPoints niet ingesteld in inspector");
+
+        if (!NetworkManager.Singleton.IsListening && servicesInitialized)
             AutoHostGame();
     }
 
-    private async Task WaitForServicesReadyAsync()
+    private async void WaitUntilReadyAndAutoHost()
+    {
+        await WaitUntilServicesReadyAsync();
+        if (!hasJoinedOnce && SceneManager.GetActiveScene().name == "MainLobby")
+            AutoHostGame();
+    }
+
+    private async Task WaitUntilServicesReadyAsync()
     {
         while (!servicesInitialized)
             await Task.Yield();
@@ -99,8 +116,38 @@ public class LobbyManager : NetworkBehaviour
         }
     }
 
-    private async void AutoHostGame()
+    private async Task SafeShutdownNetworkManagerAsync()
     {
+        if (NetworkManager.Singleton == null) return;
+
+        if (NetworkManager.Singleton.IsListening)
+        {
+            NetworkManager.Singleton.Shutdown();
+            // Wacht tot NetworkManager echt klaar is
+            while (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+                await Task.Yield();
+        }
+    }
+
+    public async void AutoHostGame()
+    {
+        await WaitUntilServicesReadyAsync();
+
+        // Veilig shutdown
+        await SafeShutdownNetworkManagerAsync();
+
+        if (NetworkManager.Singleton.IsListening)
+        {
+            Debug.LogWarning("Cannot start host: NetworkManager still running");
+            return;
+        }
+
+        if (spawnPoints == null || spawnPoints.Length == 0)
+        {
+            Debug.LogWarning("Cannot start host: spawnPoints not set");
+            return;
+        }
+
         try
         {
             ResetServerData();
@@ -118,17 +165,15 @@ public class LobbyManager : NetworkBehaviour
                 allocation.ConnectionData
             );
 
-            // Start host
             NetworkManager.Singleton.StartHost();
 
-            // Spawn clones voor alle spawnpoints (onzichtbaar, geen eigenaar)
+            await Task.Delay(100); // kleine delay zodat scene ready is
             SpawnAllPlayerClones();
 
             infoText.text = $"Join code: {lastJoinCode}";
             leaveButton.gameObject.SetActive(false);
             hasJoinedOnce = true;
-
-            clonesReady = true; // server klaar om clones toe te wijzen
+            clonesReady = true;
         }
         catch (Exception e)
         {
@@ -146,7 +191,7 @@ public class LobbyManager : NetworkBehaviour
             return;
         }
 
-        await WaitForServicesReadyAsync();
+        await WaitUntilServicesReadyAsync();
         await JoinRelayAsync(joinCode);
     }
 
@@ -165,15 +210,10 @@ public class LobbyManager : NetworkBehaviour
 
         if (NetworkManager.Singleton.IsHost)
         {
-            // verwijder oude clones en shutdown host
             foreach (var clone in allPlayerClones)
-            {
-                if (clone != null)
-                    Destroy(clone);
-            }
+                if (clone != null) Destroy(clone);
             allPlayerClones.Clear();
-
-            NetworkManager.Singleton.Shutdown();
+            await SafeShutdownNetworkManagerAsync();
             await Task.Delay(300);
         }
 
@@ -212,48 +252,65 @@ public class LobbyManager : NetworkBehaviour
         infoText.text = $"Join code: {lastJoinCode}";
     }
 
-    private async Task HostLeaveFlowAsync()
+    private async Task LeaveFlowAsync()
     {
-        foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost)
         {
-            if (client.ClientId != NetworkManager.Singleton.LocalClientId)
-                NetworkManager.Singleton.DisconnectClient(client.ClientId);
+            foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
+            {
+                if (client.ClientId != NetworkManager.Singleton.LocalClientId)
+                    NetworkManager.Singleton.DisconnectClient(client.ClientId);
+            }
         }
+
+        await HandleClientOrHostLeftAsync();
+    }
+
+    public async Task HandleClientOrHostLeftAsync()
+    {
+        // Veilig shutdown NetworkManager
+        await SafeShutdownNetworkManagerAsync();
 
         ResetServerData();
-        leaveButton.gameObject.SetActive(false);
-        infoText.text = $"Join code: {lastJoinCode}";
 
-        NetworkManager.Singleton.Shutdown();
-
-        while (NetworkManager.Singleton.IsListening)
+        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync("MainLobby");
+        asyncLoad.allowSceneActivation = true;
+        while (!asyncLoad.isDone)
             await Task.Yield();
 
-        await WaitForServicesReadyAsync();
-        AutoHostGame();
+        await WaitUntilServicesReadyAsync();
+
+        if (!NetworkManager.Singleton.IsListening)
+            AutoHostGame();
     }
 
-    private void OnClientDisconnected(ulong clientId)
+    private void OnClientDisconnectedHandler(ulong clientId)
     {
-        if (!NetworkManager.Singleton.IsServer) return;
-
-        GameObject clone = allPlayerClones.FirstOrDefault(c => c.activeSelf && c.GetComponent<Player>().ownerClientId.Value == clientId);
-        if (clone != null)
-            clone.GetComponent<Player>().isVisible.Value = false;
-
-        int index = allPlayerClones.FindIndex(c => c == clone);
-        if (index != -1)
-            cloneOccupied[index] = false;
-    }
-
-    private async void OnClientConnected(ulong clientId)
-    {
-        if (!NetworkManager.Singleton.IsServer) return;
-
-        while (!clonesReady)
+        if (NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsServer)
         {
-            await Task.Yield();
+            if (clientId == NetworkManager.Singleton.LocalClientId)
+            {
+                Debug.Log("Disconnected from host! Returning to lobby...");
+                _ = HandleClientOrHostLeftAsync();
+            }
         }
+
+        if (NetworkManager.Singleton.IsServer)
+        {
+            GameObject clone = allPlayerClones.FirstOrDefault(c =>
+                c.activeSelf && c.GetComponent<Player>().ownerClientId.Value == clientId);
+            if (clone != null) clone.GetComponent<Player>().isVisible.Value = false;
+
+            int index = allPlayerClones.FindIndex(c => c == clone);
+            if (index != -1) cloneOccupied[index] = false;
+        }
+    }
+
+    private async void OnClientConnectedHandler(ulong clientId)
+    {
+        if (!NetworkManager.Singleton.IsServer) return;
+
+        while (!clonesReady) await Task.Yield();
 
         AssignNextCloneToClient(clientId);
     }
@@ -286,6 +343,12 @@ public class LobbyManager : NetworkBehaviour
         cloneOccupied.Clear();
         allPlayerClones.Clear();
 
+        if (spawnPoints == null || spawnPoints.Length == 0)
+        {
+            Debug.LogWarning("Geen spawn points ingesteld! Clones niet gespawnd.");
+            return;
+        }
+
         for (int i = 0; i < spawnPoints.Length; i++)
         {
             GameObject playerObj = Instantiate(playerPrefab, spawnPoints[i].position, Quaternion.Euler(0, 180, 0));
@@ -305,6 +368,7 @@ public class LobbyManager : NetworkBehaviour
             cloneOccupied.Add(false);
         }
 
+        Debug.Log($"Spawned {allPlayerClones.Count} player clones.");
         clonesReady = true;
     }
 
