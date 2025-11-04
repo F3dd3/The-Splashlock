@@ -79,6 +79,7 @@ public class LobbyManager : NetworkBehaviour
         if (scene.name == "MainLobby")
         {
             clonesReady = true;
+
             if (LoadingScreenManager.Instance != null)
                 LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
         }
@@ -246,61 +247,48 @@ public class LobbyManager : NetworkBehaviour
 
     private async Task LeaveFlowAsync()
     {
-        if (LoadingScreenManager.Instance != null)
-            LoadingScreenManager.Instance.ShowLoadingScreenClientRpc("MainLobby");
-
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost)
         {
-            foreach (var client in NetworkManager.Singleton.ConnectedClientsList.ToList())
-            {
-                if (client.ClientId != NetworkManager.Singleton.LocalClientId)
-                    NetworkManager.Singleton.DisconnectClient(client.ClientId);
-            }
+            await HandleClientOrHostLeftAsync();
         }
-
-        await HandleClientOrHostLeftAsync();
     }
 
     public async Task HandleClientOrHostLeftAsync()
     {
-        // ✅ Toon loading screen
-        if (LoadingScreenManager.Instance != null)
-            LoadingScreenManager.Instance.ShowLoadingScreenClientRpc("MainLobby");
+        if (NetworkManager.Singleton == null)
+            return;
 
-        // ✅ Verberg loading screen vóór shutdown
-        if (SceneManager.GetActiveScene().name == "MainLobby")
+        if (NetworkManager.Singleton.IsHost)
         {
-            if (LoadingScreenManager.Instance != null)
-                LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
+            int connectedClients = NetworkManager.Singleton.ConnectedClientsList.Count;
+            Debug.Log($"[LobbyManager] Host gaat terug naar MainLobby. Verbonden clients: {connectedClients}");
+            string clientIds = string.Join(", ", NetworkManager.Singleton.ConnectedClientsList.Select(c => c.ClientId));
+            Debug.Log($"[LobbyManager] Client IDs: {clientIds}");
+
+            // Netcode scene switch voor host en clients
+            NetworkManager.Singleton.SceneManager.LoadScene(
+                "MainLobby",
+                LoadSceneMode.Single
+            );
+
+            // Wacht tot host zelf klaar is met laden
+            while (SceneManager.GetActiveScene().name != "MainLobby")
+                await Task.Yield();
+
+            // Reset server data en spawn clones
+            ResetServerData();
+            SpawnAllPlayerClones();
+            Debug.Log("[LobbyManager] Nieuwe lobby clones gespawned.");
         }
-
-        await SafeShutdownNetworkManagerAsync();
-        ResetServerData();
-
-        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync("MainLobby");
-        asyncLoad.allowSceneActivation = true;
-        while (!asyncLoad.isDone)
-            await Task.Yield();
-
-        clonesReady = true; // belangrijk om waiting loops te stoppen
-
-        await WaitUntilServicesReadyAsync();
-
-        if (!NetworkManager.Singleton.IsListening)
-            AutoHostGame();
+        else
+        {
+            // Clients volgen automatisch de host; niets nodig
+            Debug.Log("[LobbyManager] Client volgt scene switch van host automatisch.");
+        }
     }
 
     private void OnClientDisconnectedHandler(ulong clientId)
     {
-        if (NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsServer)
-        {
-            if (clientId == NetworkManager.Singleton.LocalClientId)
-            {
-                Debug.Log("Disconnected from host! Returning to lobby...");
-                _ = HandleClientOrHostLeftAsync();
-            }
-        }
-
         if (NetworkManager.Singleton.IsServer)
         {
             GameObject clone = allPlayerClones.FirstOrDefault(c =>
@@ -322,11 +310,7 @@ public class LobbyManager : NetworkBehaviour
     private void AssignNextCloneToClient(ulong clientId)
     {
         int nextIndex = cloneOccupied.FindIndex(o => o == false);
-        if (nextIndex == -1)
-        {
-            Debug.LogWarning("Geen vrije player clone beschikbaar voor client: " + clientId);
-            return;
-        }
+        if (nextIndex == -1) return;
 
         GameObject clone = allPlayerClones[nextIndex];
         Player playerScript = clone.GetComponent<Player>();
@@ -346,11 +330,7 @@ public class LobbyManager : NetworkBehaviour
         cloneOccupied.Clear();
         allPlayerClones.Clear();
 
-        if (spawnPoints == null || spawnPoints.Length == 0)
-        {
-            Debug.LogWarning("Geen spawn points ingesteld! Clones niet gespawnd.");
-            return;
-        }
+        if (spawnPoints == null || spawnPoints.Length == 0) return;
 
         for (int i = 0; i < spawnPoints.Length; i++)
         {
@@ -370,8 +350,8 @@ public class LobbyManager : NetworkBehaviour
             cloneOccupied.Add(false);
         }
 
-        Debug.Log($"Spawned {allPlayerClones.Count} player clones.");
         clonesReady = true;
+        Debug.Log($"Spawned {allPlayerClones.Count} player clones.");
     }
 
     private void ResetServerData()

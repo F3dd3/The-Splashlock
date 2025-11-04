@@ -13,17 +13,11 @@ public class Menu : MonoBehaviour
 
     private void OnBackToLobbyClicked()
     {
-        if (LoadingScreenManager.Instance != null)
-            LoadingScreenManager.Instance.ShowLoadingScreenClientRpc("MainLobby");
-
         LobbyManager lobbyManager = FindObjectOfType<LobbyManager>();
         if (lobbyManager != null)
         {
+            // Host triggers the scene switch; clients follow automatically
             _ = lobbyManager.HandleClientOrHostLeftAsync();
-        }
-        else
-        {
-            UnityEngine.SceneManagement.SceneManager.LoadScene("MainLobby");
         }
     }
 }
