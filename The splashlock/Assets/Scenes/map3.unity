@@ -1028,6 +1028,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3385389744542241391, guid: d9013926e11f03444878e1e4fa7a8314, type: 3}
   m_PrefabInstance: {fileID: 240629762}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &245446135
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 245446136}
+  m_Layer: 0
+  m_Name: Spawnpoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &245446136
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 245446135}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1253447765}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &245518685
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4083,7 +4114,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 4565825265323583784, guid: 25024d185cd3a144ba681eae3b0a6eee, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 245446136}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 3753399887940416402, guid: 25024d185cd3a144ba681eae3b0a6eee, type: 3}
       insertIndex: -1
@@ -4106,11 +4140,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2c43273f32806243bb3dd783c07c0e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnPoint: {fileID: 0}
+  spawnPoint: {fileID: 245446136}
   checkpointId: 0
   childRenderer: {fileID: 0}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   targetColor: {r: 0, g: 1, b: 0, a: 1}
+--- !u!4 &1253447765 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4565825265323583784, guid: 25024d185cd3a144ba681eae3b0a6eee, type: 3}
+  m_PrefabInstance: {fileID: 1253447762}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1257489044
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4550,7 +4589,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
-  startPlatform: {fileID: 0}
+  startPlatform: {fileID: 1253447764}
 --- !u!114 &1440915734
 MonoBehaviour:
   m_ObjectHideFlags: 0
