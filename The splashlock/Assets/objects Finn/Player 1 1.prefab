@@ -3788,7 +3788,7 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   scriptsToToggle: []
   pushBackForce: {x: 0, y: 0, z: -5}
-  ragdollImmunityDuration: 5
+  ragdollImmunityDuration: 2.5
   isRagdollActive: 0
 --- !u!114 &9091749041603514987
 MonoBehaviour:
