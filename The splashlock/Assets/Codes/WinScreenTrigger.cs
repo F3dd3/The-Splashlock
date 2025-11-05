@@ -8,6 +8,21 @@ public class WinScreenTrigger : NetworkBehaviour
 
     private bool hasTriggered = false; // voorkomt dubbele triggers
 
+    private void Update()
+    {
+        // Nieuw: laat winscreen button verschijnen bij toets I
+        if (Input.GetKeyDown(KeyCode.I))
+        {
+            WinScreenManager winManager = FindObjectOfType<WinScreenManager>();
+            if (winManager != null)
+            {
+                // Gebruik lokale clientId om eigen winscreen te tonen
+                ulong localClientId = NetworkManager.Singleton.LocalClientId;
+                winManager.ShowWinScreenClientRpc(localClientId);
+            }
+        }
+    }
+
     private void OnTriggerEnter(Collider other)
     {
         if (hasTriggered) return;
