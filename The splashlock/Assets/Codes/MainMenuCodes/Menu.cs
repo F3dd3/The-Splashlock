@@ -13,11 +13,12 @@ public class Menu : MonoBehaviour
 
     private void OnBackToLobbyClicked()
     {
-        LobbyManager lobbyManager = FindObjectOfType<LobbyManager>();
-        if (lobbyManager != null)
+        WinScreenTrigger winScreen = FindObjectOfType<WinScreenTrigger>();
+        if (winScreen != null)
         {
-            // Host triggers the scene switch; clients follow automatically
-            _ = lobbyManager.HandleClientOrHostLeftAsync();
+            winScreen.ReturnToLobby();
         }
+
+        // Cursor en playerController worden hier niet aangepast
     }
 }

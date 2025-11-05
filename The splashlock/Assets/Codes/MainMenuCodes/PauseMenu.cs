@@ -71,6 +71,8 @@ public class PauseMenu : NetworkBehaviour
             playerController.enabled = true;
 
         isPaused = false;
+
+        // cursor en playerController blijven zoals origineel
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -79,17 +81,13 @@ public class PauseMenu : NetworkBehaviour
     {
         ResumeGame();
 
-        if (LoadingScreenManager.Instance != null)
-            LoadingScreenManager.Instance.ShowLoadingScreenClientRpc("MainLobby");
-
         LobbyManager lobbyManager = FindObjectOfType<LobbyManager>();
         if (lobbyManager != null)
         {
-            _ = lobbyManager.HandleClientOrHostLeftAsync();
-        }
-        else
-        {
-            UnityEngine.SceneManagement.SceneManager.LoadScene("MainLobby");
+            if (IsOwner)
+            {
+                _ = lobbyManager.HandleClientOrHostLeftAsync();
+            }
         }
     }
 }

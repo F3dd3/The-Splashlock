@@ -14,6 +14,7 @@ TagManager:
   - Bijl
   - Lazer
   - Spike
+  - SpawnPoint
   layers:
   - Default
   - TransparentFX
