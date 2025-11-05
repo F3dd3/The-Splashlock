@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using Unity.Netcode;
+using System.Threading.Tasks;
+using UnityEngine.SceneManagement;
 
 public class PauseMenu : NetworkBehaviour
 {
@@ -59,7 +61,6 @@ public class PauseMenu : NetworkBehaviour
 
         isPaused = true;
 
-        // Cursor zichtbaar bij pauze
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -74,7 +75,6 @@ public class PauseMenu : NetworkBehaviour
 
         isPaused = false;
 
-        // Cursor zichtbaar bij terug naar gameplay
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -83,17 +83,35 @@ public class PauseMenu : NetworkBehaviour
     {
         ResumeGame();
 
-        LobbyManager lobbyManager = FindObjectOfType<LobbyManager>();
-        if (lobbyManager != null)
+        if (NetworkManager.Singleton != null)
         {
-            if (IsOwner)
+            if (NetworkManager.Singleton.IsHost)
             {
-                await lobbyManager.HandleClientOrHostLeftAsync();
+                Debug.Log("[PauseMenu] Host leave: stop host, clients worden disconnect");
+
+                NetworkManager.Singleton.Shutdown();
+            }
+            else if (NetworkManager.Singleton.IsClient)
+            {
+                Debug.Log("[PauseMenu] Client leave: disconnect van host");
+                NetworkManager.Singleton.Shutdown();
             }
         }
 
-        // ✅ Zorg dat cursor zichtbaar blijft
+        await Task.Delay(500);
+
+        // Load eigen lobby
+        if (SceneManager.GetActiveScene().name != "MainLobby")
+            SceneManager.LoadScene("MainLobby");
+
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
+
+        LobbyManager lobbyManager = FindObjectOfType<LobbyManager>();
+        if (lobbyManager != null)
+        {
+            Debug.Log("[PauseMenu] Auto-host starten in eigen lobby");
+            lobbyManager.AutoHostGame();
+        }
     }
 }
