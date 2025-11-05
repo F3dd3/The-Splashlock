@@ -53,14 +53,30 @@ public class GamePlayerSpawner : MonoBehaviour
         // Alleen de server spawnt nieuwe players
         if (!NetworkManager.Singleton.IsServer) return;
 
+        if (spawnPoints == null || spawnPoints.Length == 0)
+        {
+            // Zoek automatisch spawnPoints op in scene
+            GameObject[] spawns = GameObject.FindGameObjectsWithTag("SpawnPoint");
+            if (spawns.Length == 0)
+            {
+                Debug.LogError("[GamePlayerSpawner] Geen spawnPoints gevonden in scene! Players kunnen niet spawnen.");
+                return;
+            }
+
+            spawnPoints = spawns.OrderBy(go => go.name).Select(go => go.transform).ToArray();
+            Debug.Log($"[GamePlayerSpawner] {spawnPoints.Length} spawnPoints gevonden en gesorteerd.");
+        }
+
         int spawnCounter = 0;
         foreach (ulong clientId in clientsCompleted)
         {
-            clientSpawnIndex[clientId] = spawnCounter++;
-            SpawnPlayerForClient(clientId, clientSpawnIndex[clientId]);
+            int spawnIndex = spawnCounter % spawnPoints.Length;
+            clientSpawnIndex[clientId] = spawnIndex;
+            SpawnPlayerForClient(clientId, spawnIndex);
+            spawnCounter++;
         }
 
-        // ✅ Hide loading screen nadat alle players gespawnd zijn
+        // Hide loading screen nadat alle players gespawnd zijn
         if (LoadingScreenManager.Instance != null)
         {
             LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
@@ -75,7 +91,20 @@ public class GamePlayerSpawner : MonoBehaviour
             return;
         }
 
-        Transform spawn = spawnPoints.Length > 0 ? spawnPoints[spawnIndex % spawnPoints.Length] : new GameObject("DummySpawn").transform;
+        if (spawnPoints == null || spawnPoints.Length == 0)
+        {
+            Debug.LogError($"SpawnPoints nog niet beschikbaar voor client {clientId}. Player wordt niet gespawned.");
+            return;
+        }
+
+        spawnIndex = Mathf.Clamp(spawnIndex, 0, spawnPoints.Length - 1);
+        Transform spawn = spawnPoints[spawnIndex];
+
+        if (spawn == null)
+        {
+            Debug.LogError($"SpawnPoint index {spawnIndex} is null voor client {clientId}. Player wordt niet gespawned.");
+            return;
+        }
 
         GameObject player = Instantiate(playerPrefab, spawn.position, spawn.rotation);
 
@@ -93,6 +122,8 @@ public class GamePlayerSpawner : MonoBehaviour
             Color playerColor = GetNextUniqueColor(clientId);
             colorScript.SetColor(playerColor);
         }
+
+        Debug.Log($"Client {clientId} gespawned op spawnIndex {spawnIndex} ({spawn.position})");
     }
 
     private Color GetNextUniqueColor(ulong clientId)
