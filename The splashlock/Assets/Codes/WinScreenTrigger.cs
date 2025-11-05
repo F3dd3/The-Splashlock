@@ -6,7 +6,7 @@ public class WinScreenTrigger : NetworkBehaviour
     [Header("Speler")]
     public CharacterMovement playerMovement;
 
-    private bool hasTriggered = false; // voorkomt dubbele triggers
+    private bool hasTriggered = false;
 
     private void OnTriggerEnter(Collider other)
     {
@@ -20,17 +20,15 @@ public class WinScreenTrigger : NetworkBehaviour
 
         ulong winningClientId = playerNetObj.OwnerClientId;
 
-        // Roep ServerRpc aan zodat de server iedereen updatet
         TriggerWinServerRpc(winningClientId);
 
-        // Lokale speler beweging uitschakelen
         if (playerMovement != null)
             playerMovement.enabled = false;
 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        hasTriggered = true; // zorg dat deze trigger niet opnieuw wordt geactiveerd
+        hasTriggered = true;
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -45,12 +43,19 @@ public class WinScreenTrigger : NetworkBehaviour
 
     public void ReturnToLobby()
     {
-        Back.Instance?.ResetReadyStatus();
+        if (IsOwner)
+        {
+            ReturnToLobbyServerRpc();
+        }
+    }
 
-        if (playerMovement != null)
-            playerMovement.enabled = true;
-
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+    [ServerRpc(RequireOwnership = false)]
+    private void ReturnToLobbyServerRpc(ServerRpcParams rpcParams = default)
+    {
+        LobbyManager lobbyManager = FindObjectOfType<LobbyManager>();
+        if (lobbyManager != null && NetworkManager.Singleton.IsServer)
+        {
+            _ = lobbyManager.HandleBackToLobbyAsync();
+        }
     }
 }

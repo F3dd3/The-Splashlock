@@ -13,7 +13,7 @@ TagManager:
   - Helling
   - Bijl
   - Lazer
-  - Spike
+  - SpawnPoint
   layers:
   - Default
   - TransparentFX

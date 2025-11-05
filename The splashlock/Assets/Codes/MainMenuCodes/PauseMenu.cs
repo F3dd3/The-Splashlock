@@ -85,7 +85,7 @@ public class PauseMenu : NetworkBehaviour
         LobbyManager lobbyManager = FindObjectOfType<LobbyManager>();
         if (lobbyManager != null)
         {
-            _ = lobbyManager.HandleClientOrHostLeftAsync();
+            _ = lobbyManager.HandleBackToLobbyAsync();
         }
         else
         {
