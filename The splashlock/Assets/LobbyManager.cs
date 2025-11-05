@@ -85,10 +85,9 @@ public class LobbyManager : NetworkBehaviour
             if (LoadingScreenManager.Instance != null)
                 LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
 
-            // Alleen de nieuwe LobbyManager spawnt clones en wijst ze toe
             if (NetworkManager.Singleton.IsHost)
             {
-                Debug.Log("[LobbyManager] Nieuwe LobbyManager detecteert scene load MainLobby.");
+                Debug.Log("[LobbyManager] Nieuwe LobbyManager detecteert MainLobby.");
                 SpawnClonesAfterServicesReady();
             }
         }
@@ -117,11 +116,12 @@ public class LobbyManager : NetworkBehaviour
             GameObject[] spawns = GameObject.FindGameObjectsWithTag("SpawnPoint");
             if (spawns.Length == 0)
             {
-                Debug.LogError("[LobbyManager] Geen spawnpoints gevonden in de huidige scene!");
+                Debug.LogError("[LobbyManager] Geen spawnpoints gevonden!");
                 return;
             }
-            spawnPoints = spawns.Select(go => go.transform).ToArray();
-            Debug.Log($"[LobbyManager] {spawnPoints.Length} spawnPoints automatisch gedetecteerd.");
+
+            spawnPoints = spawns.OrderBy(go => go.name).Select(go => go.transform).ToArray();
+            Debug.Log($"[LobbyManager] {spawnPoints.Length} spawnPoints automatisch gedetecteerd en gesorteerd.");
         }
 
         try
@@ -130,7 +130,6 @@ public class LobbyManager : NetworkBehaviour
             SpawnAllPlayerClones();
             Debug.Log("[LobbyManager] Player clones succesvol gespawned door nieuwe LobbyManager.");
 
-            // ✅ Wijs clones toe aan reeds verbonden clients
             foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
             {
                 AssignNextCloneToClient(client.ClientId);
@@ -139,7 +138,7 @@ public class LobbyManager : NetworkBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError("[LobbyManager] Fout bij spawnen of toewijzen van player clones: " + e.Message);
+            Debug.LogError("[LobbyManager] Fout bij spawnen of toewijzen: " + e.Message);
         }
     }
 
@@ -335,8 +334,24 @@ public class LobbyManager : NetworkBehaviour
         }
     }
 
-    private void OnClientDisconnectedHandler(ulong clientId)
+    // ✅ Client disconnect handler: auto-load lobby en auto-host
+    private async void OnClientDisconnectedHandler(ulong clientId)
     {
+        if (!NetworkManager.Singleton.IsHost)
+        {
+            Debug.Log("[LobbyManager] Client gedisconnect van host, terug naar eigen lobby en auto-host");
+
+            await Task.Delay(200);
+
+            if (SceneManager.GetActiveScene().name != "MainLobby")
+                SceneManager.LoadScene("MainLobby");
+
+            while (SceneManager.GetActiveScene().name != "MainLobby")
+                await Task.Yield();
+
+            AutoHostGame();
+        }
+
         if (NetworkManager.Singleton.IsServer)
         {
             GameObject clone = allPlayerClones.FirstOrDefault(c =>

@@ -931,7 +931,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 33361ea09a7f52e46bb2dc7b14ed2bc8, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 96.97
+      value: 97.49
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 33361ea09a7f52e46bb2dc7b14ed2bc8, type: 3}
       propertyPath: m_LocalPosition.y
@@ -939,7 +939,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 33361ea09a7f52e46bb2dc7b14ed2bc8, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -22.25
+      value: -21.83
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 33361ea09a7f52e46bb2dc7b14ed2bc8, type: 3}
       propertyPath: m_LocalRotation.w
@@ -3079,7 +3079,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: fa7a00648be9287498170a29902b93c9, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 87.93
+      value: 87.98
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: fa7a00648be9287498170a29902b93c9, type: 3}
       propertyPath: m_LocalPosition.y
@@ -3087,7 +3087,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: fa7a00648be9287498170a29902b93c9, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -22.69605
+      value: -21.28
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: fa7a00648be9287498170a29902b93c9, type: 3}
       propertyPath: m_LocalRotation.w
@@ -4269,7 +4269,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1229182590}
   m_Layer: 0
-  m_Name: SpawnpointHost
+  m_Name: Spawnpoint0
   m_TagString: SpawnPoint
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
