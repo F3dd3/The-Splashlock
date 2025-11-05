@@ -26,8 +26,7 @@ public class LobbyManager : NetworkBehaviour
     public Transform[] spawnPoints;
 
     [Header("Player Colors")]
-    public List<Color> allColors = new List<Color>
-        { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan };
+    public List<Color> allColors = new List<Color> { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan };
 
     private List<GameObject> allPlayerClones = new List<GameObject>();
     private List<bool> cloneOccupied = new List<bool>();
@@ -80,20 +79,82 @@ public class LobbyManager : NetworkBehaviour
         {
             clonesReady = true;
 
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
             if (LoadingScreenManager.Instance != null)
                 LoadingScreenManager.Instance.HideLoadingScreenClientRpc();
+
+            // Alleen de nieuwe LobbyManager spawnt clones en wijst ze toe
+            if (NetworkManager.Singleton.IsHost)
+            {
+                Debug.Log("[LobbyManager] Nieuwe LobbyManager detecteert scene load MainLobby.");
+                SpawnClonesAfterServicesReady();
+            }
         }
         else
         {
-            Destroy(gameObject);
+            if (gameObject.scene.name != scene.name)
+            {
+                Destroy(gameObject);
+            }
+        }
+    }
+
+    private async void SpawnClonesAfterServicesReady()
+    {
+        spawnPoints = null;
+
+        while (!servicesInitialized ||
+               !AuthenticationService.Instance.IsSignedIn ||
+               string.IsNullOrEmpty(AuthenticationService.Instance.PlayerId))
+        {
+            await Task.Yield();
+        }
+
+        if (spawnPoints == null || spawnPoints.Length == 0)
+        {
+            GameObject[] spawns = GameObject.FindGameObjectsWithTag("SpawnPoint");
+            if (spawns.Length == 0)
+            {
+                Debug.LogError("[LobbyManager] Geen spawnpoints gevonden in de huidige scene!");
+                return;
+            }
+            spawnPoints = spawns.Select(go => go.transform).ToArray();
+            Debug.Log($"[LobbyManager] {spawnPoints.Length} spawnPoints automatisch gedetecteerd.");
+        }
+
+        try
+        {
+            ResetServerData();
+            SpawnAllPlayerClones();
+            Debug.Log("[LobbyManager] Player clones succesvol gespawned door nieuwe LobbyManager.");
+
+            // ✅ Wijs clones toe aan reeds verbonden clients
+            foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+            {
+                AssignNextCloneToClient(client.ClientId);
+            }
+            Debug.Log("[LobbyManager] Player clones toegewezen aan alle connected clients.");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("[LobbyManager] Fout bij spawnen of toewijzen van player clones: " + e.Message);
         }
     }
 
     private async void WaitUntilReadyAndAutoHost()
     {
         await WaitUntilServicesReadyAsync();
-        if (!hasJoinedOnce && SceneManager.GetActiveScene().name == "MainLobby")
+
+        if (!hasJoinedOnce &&
+            NetworkManager.Singleton != null &&
+            !NetworkManager.Singleton.IsClient &&
+            !NetworkManager.Singleton.IsServer &&
+            SceneManager.GetActiveScene().name == "MainLobby")
+        {
             AutoHostGame();
+        }
     }
 
     private async Task WaitUntilServicesReadyAsync()
@@ -137,7 +198,7 @@ public class LobbyManager : NetworkBehaviour
 
         if (spawnPoints == null || spawnPoints.Length == 0)
         {
-            Debug.LogWarning("Cannot start host: spawnPoints not set");
+            Debug.LogWarning("Cannot start host: spawnPoints niet ingesteld of niet gedetecteerd");
             return;
         }
 
@@ -255,35 +316,22 @@ public class LobbyManager : NetworkBehaviour
 
     public async Task HandleClientOrHostLeftAsync()
     {
-        if (NetworkManager.Singleton == null)
-            return;
+        if (NetworkManager.Singleton == null) return;
 
         if (NetworkManager.Singleton.IsHost)
         {
-            int connectedClients = NetworkManager.Singleton.ConnectedClientsList.Count;
-            Debug.Log($"[LobbyManager] Host gaat terug naar MainLobby. Verbonden clients: {connectedClients}");
-            string clientIds = string.Join(", ", NetworkManager.Singleton.ConnectedClientsList.Select(c => c.ClientId));
-            Debug.Log($"[LobbyManager] Client IDs: {clientIds}");
+            Debug.Log("[LobbyManager] Host terug naar lobby");
 
-            // Netcode scene switch voor host en clients
-            NetworkManager.Singleton.SceneManager.LoadScene(
-                "MainLobby",
-                LoadSceneMode.Single
-            );
+            NetworkManager.Singleton.SceneManager.LoadScene("MainLobby", LoadSceneMode.Single);
 
-            // Wacht tot host zelf klaar is met laden
-            while (SceneManager.GetActiveScene().name != "MainLobby")
-                await Task.Yield();
-
-            // Reset server data en spawn clones
-            ResetServerData();
-            SpawnAllPlayerClones();
-            Debug.Log("[LobbyManager] Nieuwe lobby clones gespawned.");
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
         }
         else
         {
-            // Clients volgen automatisch de host; niets nodig
-            Debug.Log("[LobbyManager] Client volgt scene switch van host automatisch.");
+            Debug.Log("[LobbyManager] Client blijft verbonden bij host lobby.");
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
         }
     }
 
@@ -330,28 +378,39 @@ public class LobbyManager : NetworkBehaviour
         cloneOccupied.Clear();
         allPlayerClones.Clear();
 
-        if (spawnPoints == null || spawnPoints.Length == 0) return;
-
         for (int i = 0; i < spawnPoints.Length; i++)
         {
-            GameObject playerObj = Instantiate(playerPrefab, spawnPoints[i].position, Quaternion.Euler(0, 180, 0));
-            Player playerScript = playerObj.GetComponent<Player>();
-            playerScript.isVisible.Value = false;
-            playerScript.isHostPlayer.Value = false;
-            playerScript.ownerClientId.Value = 0UL;
+            if (spawnPoints[i] == null)
+            {
+                Debug.LogError($"[LobbyManager] SpawnPoint index {i} is null, clone kan niet gespawned worden!");
+                continue;
+            }
 
-            NetworkObject netObj = playerObj.GetComponent<NetworkObject>();
-            netObj.Spawn();
+            try
+            {
+                GameObject playerObj = Instantiate(playerPrefab, spawnPoints[i].position, Quaternion.Euler(0, 180, 0));
+                Player playerScript = playerObj.GetComponent<Player>();
+                playerScript.isVisible.Value = false;
+                playerScript.isHostPlayer.Value = false;
+                playerScript.ownerClientId.Value = 0UL;
 
-            Color color = allColors[i % allColors.Count];
-            playerScript.SetColorServerRpc(new UnityEngine.Vector3(color.r, color.g, color.b));
+                NetworkObject netObj = playerObj.GetComponent<NetworkObject>();
+                netObj.Spawn();
 
-            allPlayerClones.Add(playerObj);
-            cloneOccupied.Add(false);
+                Color color = allColors[i % allColors.Count];
+                playerScript.SetColorServerRpc(new Vector3(color.r, color.g, color.b));
+
+                allPlayerClones.Add(playerObj);
+                cloneOccupied.Add(false);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[LobbyManager] Fout bij spawnen van clone op index " + i + ": " + e.Message);
+            }
         }
 
         clonesReady = true;
-        Debug.Log($"Spawned {allPlayerClones.Count} player clones.");
+        Debug.Log($"[LobbyManager] Spawned {allPlayerClones.Count} player clones.");
     }
 
     private void ResetServerData()

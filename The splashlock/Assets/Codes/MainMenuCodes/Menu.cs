@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+using Unity.Netcode;
 
 public class Menu : MonoBehaviour
 {
@@ -11,14 +12,24 @@ public class Menu : MonoBehaviour
             backToLobbyButton.onClick.AddListener(OnBackToLobbyClicked);
     }
 
-    private void OnBackToLobbyClicked()
+    private async void OnBackToLobbyClicked()
     {
-        WinScreenTrigger winScreen = FindObjectOfType<WinScreenTrigger>();
-        if (winScreen != null)
+        LobbyManager lobbyManager = FindObjectOfType<LobbyManager>();
+        if (lobbyManager != null)
         {
-            winScreen.ReturnToLobby();
+            if (NetworkManager.Singleton.IsHost)
+            {
+                // Host verlaat de huidige scene en laadt MainLobby
+                await lobbyManager.HandleClientOrHostLeftAsync();
+            }
+            else
+            {
+                Debug.Log("[Menu] Client volgt scene switch van host automatisch.");
+            }
         }
 
-        // Cursor en playerController worden hier niet aangepast
+        // ✅ Zorg dat de cursor zichtbaar blijft en niet locked
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 }

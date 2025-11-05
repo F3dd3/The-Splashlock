@@ -58,6 +58,8 @@ public class PauseMenu : NetworkBehaviour
             playerController.enabled = false;
 
         isPaused = true;
+
+        // Cursor zichtbaar bij pauze
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -72,12 +74,12 @@ public class PauseMenu : NetworkBehaviour
 
         isPaused = false;
 
-        // cursor en playerController blijven zoals origineel
+        // Cursor zichtbaar bij terug naar gameplay
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
 
-    private void OnLeaveClicked()
+    private async void OnLeaveClicked()
     {
         ResumeGame();
 
@@ -86,8 +88,12 @@ public class PauseMenu : NetworkBehaviour
         {
             if (IsOwner)
             {
-                _ = lobbyManager.HandleClientOrHostLeftAsync();
+                await lobbyManager.HandleClientOrHostLeftAsync();
             }
         }
+
+        // ✅ Zorg dat cursor zichtbaar blijft
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 }
