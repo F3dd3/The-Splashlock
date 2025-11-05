@@ -120,8 +120,14 @@ public class LobbyManager : NetworkBehaviour
                 Debug.LogError("[LobbyManager] Geen spawnpoints gevonden in de huidige scene!");
                 return;
             }
-            spawnPoints = spawns.Select(go => go.transform).ToArray();
-            Debug.Log($"[LobbyManager] {spawnPoints.Length} spawnPoints automatisch gedetecteerd.");
+
+            // Sorteer de spawnpoints op naam (spawnpoint0, spawnpoint1, ...)
+            spawnPoints = spawns
+                .OrderBy(go => go.name)
+                .Select(go => go.transform)
+                .ToArray();
+
+            Debug.Log($"[LobbyManager] {spawnPoints.Length} spawnPoints automatisch gedetecteerd en gesorteerd.");
         }
 
         try
