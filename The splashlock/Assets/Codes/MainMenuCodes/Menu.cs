@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using Unity.Netcode;
+using System.Threading.Tasks;
+using UnityEngine.SceneManagement;
 
 public class Menu : MonoBehaviour
 {
@@ -14,21 +16,28 @@ public class Menu : MonoBehaviour
 
     private async void OnBackToLobbyClicked()
     {
-        LobbyManager lobbyManager = FindObjectOfType<LobbyManager>();
-        if (lobbyManager != null)
+        // 1. Laad de MainLobby scene
+        SceneManager.LoadScene("MainLobby", LoadSceneMode.Single);
+
+        // 2. Wacht tot de MainLobby scene volledig geladen is
+        while (SceneManager.GetActiveScene().name != "MainLobby")
+            await Task.Yield();
+
+        // 3. Wacht tot LobbyManager geïnstantieerd is
+        LobbyManager lobbyManager = null;
+        while (lobbyManager == null)
         {
-            if (NetworkManager.Singleton.IsHost)
-            {
-                // Host verlaat de huidige scene en laadt MainLobby
-                await lobbyManager.HandleClientOrHostLeftAsync();
-            }
-            else
-            {
-                Debug.Log("[Menu] Client volgt scene switch van host automatisch.");
-            }
+            lobbyManager = FindObjectOfType<LobbyManager>();
+            await Task.Yield();
         }
 
-        // ✅ Zorg dat de cursor zichtbaar blijft en niet locked
+        // 4. Genereer Relay join-code en update infoText
+        if (NetworkManager.Singleton.IsHost)
+        {
+            lobbyManager.GenerateRelayCodeForBackButton();
+        }
+
+        // 5. Cursor reset
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
