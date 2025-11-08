@@ -235,43 +235,6 @@ public class LobbyManager : NetworkBehaviour
         }
     }
 
-    // ✅ Nieuwe methode: genereer Relay code en update infoText zonder AutoHostGame
-    public async void GenerateRelayCodeForBackButton()
-    {
-        try
-        {
-            Allocation allocation = await RelayService.Instance.CreateAllocationAsync(4);
-            string joinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
-            lastJoinCode = joinCode;
-
-            UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-            transport.SetRelayServerData(
-                allocation.RelayServer.IpV4,
-                (ushort)allocation.RelayServer.Port,
-                allocation.AllocationIdBytes,
-                allocation.Key,
-                allocation.ConnectionData
-            );
-
-            if (!NetworkManager.Singleton.IsHost)
-                NetworkManager.Singleton.StartHost();
-
-            if (infoText != null)
-            {
-                infoText.text = $"Join code: {lastJoinCode}";
-                leaveButton.gameObject.SetActive(false);
-            }
-
-            Debug.Log("[LobbyManager] New join code generated via back-to-lobby button: " + lastJoinCode);
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("[LobbyManager] Failed to generate relay code for back button: " + e.Message);
-            if (infoText != null)
-                infoText.text = "Failed to generate code!";
-        }
-    }
-
     private async Task JoinGameAsync()
     {
         string joinCode = joinCodeInput.text.Trim();
@@ -371,6 +334,7 @@ public class LobbyManager : NetworkBehaviour
         }
     }
 
+    // ✅ Client disconnect handler: auto-load lobby en auto-host
     private async void OnClientDisconnectedHandler(ulong clientId)
     {
         if (!NetworkManager.Singleton.IsHost)
