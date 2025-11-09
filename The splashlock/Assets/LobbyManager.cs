@@ -77,6 +77,11 @@ public class LobbyManager : NetworkBehaviour
     {
         if (scene.name == "MainLobby")
         {
+            // 🟢 Verwijder andere LobbyManager instances
+            var others = FindObjectsOfType<LobbyManager>().Where(l => l != this);
+            foreach (var l in others)
+                Destroy(l.gameObject);
+
             clonesReady = true;
 
             Cursor.lockState = CursorLockMode.None;
@@ -264,7 +269,14 @@ public class LobbyManager : NetworkBehaviour
         if (NetworkManager.Singleton.IsHost)
         {
             foreach (var clone in allPlayerClones)
-                if (clone != null) Destroy(clone);
+                if (clone != null)
+                {
+                    NetworkObject netObj = clone.GetComponent<NetworkObject>();
+                    if (netObj != null && netObj.IsSpawned)
+                        netObj.Despawn();
+
+                    Destroy(clone);
+                }
             allPlayerClones.Clear();
             await SafeShutdownNetworkManagerAsync();
             await Task.Delay(300);
@@ -334,7 +346,6 @@ public class LobbyManager : NetworkBehaviour
         }
     }
 
-    // ✅ Client disconnect handler: auto-load lobby en auto-host
     private async void OnClientDisconnectedHandler(ulong clientId)
     {
         if (!NetworkManager.Singleton.IsHost)
@@ -390,8 +401,9 @@ public class LobbyManager : NetworkBehaviour
 
     private void SpawnAllPlayerClones()
     {
-        cloneOccupied.Clear();
-        allPlayerClones.Clear();
+        if (!NetworkManager.Singleton.IsHost) return; // 🟢 Alleen host spawn
+
+        DestroyAllClones();
 
         for (int i = 0; i < spawnPoints.Length; i++)
         {
@@ -410,7 +422,7 @@ public class LobbyManager : NetworkBehaviour
                 playerScript.ownerClientId.Value = 0UL;
 
                 NetworkObject netObj = playerObj.GetComponent<NetworkObject>();
-                netObj.Spawn();
+                netObj.Spawn(true); // 🟢 host spawn
 
                 Color color = allColors[i % allColors.Count];
                 playerScript.SetColorServerRpc(new Vector3(color.r, color.g, color.b));
@@ -426,6 +438,24 @@ public class LobbyManager : NetworkBehaviour
 
         clonesReady = true;
         Debug.Log($"[LobbyManager] Spawned {allPlayerClones.Count} player clones.");
+    }
+
+    private void DestroyAllClones()
+    {
+        foreach (var clone in allPlayerClones)
+        {
+            if (clone != null)
+            {
+                NetworkObject netObj = clone.GetComponent<NetworkObject>();
+                if (netObj != null && netObj.IsSpawned)
+                    netObj.Despawn(); // 🟢 Despawn NetworkObject eerst
+                Destroy(clone);
+            }
+        }
+
+        allPlayerClones.Clear();
+        cloneOccupied.Clear();
+        clonesReady = false;
     }
 
     private void ResetServerData()
